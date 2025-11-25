@@ -1,0 +1,46 @@
+.MuiTableRow-head th {
+    font-family: 'PT Sans', sans-serif !important;
+    letter-spacing: 2px !important;
+    font-size: .8rem !important;
+    text-transform: uppercase !important;
+    border: 1px solid #F0F0F0 !important;
+    background-color: #a6adb8 !important;
+    color: black !important;
+}
+
+.MuiTableRow-root td {
+    padding: 7px !important;
+}
+
+
+.MuiTableCell-root:last-child>div:nth-child(1) {
+    display: flex !important;
+    justify-content: center !important;
+}
+
+.MuiTableCell-root:first-child>div:nth-child(1) {
+    display: flex !important;
+    justify-content: center !important;
+}
+
+.css-1768eoe-MuiTableBody-root tr td:first-child {
+    text-align: center !important;
+}
+
+.MuiPaper-elevation2 {
+    --Paper-shadow: 0 !important;
+}
+
+.css-1768eoe-MuiTableBody-root tr td {
+    font-family: 'PT Sans', sans-serif;
+    color: #4F5664;
+    border: 1px solid #F0F0F0 !important;
+}
+
+.css-10gei56 {
+    margin-top: 20px;
+}
+
+.MuiTableCell-root .MuiTableCell-body .MuiTableCell-alignLeft .MuiTableCell-sizeMedium {
+    border: 1px solid #F0F0F0 !important;
+}
