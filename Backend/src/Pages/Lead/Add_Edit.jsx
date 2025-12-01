@@ -137,7 +137,8 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         display="flex"
                         justifyContent="space-between"
                         alignItems="center"
-                        mb={4}
+                        mb={3}
+                        py={1}
                         sx={{ position: 'sticky', top: 0, backgroundColor: '#fdfdfd', zIndex: 10, borderBottom: '1px solid #ddd' }}
                     >
                         <Typography className='font-bold!' variant="h6">
@@ -148,7 +149,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         </IconButton>
                     </Box>
 
-                    <Box display="flex" gap={1} alignItems="center">
+                    <Box display="flex" gap={1} alignItems="center" className='pb-2!'>
                         <Autocomplete
                             sx={{ flex: 1 }}
                             size="small"
@@ -196,8 +197,8 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
 
 
 
-                    <div className="mb-2">
-                        <Typography fontWeight="bold" mx={.5} my={1}>
+                    <div className="border border-gray-300 pb-4 pt-1 px-2 my-3 rounded-sm">
+                        <Typography fontWeight="bold" mx={.5} my={1} className="text-gray-600">
                             Address
                         </Typography>
 

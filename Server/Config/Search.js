@@ -18,7 +18,8 @@ router.get("/", async (req, res) => {
             const sampleDocs = await collection.find({}).limit(1).toArray();
             if (sampleDocs.length === 0) continue;
 
-            const sampleKeys = Object.keys(flattenObject(sampleDocs[0]));
+            const sampleKeys = Object.keys(flattenObject(sampleDocs[0]))
+                .filter(key => !key.endsWith("_id"));
 
             const orConditions = sampleKeys.map((key) => ({
                 $expr: {
@@ -32,9 +33,17 @@ router.get("/", async (req, res) => {
 
             const docs = await collection
                 .find({ $or: orConditions })
-                .project({ _id: 0, createdAt: 0, __v: 0 })
+                .project({
+                    _id: 0,
+                    updatedAt: 0,
+                    "client._id": 0,
+                    createdAt: 0,
+                    __v: 0
+                })
                 .limit(10)
                 .toArray();
+
+
 
             if (docs.length > 0) {
                 allResults.push({

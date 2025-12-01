@@ -104,7 +104,7 @@ export default function TopHeader() {
                         </h1>
                     </div>
 
-                    <div className="flex-1 mx-4 relative max-w-full md:max-w-[500px]">
+                    <div className="flex-1 mx-4 relative max-w-full md:max-w-[400px]">
                         <div className={`relative transition-all duration-300 rounded-xl ${focused
                             ? "shadow-[0_0_0_3px_rgba(156,163,175,0.3)] border-gray-400"
                             : "shadow-sm border-gray-200"
@@ -122,7 +122,10 @@ export default function TopHeader() {
                         </div>
 
                         {showResults && (
-                            <div className="absolute top-13 left-0 w-full md:w-[500px] bg-white border border-gray-100 shadow-2xl rounded-b-2xl max-h-[70vh] overflow-y-auto z-50 animate-fade-down">
+                            <div
+                                className="absolute top-13 left-1/2 w-[320px] md:w-[600px] bg-white border border-gray-100 shadow-2xl rounded-b-2xl max-h-[70vh] overflow-y-auto z-50 animate-fade-down
+        -translate-x-1/2"
+                            >
                                 {loading ? (
                                     <div className="text-center py-4 text-gray-500">Searching...</div>
                                 ) : results.length > 0 ? (
@@ -151,7 +154,7 @@ export default function TopHeader() {
                                                                         <span className="text-gray-500 font-medium capitalize">
                                                                             {key.replace(/_/g, " ")}:
                                                                         </span>
-                                                                        <span className="text-gray-800 ml-1">
+                                                                        <span className="text-gray-800 ml-1" style={{ whiteSpace: 'pre-line' }}>
                                                                             {typeof value === "object"
                                                                                 ? JSON.stringify(value)
                                                                                 : highlightText(String(value), query)}
@@ -172,7 +175,7 @@ export default function TopHeader() {
 
                                 <div className="sticky bottom-0 left-0 bg-white border-t border-gray-100">
                                     <button
-                                        className="w-full py-2 text-gray-500 text-sm cursor-pointer hover:text-gray-700 bg-gray-50  hover:bg-gray-200 flex items-center justify-center gap-1 transition-all"
+                                        className="w-full py-2 text-gray-500 text-sm cursor-pointer hover:text-gray-700 bg-gray-50 hover:bg-gray-200 flex items-center justify-center gap-1 transition-all"
                                         onClick={() => setShowResults(false)}
                                     >
                                         <CloseIcon fontSize="small" /> Close
@@ -180,6 +183,7 @@ export default function TopHeader() {
                                 </div>
                             </div>
                         )}
+
 
                     </div>
 
