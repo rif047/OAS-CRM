@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Box, Button, Typography, Modal, IconButton, TextField, Autocomplete, } from "@mui/material";
+import { Box, Button, Typography, Modal, IconButton, TextField, Autocomplete } from "@mui/material";
 import { Close as CloseIcon, Add as AddIcon } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import axios from "axios";
-import AddEditClient from "../Client/Add_Edit";
+import AddEditClient from "../../Client/Add_Edit";
 
 const modalStyle = {
     position: "absolute",
@@ -33,14 +33,11 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
         property_type: "",
         extention_type: "",
         project_type: "",
-        budget: "",
-        when_to_start: "",
-        file_link: "",
-        source: "",
         description: "",
     });
-    const [clientModalOpen, setClientModalOpen] = useState(false);
 
+    const [clientModalOpen, setClientModalOpen] = useState(false);
+    const [newRemark, setNewRemark] = useState("");
 
     const fetchClients = async () => {
         try {
@@ -50,7 +47,6 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
             toast.error("Failed to fetch clients.");
         }
     };
-
 
     useEffect(() => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
@@ -72,25 +68,21 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                 }));
             }
 
-
+            setNewRemark("");
 
         } else {
             setFormData({ agent: loggedUser?.name || '' });
+            setNewRemark("");
         }
 
         setErrors({});
         fetchClients();
     }, [data]);
 
-
-
     const validate = () => {
         const newErrors = {};
         if (!formData.client) newErrors.client = "Client is required.";
         if (!formData.company) newErrors.company = "Company is required.";
-        if (!formData.source) newErrors.source = "Source is required.";
-        if (formData.budget && isNaN(parseFloat(formData.budget))) { newErrors.budget = "Budget must be a number."; }
-
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -106,21 +98,33 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
         setLoading(true);
 
         try {
-            const url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}${data?._id ? `/${data._id}` : ""
-                }`;
+            let updatedDescription = formData.description || "";
+
+            if (newRemark.trim()) {
+                if (updatedDescription) {
+                    updatedDescription = updatedDescription + "\n" + newRemark.trim();
+                } else {
+                    updatedDescription = newRemark.trim();
+                }
+            }
+
+            const finalData = {
+                ...formData,
+                description: updatedDescription
+            };
+
+            const url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}${data?._id ? `/${data._id}` : ""}`;
             const method = data?._id ? "patch" : "post";
 
-            await axios[method](url, formData, { headers: { "Content-Type": "application/json" }, });
+            await axios[method](url, finalData, {
+                headers: { "Content-Type": "application/json" }
+            });
 
             toast.success(data?._id ? "Updated successfully." : "Created successfully.");
             refreshData();
             onClose();
         } catch (error) {
-            const backendErrors = error.response?.data || {};
             toast.error(error.response?.data || "Failed to submit data.");
-            setErrors({
-                ...backendErrors.includes?.('Source link already exists') && { source_link: 'Source link already exists.' }
-            });
         } finally {
             setLoading(false);
         }
@@ -136,7 +140,13 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         alignItems="center"
                         mb={3}
                         py={1}
-                        sx={{ position: 'sticky', top: 0, backgroundColor: '#fdfdfd', zIndex: 10, borderBottom: '1px solid #ddd' }}
+                        sx={{
+                            position: 'sticky',
+                            top: 0,
+                            backgroundColor: '#fdfdfd',
+                            zIndex: 10,
+                            borderBottom: '1px solid #ddd'
+                        }}
                     >
                         <Typography className='font-bold!' variant="h6">
                             {data ? 'Update Data' : 'Create New'}
@@ -171,8 +181,6 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             )}
                         />
 
-
-
                         <Autocomplete
                             sx={{ flex: 1 }}
                             size="small"
@@ -192,7 +200,6 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             )}
                         />
 
-
                         <IconButton
                             color="primary"
                             sx={{ alignSelf: "center" }}
@@ -201,8 +208,6 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             <AddIcon />
                         </IconButton>
                     </Box>
-
-
 
                     <div className="border border-gray-300 pb-4 pt-1 px-3 mt-2 rounded-sm">
                         <Typography fontWeight="bold" mx={.5} my={1} className="text-gray-600">
@@ -242,7 +247,6 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         </Box>
                     </div>
 
-
                     <Box display="flex" gap={1} mt={2} alignItems="center">
                         <TextField
                             sx={{ flex: 8 }}
@@ -279,10 +283,6 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         />
                     </Box>
 
-
-
-
-
                     <TextField
                         fullWidth
                         label="Scope Of Work"
@@ -295,121 +295,35 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         helperText={errors.extention_type}
                     />
 
-
-
-
-
-
-
-
-
-
-                    <Box display="flex" gap={1} alignItems="center">
-                        <TextField
-                            fullWidth
-                            label="Budget in £"
-                            name="budget"
-                            type="number"
-                            size="small"
-                            margin="normal"
-                            value={formData.budget}
-                            onChange={handleChange}
-                            error={!!errors.budget}
-                            helperText={errors.budget}
-                        />
-
-
-
-                        <Autocomplete
-                            fullWidth
-                            size="small"
-                            options={[
-                                "ASAP",
-                                "3 Months",
-                                "6 Months",
-                                "12 Month",
-                                "18 Month",
-                                "Not Sure",
-                            ]}
-                            value={formData.when_to_start || null}
-                            onChange={(e, newVal) =>
-                                setFormData((prev) => ({ ...prev, when_to_start: newVal || "" }))
-                            }
-                            autoHighlight
-                            selectOnFocus
-                            clearOnBlur
-                            handleHomeEndKeys
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="When To Start"
-                                    margin="normal"
-                                    error={!!errors.when_to_start}
-                                    helperText={errors.when_to_start}
-                                />
-                            )}
-                        />
-
-
-                        <Autocomplete
-                            fullWidth
-                            size="small"
-                            options={[
-                                "Website",
-                                "Email Marketing",
-                                "Referral",
-                                "Facebook",
-                                "LinkedIn",
-                                "Instagram",
-                                "TikTok",
-                                "Telegram",
-                                "Other",
-                            ]}
-                            value={formData.source || null}
-                            onChange={(e, newVal) =>
-                                setFormData((prev) => ({ ...prev, source: newVal || "" }))
-                            }
-                            autoHighlight
-                            selectOnFocus
-                            clearOnBlur
-                            handleHomeEndKeys
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Source*"
-                                    margin="normal"
-                                    error={!!errors.source}
-                                    helperText={errors.source}
-                                />
-                            )}
-                        />
-                    </Box>
-
-
-
                     <TextField
                         fullWidth
-                        label="Project File URL"
-                        name="file_link"
                         size="small"
                         margin="normal"
-                        value={formData.file_link}
-                        onChange={handleChange}
-                        error={!!errors.file_link}
-                        helperText={errors.file_link}
+                        label="Previous Remarks"
+                        value={formData.description || ""}
+                        disabled
+                        hidden
+                        multiline
+                        minRows={3}
+                        InputProps={{
+                            style: {
+                                backgroundColor: '#f5f5f5',
+                                color: '#666'
+                            }
+                        }}
                     />
-
 
                     <TextField
                         fullWidth
-                        label="Description"
-                        name="description"
+                        label="Add New Remark"
                         size="small"
                         margin="normal"
                         multiline
                         minRows={8}
-                        value={formData.description}
-                        onChange={handleChange}
+                        value={newRemark}
+                        onChange={e => setNewRemark(e.target.value)}
+                        placeholder="Enter new remark here..."
+                        helperText="This will be appended to previous remarks"
                     />
 
                     <Button
@@ -419,12 +333,11 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         disabled={loading}
                         className="bg-[#272e3f]! hover:bg-gray-700! font-bold! mt-4!"
                     >
-                        {data ? "Update" : "Create"}
+                        {loading ? "Processing..." : (data ? "Update" : "Create")}
                     </Button>
-
-
                 </Box>
-            </Modal >
+            </Modal>
+
             <AddEditClient
                 open={clientModalOpen}
                 onClose={() => {

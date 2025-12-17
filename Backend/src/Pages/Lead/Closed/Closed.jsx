@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
 import View from './View';
 import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import CachedIcon from '@mui/icons-material/Cached';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
+import 'react-toastify/dist/ReactToastify.css';
 
-export default function Lost_Leads() {
-    document.title = 'Closed Leads';
+export default function Closed() {
+    document.title = 'Closed Projects';
 
     const EndPoint = 'leads';
 
@@ -30,17 +30,26 @@ export default function Lost_Leads() {
     const [loading, setLoading] = useState(false);
 
 
+    const [selectedCompany, setSelectedCompany] = useState("All");
+    const [companies, setCompanies] = useState([]);
+
+
     const fetchData = async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
+            const filteredData = response.data.filter(item => item.status === "Closed");
 
-            const filteredData = response.data.filter(item => item.status === "LeadLost");
+            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
+            setCompanies(uniqueCompanies);
 
-            setData(filteredData.reverse());
-        } catch (error) {
-            toast.error('Failed to fetch data. Please try again.');
-            console.error('Error fetching data:', error);
+            const filteredByCompany = selectedCompany === "All"
+                ? filteredData
+                : filteredData.filter(item => item.company === selectedCompany);
+
+            setData(filteredByCompany.reverse());
+        } catch {
+            toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
@@ -48,10 +57,10 @@ export default function Lost_Leads() {
 
 
     const handleDelete = async (row) => {
-        if (window.confirm(`Are you sure you want to delete ${row.position.toUpperCase()}?`)) {
+        if (window.confirm(`Are you sure you want to delete ${row.leadCode.toUpperCase()}?`)) {
             try {
                 await axios.delete(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${row._id}`);
-                toast.success(`${row.position.toUpperCase()} deleted.`);
+                toast.success(`${row.leadCode.toUpperCase()} deleted.`);
                 fetchData();
             } catch (error) {
                 toast.error('Failed to delete. Please try again.');
@@ -61,13 +70,13 @@ export default function Lost_Leads() {
     };
 
     const handleToPending = async (row) => {
-        if (window.confirm(`Back to Hot Lead for ${row.position.toUpperCase()}?`)) {
+        if (window.confirm(`Back to Hot Lead for ${row.leadCode}?`)) {
             try {
                 await axios.patch(
-                    `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/deal_cancelled/${row._id}`,
+                    `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/pending/${row._id}`,
                     { status: "Pending" }
                 );
-                toast.success("Lead moved back to Hot Lead!");
+                toast.success("Moved back to Lead!");
                 fetchData();
             } catch (error) {
                 console.error("Error updating status:", error);
@@ -87,20 +96,17 @@ export default function Lost_Leads() {
         setViewModalOpen(true);
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useEffect(() => { fetchData(); }, [selectedCompany]);
 
 
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '', header: 'Date', maxSize: 80 },
-        { key: "client", accessorKey: 'client', header: 'Client' },
-        { key: "position", accessorKey: 'position', header: 'Position' },
-        { key: "city", accessorKey: 'city', header: 'City' },
-        { key: "wages", accessorFn: row => `£${row.wages}`, header: 'Wage', maxSize: 60 },
-        { key: "accommodation", accessorKey: 'accommodation', header: 'Accom', maxSize: 60 },
-        { key: "management", accessorKey: 'management', header: 'management', maxSize: 80 },
+        { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 80 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
+        { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
+        { key: "quote_price", header: "Quote Price", accessorFn: row => `£${row.quote_price || 0}`, maxSize: 50 },
+        { key: "final_price", header: "Final Price", accessorFn: row => `£${row.final_price || 0}`, maxSize: 50 },
         ...(userType === "Admin"
             ? [
                 {
@@ -114,9 +120,9 @@ export default function Lost_Leads() {
                                     e.stopPropagation();
                                     handleToPending(row.original);
                                 }}
-                                className="text-orange-500 font-bold flex items-center cursor-pointer ml-3"
+                                className="text-orange-500 font-bold flex items-center cursor-pointer"
                             >
-                                <span className="text-xs mr-1 text-center">Back to Hot Lead</span>
+                                <span className="text-xs mr-1 text-center">Back to Lead</span>
                                 <ArrowOutwardIcon fontSize="small" />
                             </button>
                         </div>
@@ -132,7 +138,7 @@ export default function Lost_Leads() {
 
             <section className="flex justify-between px-1 md:px-4 py-2 bg-[#4c5165]">
                 <div className='flex justify-center items-center'>
-                    <h1 className="font-bold text-sm md:text-lg text-white mr-2">Lost Leads</h1>
+                    <h1 className="font-bold text-sm md:text-lg text-white mr-2">Closed Projects</h1>
 
                     {loading ? (
                         <div className="flex justify-center items-center text-white">
@@ -146,8 +152,18 @@ export default function Lost_Leads() {
                     <span className="ml-2 text-xs text-gray-300">
                         Total: {data.length}
                     </span>
-
                 </div>
+
+                <select
+                    className="mr-4 px-3 py-1.5 rounded-md bg-gray-700 text-sm text-white border border-gray-500 focus:outline-none cursor-pointer"
+                    value={selectedCompany}
+                    onChange={(e) => setSelectedCompany(e.target.value)}
+                >
+                    <option value="All">All Companies</option>
+                    {companies.map((company, index) => (
+                        <option key={index} value={company}>{company}</option>
+                    ))}
+                </select>
             </section>
 
             <section>

@@ -27,28 +27,22 @@ const LeadSchema = Mongoose.Schema({
     extention_type: {
         type: String
     },
-    design_prepared: {
-        type: String
-    },
-    building_regulations_drawings: {
-        type: String
-    },
-    planning_permission: {
+    project_type: {
         type: String
     },
     budget: {
         type: String
     },
+    quote_price: {
+        type: String
+    },
     final_price: {
         type: String
     },
-    when_start: {
+    when_to_start: {
         type: String
     },
     file_link: {
-        type: String
-    },
-    property_name: {
         type: String
     },
     in_quote_date: {
@@ -57,38 +51,55 @@ const LeadSchema = Mongoose.Schema({
     quote_file: {
         type: String
     },
-    in_servey_date: {
+    in_survey_date: {
+        type: String
+    },
+    survey_date: {
+        type: String
+    },
+    surveyor: {
+        type: String
+    },
+    survey_note: {
+        type: String
+    },
+    survey_done: {
+        type: String
+    },
+    survey_file: {
         type: String
     },
     in_design_date: {
         type: String
     },
-    in_review_date: {
+    design_deadline: {
         type: String
     },
-    servey_date: {
+    designer: {
+        type: String
+    },
+    design_file: {
+        type: String
+    },
+    in_review_date: {
         type: String
     },
     close_date: {
         type: String
     },
-    cancel_date: {
-        type: String
-    },
-    invoice_sent: {
+    lost_date: {
         type: String
     },
     source: {
         type: String
     },
-    source_link: {
-        type: String,
-        unique: true
-    },
     status: {
         type: String
     },
-    remark: {
+    lead_status: {
+        type: String
+    },
+    description: {
         type: String
     },
 }, { timestamps: true })

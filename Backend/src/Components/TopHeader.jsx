@@ -12,6 +12,9 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SideMenu from "./SideMenu";
 
 export default function TopHeader() {
+    const userType = localStorage.getItem("userType");
+
+
     const [showMenu, setShowMenu] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
     const [userName, setUserName] = useState("");
@@ -104,88 +107,90 @@ export default function TopHeader() {
                         </h1>
                     </div>
 
-                    <div className="flex-1 mx-4 relative max-w-full md:max-w-[400px]">
-                        <div className={`relative transition-all duration-300 rounded-xl ${focused
-                            ? "shadow-[0_0_0_3px_rgba(156,163,175,0.3)] border-gray-400"
-                            : "shadow-sm border-gray-200"
-                            } border bg-white/70 backdrop-blur-md`}>
-                            <SearchIcon className="absolute left-3 top-2.5 text-gray-600" fontSize="small" />
-                            <input
-                                type="text"
-                                placeholder="Quick search..."
-                                value={query}
-                                onChange={handleSearch}
-                                onFocus={() => setFocused(true)}
-                                onBlur={() => setFocused(false)}
-                                className="w-full pl-10 pr-4 py-2.5 text-sm bg-transparent rounded-full outline-none text-gray-700 placeholder:text-gray-400"
-                            />
-                        </div>
-
-                        {showResults && (
-                            <div
-                                className="absolute top-13 left-1/2 w-[320px] md:w-[600px] bg-white border border-gray-100 shadow-2xl rounded-b-2xl max-h-[70vh] overflow-y-auto z-50 animate-fade-down
-        -translate-x-1/2"
-                            >
-                                {loading ? (
-                                    <div className="text-center py-4 text-gray-500">Searching...</div>
-                                ) : results.length > 0 ? (
-                                    results.map((group, i) => (
-                                        <details
-                                            key={i}
-                                            className="group border border-gray-100 rounded-xl overflow-hidden mb-2 shadow-sm hover:shadow-md transition-all"
-                                        >
-                                            <summary className="flex items-center justify-start px-4 py-2 bg-gray-50 hover:bg-gray-50 text-gray-700 font-semibold cursor-pointer select-none">
-                                                <span className="capitalize mr-1">{group.collection}</span>
-                                                <span className="text-gray-500 text-xs"> ({group.total})</span>
-                                                <ExpandMoreIcon className="group-open:rotate-180 transition-transform" />
-                                            </summary>
-
-                                            <div className="p-3 grid grid-cols-1 gap-3">
-                                                {group.results.map((item, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-lg transition-all duration-200"
-                                                    >
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                                            {Object.entries(item).map(([key, value]) => {
-                                                                if (["_id", "createdAt", "__v"].includes(key)) return null;
-                                                                return (
-                                                                    <div key={key}>
-                                                                        <span className="text-gray-500 font-medium capitalize">
-                                                                            {key.replace(/_/g, " ")}:
-                                                                        </span>
-                                                                        <span className="text-gray-800 ml-1" style={{ whiteSpace: 'pre-line' }}>
-                                                                            {typeof value === "object"
-                                                                                ? JSON.stringify(value)
-                                                                                : highlightText(String(value), query)}
-                                                                        </span>
-
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </details>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-4 text-gray-500">No results found</div>
-                                )}
-
-                                <div className="sticky bottom-0 left-0 bg-white border-t border-gray-100">
-                                    <button
-                                        className="w-full py-2 text-gray-500 text-sm cursor-pointer hover:text-gray-700 bg-gray-50 hover:bg-gray-200 flex items-center justify-center gap-1 transition-all"
-                                        onClick={() => setShowResults(false)}
-                                    >
-                                        <CloseIcon fontSize="small" /> Close
-                                    </button>
-                                </div>
+                    {(userType === "Admin" || userType === "Management") && (
+                        <div className="flex-1 mx-4 relative max-w-full md:max-w-[400px]">
+                            <div className={`relative transition-all duration-300 rounded-xl ${focused
+                                ? "shadow-[0_0_0_3px_rgba(156,163,175,0.3)] border-gray-400"
+                                : "shadow-sm border-gray-200"
+                                } border bg-white/70 backdrop-blur-md`}>
+                                <SearchIcon className="absolute left-3 top-2.5 text-gray-600" fontSize="small" />
+                                <input
+                                    type="text"
+                                    placeholder="Quick search..."
+                                    value={query}
+                                    onChange={handleSearch}
+                                    onFocus={() => setFocused(true)}
+                                    onBlur={() => setFocused(false)}
+                                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-transparent rounded-full outline-none text-gray-700 placeholder:text-gray-400"
+                                />
                             </div>
-                        )}
+
+                            {showResults && (
+                                <div
+                                    className="absolute top-13 left-1/2 w-[320px] md:w-[600px] bg-white border border-gray-100 shadow-2xl rounded-b-2xl max-h-[70vh] overflow-y-auto z-50 animate-fade-down
+        -translate-x-1/2"
+                                >
+                                    {loading ? (
+                                        <div className="text-center py-4 text-gray-500">Searching...</div>
+                                    ) : results.length > 0 ? (
+                                        results.map((group, i) => (
+                                            <details
+                                                key={i}
+                                                className="group border border-gray-100 rounded-xl overflow-hidden mb-2 shadow-sm hover:shadow-md transition-all"
+                                            >
+                                                <summary className="flex items-center justify-start px-4 py-2 bg-gray-50 hover:bg-gray-50 text-gray-700 font-semibold cursor-pointer select-none">
+                                                    <span className="capitalize mr-1">{group.collection}</span>
+                                                    <span className="text-gray-500 text-xs"> ({group.total})</span>
+                                                    <ExpandMoreIcon className="group-open:rotate-180 transition-transform" />
+                                                </summary>
+
+                                                <div className="p-3 grid grid-cols-1 gap-3">
+                                                    {group.results.map((item, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-lg transition-all duration-200"
+                                                        >
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                                {Object.entries(item).map(([key, value]) => {
+                                                                    if (["_id", "createdAt", "__v"].includes(key)) return null;
+                                                                    return (
+                                                                        <div key={key}>
+                                                                            <span className="text-gray-500 font-medium capitalize">
+                                                                                {key.replace(/_/g, " ")}:
+                                                                            </span>
+                                                                            <span className="text-gray-800 ml-1" style={{ whiteSpace: 'pre-line' }}>
+                                                                                {typeof value === "object"
+                                                                                    ? JSON.stringify(value)
+                                                                                    : highlightText(String(value), query)}
+                                                                            </span>
+
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </details>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-4 text-gray-500">No results found</div>
+                                    )}
+
+                                    <div className="sticky bottom-0 left-0 bg-white border-t border-gray-100">
+                                        <button
+                                            className="w-full py-2 text-gray-500 text-sm cursor-pointer hover:text-gray-700 bg-gray-50 hover:bg-gray-200 flex items-center justify-center gap-1 transition-all"
+                                            onClick={() => setShowResults(false)}
+                                        >
+                                            <CloseIcon fontSize="small" /> Close
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
 
-                    </div>
+                        </div>
+                    )}
 
                     <div className="flex items-center gap-5">
                         <div className="relative hidden md:flex items-center">

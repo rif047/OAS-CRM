@@ -4,9 +4,9 @@ import SideMenuItem from "./SideMenuItem";
 export default function SideMenu() {
     return (
         <aside className="w-full md:w-[250px] h-screen bg-[#0f172a]/90 backdrop-blur-xl border-r border-white/10 flex flex-col">
-            <div className="h-[64px] flex items-center justify-between px-8 bg-[#192032] border-b border-white/10 backdrop-blur-sm">
+            <div className="h-16 flex items-center justify-between px-8 bg-[#192032] border-b border-white/10 backdrop-blur-sm">
                 <NavLink to={'/'}
-                    className="text-[22px] font-semibold tracking-wide bg-gradient-to-r from-[#f8fafc] via-[#e2e8f0] to-[#88bb99] bg-clip-text text-transparent select-none"
+                    className="text-[22px] font-semibold tracking-wide bg-linear-to-r from-[#f8fafc] via-[#e2e8f0] to-[#88bb99] bg-clip-text text-transparent select-none"
                 >
                     KPCL Group
                 </NavLink>
@@ -30,7 +30,7 @@ export default function SideMenu() {
                 <span className="absolute transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 text-[#88bb99] font-semibold">
                     Cube In Cloud
                 </span>
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-400/30 to-transparent"></div>
+                <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-blue-400/30 to-transparent"></div>
             </div>
         </aside>
     );

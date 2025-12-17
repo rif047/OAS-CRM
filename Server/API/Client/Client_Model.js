@@ -15,10 +15,16 @@ const ClientSchema = Mongoose.Schema({
         required: true,
         unique: true
     },
+    email: {
+        type: String
+    },
+    company: {
+        type: String
+    },
     alt_phone: {
         type: Number
     },
-    remark: {
+    description: {
         type: String,
     },
 

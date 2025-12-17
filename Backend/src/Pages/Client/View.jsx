@@ -25,13 +25,15 @@ const modalStyle = {
 export default function View({ open, onClose, viewData }) {
     const personalInfo = [
         { label: "Client Name", value: viewData?.name },
+        { label: "Companies", value: viewData?.company },
         { label: "Agent", value: viewData?.agent },
         { label: "Phone", value: viewData?.phone },
         { label: "Alternative Phone", value: viewData?.alt_phone },
+        { label: "Email", value: viewData?.email },
     ];
 
     const businessInfo = [
-        { label: "Remarks", value: viewData?.remark },
+        { label: "Description", value: viewData?.description },
     ];
 
     const renderFields = (fields) =>

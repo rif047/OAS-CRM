@@ -118,7 +118,7 @@ export default function Employees() {
                     experience: row.experience || row.Experience,
                     position: row.position || row.Position,
                     right_to_work: row.right_to_work || row["Right to Work"],
-                    remark: row.remark || row.Remark || "",
+                    description: row.description || row.Description || "",
                 }));
 
                 await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/bulk`, formattedData);

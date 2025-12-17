@@ -12,7 +12,7 @@ let Clients = async (req, res) => {
 
 let Create = async (req, res) => {
     try {
-        let { agent, name, phone, alt_phone, remark } = req.body;
+        let { agent, name, phone, alt_phone, email, company, description } = req.body;
 
         if (!agent) { return res.status(400).send('User is required!'); }
         if (!name) { return res.status(400).send('Client Name is required!'); }
@@ -21,13 +21,18 @@ let Create = async (req, res) => {
         let checkPhone = await Client.findOne({ phone });
         if (checkPhone) { return res.status(400).send('Phone number already exists. Use different one.'); };
 
+        let checkEmail = await Client.findOne({ email });
+        if (checkEmail) { return res.status(400).send('Email already exists. Use different one.'); };
+
 
         let newData = new Client({
             agent,
             name,
             phone,
             alt_phone,
-            remark,
+            email,
+            company,
+            description,
         });
 
         await newData.save();
@@ -52,7 +57,7 @@ let BulkImport = async (req, res) => {
 
         let validClients = [];
         for (let emp of clients) {
-            const { agent, name, phone, alt_phone, remark } = emp;
+            const { agent, name, phone, alt_phone, description } = emp;
 
             if (!agent || !name || !phone) {
                 console.log(`Skipped invalid entry: ${name || 'Unnamed'}`);
@@ -65,7 +70,7 @@ let BulkImport = async (req, res) => {
                 continue;
             }
 
-            validClients.push({ agent, name, phone, alt_phone, remark });
+            validClients.push({ agent, name, phone, alt_phone, description });
         }
 
         if (validClients.length === 0) {
@@ -98,7 +103,7 @@ let View = async (req, res) => {
 
 let Update = async (req, res) => {
     try {
-        let { agent, name, phone, alt_phone, remark } = req.body;
+        let { agent, name, phone, alt_phone, email, company, description } = req.body;
 
         if (!agent) { return res.status(400).send('User is required!'); }
         if (!name) { return res.status(400).send('Client Name is required!'); }
@@ -107,6 +112,9 @@ let Update = async (req, res) => {
         let checkPhone = await Client.findOne({ phone: phone, _id: { $ne: req.params.id } });
         if (checkPhone) { return res.status(400).send('Phone number already exists. Use different one.'); }
 
+        let checkEmail = await Client.findOne({ email: email, _id: { $ne: req.params.id } });
+        if (checkEmail) { return res.status(400).send('Email already exists. Use different one.'); }
+
 
         let updateData = await Client.findById(req.params.id);
 
@@ -114,7 +122,9 @@ let Update = async (req, res) => {
         updateData.name = name;
         updateData.phone = phone;
         updateData.alt_phone = alt_phone;
-        updateData.remark = remark;
+        updateData.email = email;
+        updateData.company = company;
+        updateData.description = description;
 
         await updateData.save();
         res.status(200).json(updateData);

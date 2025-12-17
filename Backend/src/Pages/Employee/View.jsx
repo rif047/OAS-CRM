@@ -40,7 +40,7 @@ export default function View({ open, onClose, viewData }) {
         { label: "Availability", value: viewData?.availability },
         { label: "Experience", value: viewData?.experience },
         { label: "Right to Work", value: viewData?.right_to_work },
-        { label: "Remarks", value: viewData?.remark },
+        { label: "Description", value: viewData?.description },
     ];
 
     const renderFields = (fields) =>

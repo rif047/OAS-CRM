@@ -13,7 +13,7 @@ let Users = async (req, res) => {
 
 let Create = async (req, res) => {
     try {
-        let { name, phone, username, userType, email, password, secret_code, designation, remark } = req.body;
+        let { name, phone, username, userType, email, password, secret_code, designation, description } = req.body;
 
         if (!name) { return res.status(400).send('Name is required!'); }
         if (!phone) { return res.status(400).send('Phone is required!'); }
@@ -41,7 +41,7 @@ let Create = async (req, res) => {
             phone,
             userType,
             designation,
-            remark,
+            description,
             username: username.toLowerCase(),
             email: email.toLowerCase(),
             password: hashPassword,
@@ -73,7 +73,7 @@ let View = async (req, res) => {
 
 let Update = async (req, res) => {
     try {
-        let { name, phone, username, userType, email, password, secret_code, designation, remark } = req.body;
+        let { name, phone, username, userType, email, password, secret_code, designation, description } = req.body;
 
         if (!name) { return res.status(400).send('Name is required!'); }
         if (!phone) { return res.status(400).send('Phone is required!'); }
@@ -97,7 +97,7 @@ let Update = async (req, res) => {
         updateData.phone = phone;
         updateData.userType = userType;
         updateData.designation = designation;
-        updateData.remark = remark;
+        updateData.description = description;
         updateData.username = username.toLowerCase();
         updateData.email = email.toLowerCase();
         updateData.secret_code = secret_code.toLowerCase();

@@ -211,16 +211,16 @@ export default function AddEditEmployee({ open, onClose, data, refreshData }) {
 
                 <TextField
                     fullWidth
-                    label="Remark"
-                    name="remark"
+                    label="Description"
+                    name="description"
                     size="small"
                     margin="normal"
                     multiline
                     minRows={5}
-                    value={formData.remark || ""}
+                    value={formData.description || ""}
                     onChange={handleChange}
-                    error={!!errors.remark}
-                    helperText={errors.remark}
+                    error={!!errors.description}
+                    helperText={errors.description}
                     sx={{ mb: 2 }}
                 />
 

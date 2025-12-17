@@ -36,12 +36,13 @@ export default function View({ open, onClose, viewData }) {
                                         <h3 className="font-semibold text-lg">📋 Lead Details</h3>
                                         <InfoRow label="Company" value={viewData.company} />
                                         <InfoRow label="Source" value={viewData.source} />
-                                        <LinkRow label="Project Drive Files" url={viewData.file_link} linkText="Go to drive" />
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Lost Date" value={formatDate(viewData.lost_date)} />
+                                            <InfoRow label="In Servey Date" value={formatDate(viewData.in_survey_date)} />
+
+
                                         </div>
                                     </div>
 
@@ -57,19 +58,20 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Property Type" value={viewData.property_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
                                             <InfoRow label="Scope Of Work" value={viewData.extention_type} />
-
-                                            <InfoRow label="When To Start" value={viewData.when_to_start} />
-                                            <InfoRow label="Budget" value={`£${viewData.budget}`} />
+                                            <InfoRow label="Surveyor" value={viewData.surveyor} />
+                                            <InfoRow label="Survey Date" value={formatDate(viewData.survey_date)} />
+                                            <InfoRow label="Survey Done" value={viewData.survey_done} />
+                                            <LinkRow label="Survey File" url={viewData.survey_file} linkText="View" />
                                         </div>
                                     </div>
                                 </div>
 
 
                                 <div className='mt-6'>
-                                    <InfoCard title="💬 Description">
+                                    <InfoCard title="💬 Survey Note">
                                         <div className="bg-gray-50 p-4 rounded-lg">
                                             <p className="text-gray-700 whitespace-pre-line">
-                                                {viewData.description || "No description provided"}
+                                                {viewData.survey_note || "No description provided"}
                                             </p>
                                         </div>
                                     </InfoCard>

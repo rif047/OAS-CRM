@@ -58,24 +58,45 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             maxSize: 130,
             Cell: ({ row }) => (
                 <div className="space-x-2">
+
                     {permissions.canView && (
-                        <button className="actionBtn cursor-pointer px-[8px] py-[2px] rounded hover:shadow-2xl bg-blue-100 hover:bg-blue-300" onClick={() => onView(row.original)} >
+                        <button
+                            className="actionBtn cursor-pointer px-2 py-0.5 rounded hover:shadow-2xl bg-blue-100 hover:bg-blue-300"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onView(row.original);
+                            }}
+                        >
                             <VisibilityIcon style={{ width: 17, height: 17 }} />
                         </button>
                     )}
 
                     {permissions.canEdit && (
-                        <button className="actionBtn cursor-pointer px-[8px] py-[2px] rounded hover:shadow-2xl bg-orange-100 hover:bg-orange-300" onClick={() => onEdit(row.original)}  >
+                        <button
+                            className="actionBtn cursor-pointer px-2 py-0.5 rounded hover:shadow-2xl bg-orange-100 hover:bg-orange-300"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(row.original);
+                            }}
+                        >
                             <EditIcon style={{ width: 17, height: 17 }} />
                         </button>
                     )}
 
                     {permissions.canDelete && (
-                        <button className="actionBtn cursor-pointer px-[8px] py-[2px] rounded hover:shadow-2xl bg-red-100 text-red-500 hover:bg-red-200" onClick={() => onDelete(row.original)} >
+                        <button
+                            className="actionBtn cursor-pointer px-2 py-0.5 rounded hover:shadow-2xl bg-red-100 text-red-500 hover:bg-red-200"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(row.original);
+                            }}
+                        >
                             <DeleteIcon style={{ width: 17, height: 17 }} />
                         </button>
                     )}
+
                 </div>
+
             ),
         },
     ];
@@ -84,6 +105,17 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         <MaterialReactTable
             data={data}
             columns={dynamicColumns}
+            muiTableBodyRowProps={({ row }) => ({
+                onClick: () => {
+                    if (permissions.canView) {
+                        onView(row.original);
+                    }
+                },
+                sx: {
+                    cursor: permissions.canView ? "pointer" : "default",
+                },
+            })}
+
             enableFullScreenToggle={false}
             enableDensityToggle={false}
             initialState={{
@@ -96,7 +128,7 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             renderTopToolbarCustomActions={() =>
                 userType !== "Management" && (
                     <section>
-                        <Button className="!text-black !capitalize" onClick={handleExportCsv} startIcon={<IosShareTwoToneIcon />}>
+                        <Button className="text-black! capitalize!" onClick={handleExportCsv} startIcon={<IosShareTwoToneIcon />}>
                             Export
                         </Button>
                     </section>

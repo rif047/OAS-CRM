@@ -29,17 +29,28 @@ export default function Leads() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const [selectedCompany, setSelectedCompany] = useState("All");
+    const [companies, setCompanies] = useState([]);
+
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState("");
     const [selectedRow, setSelectedRow] = useState(null);
-    const [form, setForm] = useState({ agent: "", quote_file: "", remark: "" });
+    const [form, setForm] = useState({ agent: "", quote_price: "", quote_file: "", description: "" });
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
             const filteredData = response.data.filter(item => item.status === "Pending");
-            setData(filteredData.reverse());
+
+            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
+            setCompanies(uniqueCompanies);
+
+            const filteredByCompany = selectedCompany === "All"
+                ? filteredData
+                : filteredData.filter(item => item.company === selectedCompany);
+
+            setData(filteredByCompany.reverse());
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
@@ -47,12 +58,12 @@ export default function Leads() {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, [selectedCompany]);
 
     const handleStatusClick = (row) => {
         const user = JSON.parse(localStorage.getItem("user"));
         setSelectedRow(row);
-        setForm({ agent: user?.name || "", quote_file: "", remark: "" });
+        setForm({ agent: user?.name || "", quote_price: "", quote_file: "", description: "" });
         setSelectedStatus("In_Quote");
         setStatusModalOpen(true);
     };
@@ -60,23 +71,23 @@ export default function Leads() {
     const handleCancelled = (row) => {
         const user = JSON.parse(localStorage.getItem("user"));
         setSelectedRow(row);
-        setForm({ agent: user?.name || "", remark: "" });
-        setSelectedStatus("Cancelled");
+        setForm({ agent: user?.name || "", description: "" });
+        setSelectedStatus("Lost_Lead");
         setStatusModalOpen(true);
     };
 
     const handleStatusSubmit = async () => {
         try {
             let url = "";
-            if (selectedStatus === "Cancelled") {
-                url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/cancelled/${selectedRow._id}`;
+            if (selectedStatus === "Lost_Lead") {
+                url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`;
             } else {
                 url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/in_quote/${selectedRow._id}`;
             }
 
             await axios.patch(url, { ...form, status: selectedStatus });
             toast.success(
-                selectedStatus === "Cancelled" ? "Lead Cancelled!" : "Quotation Sent. Moved to In Quotation!"
+                selectedStatus === "Lost_Lead" ? "Lead Lost_Lead!" : "Quotation Sent. Moved to In Quotation!"
             );
             fetchData();
             setStatusModalOpen(false);
@@ -86,7 +97,7 @@ export default function Leads() {
     };
 
     const handleDelete = async (row) => {
-        if (window.confirm(`Delete ${row.position.toUpperCase()}?`)) {
+        if (window.confirm(`Delete ${row.leadCode.toUpperCase()}?`)) {
             try {
                 await axios.delete(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${row._id}`);
                 toast.success('Deleted successfully.');
@@ -102,26 +113,27 @@ export default function Leads() {
     const handleView = (row) => { setViewData(row); setViewModalOpen(true); };
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => new Date(row.createdAt).toLocaleDateString(), header: 'Date' },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code' },
+        { key: "createdAt", accessorFn: (row) => new Date(row.createdAt).toLocaleDateString(), header: 'Date', maxSize: 80 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
         { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
-        { key: "company", accessorKey: 'company', header: 'Company' },
-        { key: "agent", accessorKey: 'agent', header: 'Agent' },
+        { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
+        { key: "budget", header: "Budget", accessorFn: row => `£${row.budget || 0}`, maxSize: 80 },
+        { key: "source", accessorKey: 'source', header: 'Source' },
         {
-            key: "actions", header: 'Set Status',
+            key: "actions", header: 'Set Status', maxSize: 80,
             Cell: ({ row }) => (
                 <div className='flex'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-blue-500 font-bold flex items-center cursor-pointer">
-                        <span className="text-xs mr-1">Send Quote</span>
+                        className="text-cyan-600 font-bold flex items-center cursor-pointer">
+                        <span className="text-xs mr-1">Quote</span>
                         <EventRepeatIcon fontSize="small" />
                     </button>
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleCancelled(row.original); }}
                         className="text-red-500 font-bold flex items-center cursor-pointer ml-3">
-                        <span className="text-xs mr-1">Cancel</span>
+                        <span className="text-xs mr-1">Lost</span>
                         <HighlightOffIcon fontSize="small" />
                     </button>
                 </div>
@@ -133,9 +145,9 @@ export default function Leads() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="flex justify-between px-4 py-2 bg-[#272e3f] shadow">
+            <section className="flex justify-between px-4 py-2 bg-[#4c5165] shadow">
                 <div className='flex items-center text-white'>
-                    <h1 className="font-bold text-lg mr-2">Potential Leads</h1>
+                    <h1 className="font-bold text-lg mr-2">Project Leads</h1>
                     {loading ? (
                         <div className="flex justify-center items-center text-white">
                             <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -146,11 +158,25 @@ export default function Leads() {
                     }
                     <span className="ml-2 text-xs text-gray-300">Total: {data.length}</span>
                 </div>
-                <button
-                    onClick={handleAdd}
-                    className="bg-white text-gray-700 px-6 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100 transition cursor-pointer">
-                    Create +
-                </button>
+
+                <div className='flex items-center'>
+                    <select
+                        className="mr-4 px-3 py-1.5 rounded-md bg-gray-700 text-sm text-white border border-gray-500 focus:outline-none cursor-pointer"
+                        value={selectedCompany}
+                        onChange={(e) => setSelectedCompany(e.target.value)}
+                    >
+                        <option value="All">All Companies</option>
+                        {companies.map((company, index) => (
+                            <option key={index} value={company}>{company}</option>
+                        ))}
+                    </select>
+
+                    <button
+                        onClick={handleAdd}
+                        className="bg-white text-gray-700 px-6 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100 transition cursor-pointer">
+                        Create +
+                    </button>
+                </div>
             </section>
 
             <section>
@@ -189,27 +215,36 @@ export default function Leads() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='xs'>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
                 <DialogTitle>
-                    <b>{selectedStatus === "Cancelled" ? "Cancel Lead" : "Send Quote"}</b>
+                    <b>{selectedStatus === "Lost_Lead" ? "Write Reason" : "Sent Quote"}</b>
                 </DialogTitle>
                 <DialogContent>
-                    {selectedStatus === "Cancelled" ? (
+                    {selectedStatus === "Lost_Lead" ? (
                         <TextField
                             fullWidth
-                            label="Remark"
+                            label="Description"
                             size="small"
                             margin="normal"
                             multiline
                             minRows={4}
-                            value={form.remark}
-                            onChange={e => setForm({ ...form, remark: e.target.value })}
+                            value={form.description}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
                         />
                     ) : (
                         <>
                             <TextField
                                 fullWidth
-                                label="Insert Quote File Link"
+                                label="Quoted Price £*"
+                                size="small"
+                                margin="normal"
+                                type='number'
+                                value={form.quote_price}
+                                onChange={e => setForm({ ...form, quote_price: e.target.value })}
+                            />
+                            <TextField
+                                fullWidth
+                                label="Quote File Link*"
                                 size="small"
                                 margin="normal"
                                 value={form.quote_file}
@@ -217,13 +252,13 @@ export default function Leads() {
                             />
                             <TextField
                                 fullWidth
-                                label="Remark"
+                                label="Description"
                                 size="small"
                                 margin="normal"
                                 multiline
                                 minRows={4}
-                                value={form.remark}
-                                onChange={e => setForm({ ...form, remark: e.target.value })}
+                                value={form.description}
+                                onChange={e => setForm({ ...form, description: e.target.value })}
                             />
                         </>
                     )}

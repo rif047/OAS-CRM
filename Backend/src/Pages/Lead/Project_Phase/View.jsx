@@ -35,44 +35,25 @@ export default function View({ open, onClose, viewData }) {
                                     <div className="bg-white rounded-lg border border-gray-200 shadow p-4 space-y-2">
                                         <h3 className="font-semibold text-lg">📋 Lead Details</h3>
                                         <InfoRow label="Company" value={viewData.company} />
-                                        <InfoRow label="Source" value={viewData.source} />
-                                        <LinkRow label="Project Drive Files" url={viewData.file_link} linkText="Go to drive" />
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Lost Date" value={formatDate(viewData.lost_date)} />
+                                            <InfoRow label="In Design Date" value={formatDate(viewData.in_design_date)} />
+                                            <InfoRow label="Designer" value={viewData.designer} />
+                                            <InfoRow label="Deadline" value={formatDate(viewData.design_deadline)} />
                                         </div>
                                     </div>
 
                                     <div className="bg-white rounded-lg border border-gray-200 shadow p-4">
                                         <h3 className="font-semibold text-lg mb-4">🏠 Property Details</h3>
-
-                                        <div className="grid grid-cols-2 gap-3 mb-4 py-2 border-b border-gray-300">
-                                            <InfoRow label="👤 Client Name" value={viewData.client?.name} />
-                                            <InfoRow label="📞 Phone" value={viewData.client?.phone} />
-                                        </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <InfoRow label="Address" value={viewData.address} />
                                             <InfoRow label="Property Type" value={viewData.property_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
                                             <InfoRow label="Scope Of Work" value={viewData.extention_type} />
-
-                                            <InfoRow label="When To Start" value={viewData.when_to_start} />
-                                            <InfoRow label="Budget" value={`£${viewData.budget}`} />
                                         </div>
                                     </div>
-                                </div>
-
-
-                                <div className='mt-6'>
-                                    <InfoCard title="💬 Description">
-                                        <div className="bg-gray-50 p-4 rounded-lg">
-                                            <p className="text-gray-700 whitespace-pre-line">
-                                                {viewData.description || "No description provided"}
-                                            </p>
-                                        </div>
-                                    </InfoCard>
                                 </div>
                             </div>
                         )}

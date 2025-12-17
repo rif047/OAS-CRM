@@ -46,8 +46,8 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
         const { name, phone, alt_phone } = formData;
 
         if (!name) newErrors.name = 'Name is required.';
-        if (!/^\d+$/.test(phone || '')) newErrors.phone = 'Phone number must contain numbers.';
-        if (alt_phone && isNaN(parseFloat(alt_phone))) { newErrors.alt_phone = "Alternative Phone number must contain numbers."; }
+        if (!/^\+?\d+$/.test(phone || '')) { newErrors.phone = 'Phone number must contain numbers.' }
+        if (alt_phone && !/^\+?\d+$/.test(alt_phone)) { newErrors.alt_phone = "Alternative Phone number must contain numbers." }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -75,7 +75,8 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
             toast.error('Failed to update data.');
             const backendErrors = err.response?.data || {};
             setErrors({
-                ...backendErrors.includes?.('Phone number already exists') && { phone: 'Phone number already exists.' }
+                ...backendErrors.includes?.('Phone number already exists') && { phone: 'Phone number already exists.' },
+                ...backendErrors.includes?.('Email already exists') && { email: 'Email already exists.' }
             });
         } finally {
             setLoading(false);
@@ -104,8 +105,10 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
 
                 {[
                     { name: 'name', label: 'Client Name*' },
+                    { name: 'company', label: 'Conpanies' },
                     { name: 'phone', label: 'Phone*' },
                     { name: 'alt_phone', label: 'Alternative Phone' },
+                    { name: 'email', label: 'Email' },
                 ].map(({ name, label }) => (
                     <TextField
                         key={name}
@@ -125,16 +128,16 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
 
                 <TextField
                     fullWidth
-                    label="Remark"
-                    name="remark"
+                    label="Description"
+                    name="description"
                     size="small"
                     margin="normal"
                     multiline
                     minRows={5}
-                    value={formData.remark || ""}
+                    value={formData.description || ""}
                     onChange={handleChange}
-                    error={!!errors.remark}
-                    helperText={errors.remark}
+                    error={!!errors.description}
+                    helperText={errors.description}
                     sx={{ mb: 2 }}
                 />
 

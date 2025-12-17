@@ -12,7 +12,7 @@ let Employees = async (req, res) => {
 
 let Create = async (req, res) => {
     try {
-        let { management, name, phone, alt_phone, address, city, preferred_location, availability, experience, position, right_to_work, remark } = req.body;
+        let { management, name, phone, alt_phone, address, city, preferred_location, availability, experience, position, right_to_work, description } = req.body;
 
         if (!management) { return res.status(400).send('Management is required!'); }
         if (!name) { return res.status(400).send('Employee Name is required!'); }
@@ -43,7 +43,7 @@ let Create = async (req, res) => {
             experience,
             position,
             right_to_work,
-            remark,
+            description,
         });
 
         await newData.save();
@@ -81,7 +81,7 @@ let BulkImport = async (req, res) => {
                 experience,
                 position,
                 right_to_work,
-                remark,
+                description,
             } = emp;
 
             if (!management || !name || !phone || !address || !city || !availability || !experience || !position || !right_to_work) {
@@ -107,7 +107,7 @@ let BulkImport = async (req, res) => {
                 experience,
                 position,
                 right_to_work,
-                remark,
+                description,
             });
         }
 
@@ -142,7 +142,7 @@ let View = async (req, res) => {
 
 let Update = async (req, res) => {
     try {
-        let { management, name, phone, alt_phone, address, city, preferred_location, availability, experience, position, right_to_work, remark } = req.body;
+        let { management, name, phone, alt_phone, address, city, preferred_location, availability, experience, position, right_to_work, description } = req.body;
 
         if (!management) { return res.status(400).send('Management is required!'); }
         if (!name) { return res.status(400).send('Employee Name is required!'); }
@@ -173,7 +173,7 @@ let Update = async (req, res) => {
         updateData.experience = experience;
         updateData.position = position;
         updateData.right_to_work = right_to_work;
-        updateData.remark = remark;
+        updateData.description = description;
 
         await updateData.save();
         res.status(200).json(updateData);

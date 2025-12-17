@@ -1,102 +1,139 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
 
-const modalStyle = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '95%',
-    maxWidth: 600,
-    maxHeight: '90vh',
-    bgcolor: 'background.paper',
-    boxShadow: 24,
-    p: 3,
-    overflowY: 'auto',
-    borderRadius: 2,
-};
-
 export default function View({ open, onClose, viewData }) {
-    const capitalizeWords = (str) => str ? str.split(" ").map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ") : "";
-
     return (
         <Modal open={open} onClose={onClose}>
-            <Box sx={modalStyle}>
-                <div className="flex justify-between items-center mb-5 border-b border-gray-400 pb-2">
-                    <Typography variant="h6" component="h2" className="font-bold!">
-                        {viewData?.code || 'Job'} Details
-                    </Typography>
-                    <div onClick={onClose} className="cursor-pointer">
-                        <CloseIcon />
+            <div className="fixed inset-0 flex items-center justify-center p-2">
+                <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+
+                <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center px-8 py-2 border-b bg-gray-200 mb-2">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">
+                                Project Details
+                            </h2>
+                            <p className="text-gray-600 mt-1">
+                                {viewData?.leadCode || "Loading..."}
+                            </p>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors cursor-pointer">
+                            <CloseIcon />
+                        </button>
+                    </div>
+
+
+
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {!viewData ? (
+                            <div className="flex items-center justify-center h-64">
+                                <p className="text-gray-500">Loading details...</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div className="bg-white rounded-lg border border-gray-200 shadow p-4 space-y-2">
+                                        <h3 className="font-semibold text-lg">📋 Lead Details</h3>
+                                        <InfoRow label="Company" value={viewData.company} />
+                                        <InfoRow label="Source" value={viewData.source} />
+                                        <LinkRow label="Project Drive Files" url={viewData.file_link} linkText="Go to drive" />
+                                        <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
+                                            <InfoRow label="Agent" value={viewData.agent} />
+                                            <InfoRow label="Status" value={viewData.status} />
+                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
+                                            <InfoRow label="Updated Date" value={formatDate(viewData.updatedAt)} />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-lg border border-gray-200 shadow p-4">
+                                        <h3 className="font-semibold text-lg mb-4">🏠 Property Details</h3>
+
+                                        <div className="grid grid-cols-2 gap-3 mb-4 py-2 border-b border-gray-300">
+                                            <InfoRow label="👤 Client Name" value={viewData.client?.name} />
+                                            <InfoRow label="📞 Phone" value={viewData.client?.phone} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <InfoRow label="Address" value={viewData.address} />
+                                            <InfoRow label="Property Type" value={viewData.property_type} />
+                                            <InfoRow label="Project Type" value={viewData.project_type} />
+                                            <InfoRow label="Scope Of Work" value={viewData.extention_type} />
+
+                                            <InfoRow label="When To Start" value={viewData.when_to_start} />
+                                            <InfoRow label="Budget" value={`£${viewData.budget}`} />
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <div className='mt-6'>
+                                    <InfoCard title="💬 Description">
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <p className="text-gray-700 whitespace-pre-line">
+                                                {viewData.description || "No description provided"}
+                                            </p>
+                                        </div>
+                                    </InfoCard>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="py-2 px-6 border-t bg-gray-100">
+                        <div className="flex justify-end">
+                            <button onClick={onClose} className="px-10 py-2 bg-[#272e3f] text-white rounded-lg hover:bg-gray-700 transition cursor-pointer" >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                {viewData ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                Job Information
-                            </Typography>
-                            <Typography><strong>Position:</strong> {viewData.position}</Typography>
-                            <Typography><strong>City:</strong> {viewData.city}</Typography>
-                            <Typography><strong>Owner:</strong> {viewData.owner}</Typography>
-                            <Typography><strong>Business Name:</strong> {viewData.business_name}</Typography>
-                            <Typography><strong>Source:</strong> {viewData.source}</Typography>
-                            <Typography>
-                                <strong>Source Link: </strong>
-                                {viewData?.source_link ? (
-                                    <a
-                                        href={viewData.source_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ color: "#1976d2", textDecoration: "underline" }}
-                                    >
-                                        {viewData.source_link}
-                                    </a>
-                                ) : (
-                                    "N/A"
-                                )}
-                            </Typography>
-
-                        </Box>
-
-                        <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                Requirements
-                            </Typography>
-                            <Typography><strong>Wage:</strong> £{viewData.wages}</Typography>
-                            <Typography><strong>Accommodation:</strong> {viewData.accommodation}</Typography>
-                            <Typography><strong>Required Experience:</strong> {viewData.required_experience}</Typography>
-                            <Typography><strong>Right to Work:</strong> {viewData.right_to_work}</Typography>
-                        </Box>
-
-                        <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                Progress & Remarks
-                            </Typography>
-                            <Typography><strong>Agent:</strong> {viewData.agent}</Typography>
-                            <Typography><strong>Status:</strong> {viewData.status}</Typography>
-                            <Typography>
-                                <strong>Lead Created On:</strong>{' '}
-                                {viewData.createdOn
-                                    ? new Date(viewData.createdOn).toISOString().split("T")[0]
-                                    : ''
-                                }
-                            </Typography>
-
-
-                            <Typography>
-                                <strong>Remarks:</strong>{" "}
-                                <span style={{ whiteSpace: 'pre-line' }}>{viewData?.remark || ''}</span>
-                            </Typography>
-                        </Box>
-                    </Box>
-                ) : (
-                    <Typography>Loading...</Typography>
-                )}
-            </Box>
+            </div>
         </Modal>
     );
+}
+
+function InfoCard({ title, children }) {
+    return (
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+            <div className="space-y-3">{children}</div>
+        </div>
+    );
+}
+
+function InfoRow({ label, value }) {
+    return (
+        <div>
+            <p className="text-sm text-gray-500">{label}</p>
+            <p className="font-medium text-gray-800">
+                {value || <span className="text-gray-400">Not provided</span>}
+            </p>
+        </div>
+    );
+}
+
+function LinkRow({ label, url, linkText = "Go to link" }) {
+    if (!url) return <InfoRow label={label} value="Not provided" />;
+
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+
+    return (
+        <div>
+            <p className="text-sm text-gray-500">{label}</p>
+            <a
+                href={fullUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+            >
+                {linkText}
+                <span className="ml-2">↗</span>
+            </a>
+        </div>
+    );
+}
+
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-GB');
 }

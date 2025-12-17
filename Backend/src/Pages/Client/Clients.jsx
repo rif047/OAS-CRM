@@ -112,7 +112,7 @@ export default function Clients() {
     //                 name: row.name || row.Name,
     //                 phone: row.phone || row.Phone,
     //                 alt_phone: row.alt_phone || row["Alternative Phone"] || "",
-    //                 remark: row.remark || row.Remark || "",
+    //                 description: row.description || row.Description || "",
     //             }));
 
     //             await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/bulk`, formattedData);

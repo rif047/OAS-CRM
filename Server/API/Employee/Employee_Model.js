@@ -50,7 +50,7 @@ const EmployeeSchema = Mongoose.Schema({
         type: String,
         required: true
     },
-    remark: {
+    description: {
         type: String,
     },
 

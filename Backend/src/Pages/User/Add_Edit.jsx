@@ -43,7 +43,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
 
     const validate = () => {
         const newErrors = {};
-        const { name, phone, username, email, password, userType, secret_code, designation, remark } = formData;
+        const { name, phone, username, email, password, userType, secret_code, designation, description } = formData;
 
         if (!name) newErrors.name = 'Name is required.';
         if (!phone) newErrors.phone = 'Phone is required.';
@@ -202,13 +202,13 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
 
                 <TextField
                     fullWidth
-                    label="Remark"
-                    name="remark"
+                    label="Description"
+                    name="description"
                     size="small"
                     margin="normal"
                     multiline
                     minRows={5}
-                    value={formData.remark}
+                    value={formData.description}
                     onChange={handleChange}
                 />
 

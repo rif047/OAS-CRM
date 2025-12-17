@@ -37,11 +37,12 @@ export default function View({ open, onClose, viewData }) {
                                         <InfoRow label="Company" value={viewData.company} />
                                         <InfoRow label="Source" value={viewData.source} />
                                         <LinkRow label="Project Drive Files" url={viewData.file_link} linkText="Go to drive" />
+
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Lost Date" value={formatDate(viewData.lost_date)} />
+                                            <InfoRow label="Quote Send" value={formatDate(viewData.in_quote_date)} />
                                         </div>
                                     </div>
 
@@ -57,9 +58,8 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Property Type" value={viewData.property_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
                                             <InfoRow label="Scope Of Work" value={viewData.extention_type} />
-
-                                            <InfoRow label="When To Start" value={viewData.when_to_start} />
-                                            <InfoRow label="Budget" value={`£${viewData.budget}`} />
+                                            <InfoRow label="Quoted Price" value={`£${viewData.quote_price}`} />
+                                            <LinkRow label="Quote File" url={viewData.quote_file} linkText="View" />
                                         </div>
                                     </div>
                                 </div>

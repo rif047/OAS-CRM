@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
 import View from './View';
 import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import CachedIcon from '@mui/icons-material/Cached';
-import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Autocomplete } from '@mui/material';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import 'react-toastify/dist/ReactToastify.css';
 
-export default function PendingPayment() {
-    document.title = 'Pending Payments';
+
+export default function In_Review() {
+    document.title = 'In Review';
 
     const EndPoint = 'leads';
 
@@ -21,6 +22,7 @@ export default function PendingPayment() {
         canDelete: false,
     };
 
+    const startRef = useRef(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -29,75 +31,59 @@ export default function PendingPayment() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const [selectedStatus, setSelectedStatus] = useState("closed");
-    const [employees, setEmployees] = useState([]);
+    const [selectedCompany, setSelectedCompany] = useState("All");
+    const [companies, setCompanies] = useState([]);
+
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
-    const [form, setForm] = useState({ management: "", employee: "", fee: "", wages: "", remark: "" });
-
+    const [form, setForm] = useState({ agent: "", final_price: "", description: "" });
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
+            const filteredData = response.data.filter(item => item.status === "In_Review");
 
-            const filteredData = response.data.filter(item => item.status === "PendingPayment");
+            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
+            setCompanies(uniqueCompanies);
 
-            setData(filteredData.reverse());
-        } catch (error) {
-            toast.error('Failed to fetch data. Please try again.');
-            console.error('Error fetching data:', error);
+            const filteredByCompany = selectedCompany === "All"
+                ? filteredData
+                : filteredData.filter(item => item.company === selectedCompany);
+
+            setData(filteredByCompany.reverse());
+        } catch {
+            toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
     };
 
-
-    const fetchEmployees = async () => {
-        try {
-            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/employees`);
-            setEmployees(res.data.reverse());
-        } catch {
-            toast.error("Failed to fetch employees");
-        }
-    };
-
-
-    const handleStatusClick = async (row, type = "Closed") => {
+    const handleStatusClick = async (row) => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
         setSelectedRow(row);
 
         setForm({
-            management: loggedUser?.name || "",
-            employee: "",
-            fee: row.fee || "",
-            wages: row.wages || "",
-            remark: row.remark || ""
+            agent: loggedUser?.name || "",
+            final_price: row.final_price || "",
+            description: ""
         });
 
-        await fetchEmployees();
         setStatusModalOpen(true);
-        setSelectedStatus(type);
     };
-
 
     const handleStatusSubmit = async () => {
         try {
-            const url =
-                selectedStatus === "Pending"
-                    ? `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/deal_cancelled/${selectedRow._id}`
-                    : `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/closed/${selectedRow._id}`;
-
-            await axios.patch(url, {
-                ...form,
-                status: selectedStatus,
-            });
-
-            toast.success(
-                selectedStatus === "Pending"
-                    ? "Lead marked as Cancelled!"
-                    : "Lead moved to next step!"
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/closed/${selectedRow._id}`,
+                {
+                    agent: form.agent,
+                    final_price: form.final_price,
+                    description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                }
             );
+
+            toast.success("Project closed");
             fetchData();
             setStatusModalOpen(false);
         } catch {
@@ -105,15 +91,14 @@ export default function PendingPayment() {
         }
     };
 
-
     const handleToPending = async (row) => {
-        if (window.confirm(`Move to Hot Leads ${row.position.toUpperCase()}?`)) {
+        if (window.confirm(`Move back to leads - ${row.leadCode.toUpperCase()}?`)) {
             try {
-                await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/deal_cancelled/${row._id}`, {
-                    ...form,
-                    status: "Pending"
+                await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/pending/${row._id}`, {
+                    agent: form.agent,
                 });
-                toast.success("Lead marked as Cancelled!");
+
+                toast.success("Project marked as Cancelled!");
                 fetchData();
             } catch {
                 toast.error("Failed to mark as Cancelled.");
@@ -121,17 +106,14 @@ export default function PendingPayment() {
         }
     };
 
-
-
     const handleDelete = async (row) => {
-        if (window.confirm(`Are you sure you want to delete ${row.position.toUpperCase()}?`)) {
+        if (window.confirm(`Are you sure you want to delete ${row.leadCode.toUpperCase()}?`)) {
             try {
                 await axios.delete(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${row._id}`);
-                toast.success(`${row.position.toUpperCase()} deleted.`);
+                toast.success(`${row.leadCode.toUpperCase()} deleted.`);
                 fetchData();
             } catch (error) {
                 toast.error('Failed to delete. Please try again.');
-                console.error('Error deleting data:', error);
             }
         }
     };
@@ -146,32 +128,25 @@ export default function PendingPayment() {
         setViewModalOpen(true);
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-
+    useEffect(() => { fetchData(); }, [selectedCompany]);
 
     const columns = [
-        { key: "date", accessorKey: 'date', header: 'Date', maxSize: 80 },
-        { key: "client", accessorKey: 'client', header: 'Client' },
-        { key: "employee", accessorKey: 'employee', header: 'Employee' },
-        { key: "position", accessorKey: 'position', header: 'Position' },
-        { key: "city", accessorKey: 'city', header: 'City' },
-        { key: "wages", accessorFn: row => `£${row.wages}`, header: 'Wage', maxSize: 60 },
-        { key: "fee", accessorFn: row => `£${row.fee}`, header: 'Fees', maxSize: 60 },
-        { key: "advance_fee", accessorFn: row => `£${row.advance_fee}`, header: 'Advance', maxSize: 60 },
-        { key: "management", accessorKey: 'management', header: 'management', maxSize: 80 },
+        { key: "in_review_date", accessorKey: 'in_review_date', header: 'Date', maxSize: 80 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
+        { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
+        { key: "designer", accessorKey: 'designer', header: 'Designer' },
         {
-            key: "actions", header: 'Set Status', maxSize: 50,
+            key: "actions", header: 'Set Status', maxSize: 80,
             Cell: ({ row }) => (
                 <div className='flex'>
                     <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original, "Closed"); }}
+                        onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
                         className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
                         <span className="text-xs mr-1 text-center ">Close</span>
-                        <TaskAltIcon fontSize="small" />
+                        <CheckCircleOutlineIcon fontSize="small" />
                     </button>
+
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
@@ -179,8 +154,6 @@ export default function PendingPayment() {
                         <span className="text-xs mr-1 text-center ">Cancel</span>
                         <HighlightOffIcon fontSize="small" />
                     </button>
-
-
                 </div>
             )
         }
@@ -192,11 +165,11 @@ export default function PendingPayment() {
 
             <section className="flex justify-between px-1 md:px-4 py-2 bg-[#4c5165]">
                 <div className='flex justify-center items-center'>
-                    <h1 className="font-bold text-sm md:text-lg text-white mr-2">Pending Payments</h1>
+                    <h1 className="font-bold text-sm md:text-lg text-white mr-2">Under Review</h1>
 
                     {loading ? (
                         <div className="flex justify-center items-center text-white">
-                            <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none">
                                 <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="10" strokeDashoffset="75" />
                             </svg>
                         </div>
@@ -206,14 +179,24 @@ export default function PendingPayment() {
                     <span className="ml-2 text-xs text-gray-300">
                         Total: {data.length}
                     </span>
-
                 </div>
+
+                <select
+                    className="mr-4 px-3 py-1.5 rounded-md bg-gray-700 text-sm text-white border border-gray-500 focus:outline-none cursor-pointer"
+                    value={selectedCompany}
+                    onChange={(e) => setSelectedCompany(e.target.value)}
+                >
+                    <option value="All">All Companies</option>
+                    {companies.map((company, index) => (
+                        <option key={index} value={company}>{company}</option>
+                    ))}
+                </select>
             </section>
 
             <section>
                 {loading ? (
                     <div className="flex justify-center py-4">
-                        <svg className="animate-spin p-5 h-32 w-32 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="animate-spin p-5 h-32 w-32 text-gray-700" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
                         </svg>
                     </div>
@@ -246,62 +229,45 @@ export default function PendingPayment() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='xs'>
-                <DialogTitle><b>Close Deal</b></DialogTitle>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
+                <DialogTitle><b>Sent To Design Process</b></DialogTitle>
 
                 <DialogContent>
-                    <Autocomplete
-                        fullWidth
-                        size="small"
-                        options={employees}
-                        getOptionLabel={o => `${o.name} (${o.phone})`}
-                        value={employees.find(emp => `${emp.name} (${emp.phone})` === form.employee) || null}
-                        onChange={(e, v) => setForm({ ...form, employee: v ? `${v.name} (${v.phone})` : "" })}
-                        autoHighlight
-                        selectOnFocus
-                        clearOnBlur
-                        handleHomeEndKeys
-                        renderInput={p => (
-                            <TextField
-                                {...p}
-                                label="Select Employee*"
-                                margin="normal"
-                            />
-                        )}
-                    />
-
                     <TextField
                         fullWidth
                         size="small"
                         margin="normal"
-                        label="Final Fees*"
-                        value={form.fee}
-                        onChange={e => setForm({ ...form, fee: e.target.value })}
+                        label="Final Project Price*"
+                        value={form.final_price}
+                        onChange={e => setForm({ ...form, final_price: e.target.value })}
                     />
+
 
                     <TextField
                         fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Wages*"
-                        value={form.wages}
-                        onChange={e => setForm({ ...form, wages: e.target.value })}
-                    />
-
-                    <TextField
-                        fullWidth
-                        label="Remark"
+                        label="Add Description"
                         size="small"
                         margin="normal"
                         multiline
                         minRows={4}
-                        value={form.remark}
-                        onChange={e => setForm({ ...form, remark: e.target.value })}
+                        value={form.description}
+                        onChange={e => setForm({ ...form, description: e.target.value })}
                     />
 
-
+                    <TextField
+                        fullWidth
+                        size="small"
+                        margin="normal"
+                        label="Previous Description"
+                        value={selectedRow?.description || ""}
+                        disabled
+                        multiline
+                        minRows={3}
+                    />
                 </DialogContent>
+
                 <small className='text-gray-600 mx-auto my-2'>All fields are required.</small>
+
                 <DialogActions>
                     <Button fullWidth variant="contained" onClick={handleStatusSubmit} className="bg-[#272e3f]! hover:bg-gray-700! font-bold!">
                         Submit

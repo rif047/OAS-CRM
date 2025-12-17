@@ -29,7 +29,7 @@ const capitalizeWords = (str) => {
 
 
 export default function View({ open, onClose, viewData }) {
-    const fieldsToView = ['name', 'phone', 'email', 'designation', 'remark'];
+    const fieldsToView = ['name', 'phone', 'email', 'designation', 'description'];
 
     return (
         <Modal open={open} onClose={onClose}>
