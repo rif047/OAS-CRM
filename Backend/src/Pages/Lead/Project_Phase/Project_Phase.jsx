@@ -9,12 +9,18 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import 'react-toastify/dist/ReactToastify.css';
+import RichTextEditor from "../../../Components/RichTextEditor";
 
 
 export default function Project_Phase() {
     document.title = 'Project Phase';
 
+
     const EndPoint = 'leads';
+
+    const loggedUser = JSON.parse(localStorage.getItem("user"));
+
+    const isAdminOrManagement = loggedUser?.userType === "Admin" || loggedUser?.userType === "Management";
 
     const userPermissions = {
         canEdit: false,
@@ -76,7 +82,10 @@ export default function Project_Phase() {
                 {
                     agent: form.agent,
                     design_file: form.design_file,
-                    description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    // description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    // description: selectedRow.description ? selectedRow.description + "<br>" + form.description : form.description
+                    description: form.description
+
                 }
             );
 
@@ -130,6 +139,7 @@ export default function Project_Phase() {
     const columns = [
         { key: "in_design_date", accessorKey: 'in_design_date', header: 'Date', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { key: "service_type", accessorKey: 'service_type', header: 'Service Type' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "designer", accessorKey: 'designer', header: 'Designer', maxSize: 80 },
         { key: "design_deadline", accessorKey: 'design_deadline', header: 'Deadline', maxSize: 80 },
@@ -144,14 +154,18 @@ export default function Project_Phase() {
                         <CheckCircleOutlineIcon fontSize="small" />
                     </button>
 
-
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
-                        className="text-red-400 font-bold flex items-center cursor-pointer ml-3">
-                        <span className="text-xs mr-1 text-center ">Cancel</span>
-                        <HighlightOffIcon fontSize="small" />
-                    </button>
+                    {
+                        isAdminOrManagement && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
+                                className="text-red-400 font-bold flex items-center cursor-pointer ml-3">
+                                <span className="text-xs mr-1 text-center ">Cancel</span>
+                                <HighlightOffIcon fontSize="small" />
+                            </button>
+                        )
+                    }
                 </div>
+
             )
         }
     ];
@@ -226,7 +240,7 @@ export default function Project_Phase() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle><b>Move To Review</b></DialogTitle>
 
                 <DialogContent>
@@ -252,7 +266,7 @@ export default function Project_Phase() {
                         minRows={3}
                     />
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         label="Add Description"
                         size="small"
@@ -261,6 +275,13 @@ export default function Project_Phase() {
                         minRows={4}
                         value={form.description}
                         onChange={e => setForm({ ...form, description: e.target.value })}
+                    /> */}
+
+                    <RichTextEditor
+                        value={form.description}
+                        onChange={(html) =>
+                            setForm(prev => ({ ...form, description: html }))
+                        }
                     />
                 </DialogContent>
 

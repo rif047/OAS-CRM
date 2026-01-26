@@ -135,6 +135,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
                 >
                     <MenuItem value="Admin">Admin</MenuItem>
                     <MenuItem value="Management">Management</MenuItem>
+                    <MenuItem value="Surveyor">Surveyor</MenuItem>
                     <MenuItem value="Designer">Designer</MenuItem>
                 </TextField>
 

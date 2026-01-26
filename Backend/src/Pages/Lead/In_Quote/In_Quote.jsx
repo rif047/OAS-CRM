@@ -10,6 +10,7 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import TourIcon from '@mui/icons-material/Tour';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import RichTextEditor from "../../../Components/RichTextEditor";
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function In_Quote() {
@@ -83,7 +84,7 @@ export default function In_Quote() {
     };
 
     const handleDrawingSubmit = async () => {
-        if (!projectRemark.trim()) {
+        if (!projectRemark) {
             toast.error("Please enter a description.");
             return;
         }
@@ -97,7 +98,8 @@ export default function In_Quote() {
                     agent: loggedUser?.name || "",
                     design_deadline: form.design_deadline,
                     designer: form.designer,
-                    description: selectedRow.description ? selectedRow.description + "\n" + projectRemark : projectRemark
+                    // description: selectedRow.description ? selectedRow.description + "\n" + projectRemark : projectRemark
+                    description: projectRemark
                 }
             );
 
@@ -117,7 +119,8 @@ export default function In_Quote() {
                     agent: form.agent,
                     surveyor: form.surveyor,
                     survey_date: form.survey_date,
-                    description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    // description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    description: form.description
                 }
             );
 
@@ -279,7 +282,7 @@ export default function In_Quote() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle><b>Send Site Survey</b></DialogTitle>
 
                 <DialogContent>
@@ -308,7 +311,7 @@ export default function In_Quote() {
 
 
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         label="Add Description"
                         size="small"
@@ -317,18 +320,25 @@ export default function In_Quote() {
                         minRows={4}
                         value={form.description}
                         onChange={e => setForm({ ...form, description: e.target.value })}
+                    /> */}
+
+                    <RichTextEditor
+                        value={form.description}
+                        onChange={html => setForm({ ...form, description: html })}
                     />
 
-                    <TextField
-                        fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Previous Description"
-                        value={selectedRow?.description || ""}
-                        disabled
-                        multiline
-                        minRows={3}
-                    />
+
+
+                    <div className='bg-gray-50 p-3 rounded-md border border-gray-400 mt-4'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
+
                 </DialogContent>
 
                 <small className='text-gray-600 mx-auto my-2'>All fields are required.</small>
@@ -338,7 +348,7 @@ export default function In_Quote() {
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={drawingModalOpen} onClose={() => setDrawingModalOpen(false)} maxWidth='sm'>
+            <Dialog open={drawingModalOpen} onClose={() => setDrawingModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle>
                     <b>Move to Project Phase - {selectedRow?.leadCode?.toUpperCase()}</b>
                 </DialogTitle>
@@ -370,7 +380,7 @@ export default function In_Quote() {
                     />
 
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         label="Description*"
                         size="small"
@@ -380,18 +390,25 @@ export default function In_Quote() {
                         value={projectRemark}
                         onChange={e => setProjectRemark(e.target.value)}
                         placeholder="Enter description for moving to project phase..."
+                    /> */}
+
+                    <RichTextEditor
+                        value={projectRemark}
+                        onChange={html => setProjectRemark(html)}
                     />
 
-                    <TextField
-                        fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Previous Description"
-                        value={selectedRow?.description || ""}
-                        disabled
-                        multiline
-                        minRows={3}
-                    />
+
+
+
+                    <div className='bg-gray-50 p-3 rounded-md border border-gray-400 mt-4'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
                 </DialogContent>
 
                 <small className='text-gray-600 mx-auto my-2'>Description is required.</small>

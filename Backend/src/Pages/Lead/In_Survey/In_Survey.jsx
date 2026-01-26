@@ -11,17 +11,23 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import RichTextEditor from "../../../Components/RichTextEditor";
 
 export default function In_Survey() {
     document.title = 'In Survey';
 
     const EndPoint = 'leads';
 
+    const loggedUser = JSON.parse(localStorage.getItem("user"));
+
+    const isAdminOrManagement = loggedUser?.userType === "Admin" || loggedUser?.userType === "Management";
+
     const userPermissions = {
-        canEdit: true,
+        canEdit: isAdminOrManagement,
         canView: true,
         canDelete: false,
     };
+
 
     const startRef = useRef(null);
 
@@ -85,7 +91,8 @@ export default function In_Survey() {
                     agent: form.agent,
                     design_deadline: form.design_deadline,
                     designer: form.designer,
-                    description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    // description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    description: form.description
                 }
             );
 
@@ -106,7 +113,7 @@ export default function In_Survey() {
         setSurveyForm({
             agent: loggedUser?.name || "",
             survey_note: "",
-            survey_file: "",
+            survey_file: row.survey_file || "",
             survey_done: row.survey_done || "No"
         });
 
@@ -197,19 +204,26 @@ export default function In_Survey() {
                         <EventNoteIcon fontSize="small" />
                     </button>
 
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2">
-                        <span className="text-xs mr-1 text-center ">Project Phase</span>
-                        <DesignServicesIcon fontSize="small" />
-                    </button>
+                    {
+                        isAdminOrManagement && (
+                            <>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
+                                    className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2">
+                                    <span className="text-xs mr-1 text-center ">Project Phase</span>
+                                    <DesignServicesIcon fontSize="small" />
+                                </button>
 
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
-                        className="text-red-400 font-bold flex items-center cursor-pointer ml-2">
-                        <span className="text-xs mr-1 text-center ">Cancel</span>
-                        <HighlightOffIcon fontSize="small" />
-                    </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
+                                    className="text-red-400 font-bold flex items-center cursor-pointer ml-2">
+                                    <span className="text-xs mr-1 text-center ">Cancel</span>
+                                    <HighlightOffIcon fontSize="small" />
+                                </button>
+                            </>
+                        )
+                    }
+
                 </div>
             )
         }
@@ -286,7 +300,7 @@ export default function In_Survey() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle><b>Sent To Project Phase</b></DialogTitle>
 
                 <DialogContent>
@@ -314,7 +328,7 @@ export default function In_Survey() {
                     />
 
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         label="Description"
                         size="small"
@@ -323,18 +337,24 @@ export default function In_Survey() {
                         minRows={4}
                         value={form.description}
                         onChange={e => setForm({ ...form, description: e.target.value })}
+                    /> */}
+
+                    <RichTextEditor
+                        value={form.description}
+                        onChange={html => setForm(prev => ({ ...prev, description: html }))}
                     />
 
-                    <TextField
-                        fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Previous Description"
-                        value={selectedRow?.description || ""}
-                        disabled
-                        multiline
-                        minRows={3}
-                    />
+
+
+                    <div className='bg-gray-50 p-4 rounded-lg'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
                 </DialogContent>
 
                 <small className='text-gray-600 mx-auto my-2'>All fields are required.</small>
@@ -347,7 +367,7 @@ export default function In_Survey() {
             </Dialog>
 
 
-            <Dialog open={surveyModalOpen} onClose={() => setSurveyModalOpen(false)} maxWidth='sm'>
+            <Dialog open={surveyModalOpen} onClose={() => setSurveyModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle><b>Survey Data Update</b></DialogTitle>
 
                 <DialogContent>
@@ -372,7 +392,7 @@ export default function In_Survey() {
                         onChange={e => setSurveyForm({ ...surveyForm, survey_file: e.target.value })}
                     />
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         label="Survey Note"
                         size="small"
@@ -381,20 +401,15 @@ export default function In_Survey() {
                         minRows={4}
                         value={surveyForm.survey_note}
                         onChange={e => setSurveyForm({ ...surveyForm, survey_note: e.target.value })}
+                    /> */}
+
+                    <RichTextEditor
+                        value={surveyForm.survey_note}
+                        onChange={(html) =>
+                            setSurveyForm(prev => ({ ...prev, survey_note: html }))
+                        }
                     />
 
-
-
-                    <TextField
-                        fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Previous Survey Notes"
-                        value={selectedRow?.survey_note || ""}
-                        disabled
-                        multiline
-                        minRows={3}
-                    />
 
                 </DialogContent>
 

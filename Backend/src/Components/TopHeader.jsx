@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { NavLink } from "react-router-dom";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
@@ -14,7 +14,6 @@ import SideMenu from "./SideMenu";
 export default function TopHeader() {
     const userType = localStorage.getItem("userType");
 
-
     const [showMenu, setShowMenu] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
     const [userName, setUserName] = useState("");
@@ -23,16 +22,62 @@ export default function TopHeader() {
     const [showResults, setShowResults] = useState(false);
     const [loading, setLoading] = useState(false);
     const [focused, setFocused] = useState(false);
+    const [error, setError] = useState(null);
+
+    const debounceTimer = useRef(null);
+    const searchRef = useRef(null);
+    const resultsRef = useRef(null);
 
     const pathName = window.location.pathname.split("/").slice(1, 3).join(" > ");
-
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
         if (userData) {
-            const user = JSON.parse(userData);
-            setUserName(user.name || user.username || "");
+            try {
+                const user = JSON.parse(userData);
+                setUserName(user.name || user.username || "");
+            } catch (err) {
+                console.error("User data parse error:", err);
+            }
         }
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (
+                resultsRef.current &&
+                !resultsRef.current.contains(e.target) &&
+                searchRef.current &&
+                !searchRef.current.contains(e.target)
+            ) {
+                setShowResults(false);
+            }
+        };
+
+        const handleEscape = (e) => {
+            if (e.key === "Escape") {
+                setShowResults(false);
+                setQuery("");
+            }
+        };
+
+        if (showResults) {
+            document.addEventListener("mousedown", handleClickOutside);
+            document.addEventListener("keydown", handleEscape);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleEscape);
+        };
+    }, [showResults]);
+
+    useEffect(() => {
+        return () => {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+            }
+        };
     }, []);
 
     const handleLogout = () => {
@@ -42,15 +87,16 @@ export default function TopHeader() {
         window.location.href = "/";
     };
 
-    let debounceTimer;
-
-    const handleSearch = (e) => {
+    const handleSearch = useCallback((e) => {
         const value = e.target.value;
         setQuery(value);
+        setError(null);
 
-        if (debounceTimer) clearTimeout(debounceTimer);
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+        }
 
-        debounceTimer = setTimeout(async () => {
+        debounceTimer.current = setTimeout(async () => {
             if (!value.trim()) {
                 setResults([]);
                 setShowResults(false);
@@ -60,7 +106,8 @@ export default function TopHeader() {
             setLoading(true);
             try {
                 const res = await axios.get(
-                    `${import.meta.env.VITE_SERVER_URL}/search?query=${encodeURIComponent(value)}`
+                    `${import.meta.env.VITE_SERVER_URL}/search?query=${encodeURIComponent(value)}`,
+                    { timeout: 10000 }
                 );
 
                 const mappedResults = res.data.map((group) => ({
@@ -72,29 +119,36 @@ export default function TopHeader() {
                 setShowResults(true);
             } catch (err) {
                 console.error("Search error:", err);
+                setError("Search failed. Please try again.");
+                setResults([]);
             } finally {
                 setLoading(false);
             }
         }, 500);
-    };
+    }, []);
 
+    const highlightText = useCallback((text, query) => {
+        if (!query || !text) return text;
+        try {
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi");
+            const parts = String(text).split(regex);
+            return parts.map((part, i) =>
+                regex.test(part) ? (
+                    <span key={i} className="bg-yellow-200 text-gray-900 font-semibold px-1 rounded">
+                        {part}
+                    </span>
+                ) : (
+                    part
+                )
+            );
+        } catch (err) {
+            return text;
+        }
+    }, []);
 
-    const highlightText = (text, query) => {
-        if (!query) return text;
-        const regex = new RegExp(`(${query})`, "gi");
-        const parts = text.split(regex);
-        return parts.map((part, i) =>
-            regex.test(part) ? (
-                <span key={i} className="text-red-400 font-bold">
-                    {part}
-                </span>
-            ) : (
-                part
-            )
-        );
-    };
-
-
+    const closeResults = useCallback(() => {
+        setShowResults(false);
+    }, []);
 
     return (
         <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
@@ -108,7 +162,7 @@ export default function TopHeader() {
                     </div>
 
                     {(userType === "Admin" || userType === "Management") && (
-                        <div className="flex-1 mx-4 relative max-w-full md:max-w-[400px]">
+                        <div className="flex-1 mx-4 relative max-w-full md:max-w-[400px]" ref={searchRef}>
                             <div className={`relative transition-all duration-300 rounded-xl ${focused
                                 ? "shadow-[0_0_0_3px_rgba(156,163,175,0.3)] border-gray-400"
                                 : "shadow-sm border-gray-200"
@@ -127,68 +181,154 @@ export default function TopHeader() {
 
                             {showResults && (
                                 <div
-                                    className="absolute top-13 left-1/2 w-[320px] md:w-[600px] bg-white border border-gray-100 shadow-2xl rounded-b-2xl max-h-[70vh] overflow-y-auto z-50 animate-fade-down
-        -translate-x-1/2"
+                                    ref={resultsRef}
+                                    className="absolute top-13 left-1/2 w-[320px] md:w-[600px] bg-white border border-gray-200 shadow-2xl rounded-2xl max-h-[70vh] overflow-hidden z-50 animate-fade-down -translate-x-1/2"
                                 >
-                                    {loading ? (
-                                        <div className="text-center py-4 text-gray-500">Searching...</div>
-                                    ) : results.length > 0 ? (
-                                        results.map((group, i) => (
-                                            <details
-                                                key={i}
-                                                className="group border border-gray-100 rounded-xl overflow-hidden mb-2 shadow-sm hover:shadow-md transition-all"
-                                            >
-                                                <summary className="flex items-center justify-start px-4 py-2 bg-gray-50 hover:bg-gray-50 text-gray-700 font-semibold cursor-pointer select-none">
-                                                    <span className="capitalize mr-1">{group.collection}</span>
-                                                    <span className="text-gray-500 text-xs"> ({group.total})</span>
-                                                    <ExpandMoreIcon className="group-open:rotate-180 transition-transform" />
-                                                </summary>
-
-                                                <div className="p-3 grid grid-cols-1 gap-3">
-                                                    {group.results.map((item, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-lg transition-all duration-200"
-                                                        >
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                                                {Object.entries(item).map(([key, value]) => {
-                                                                    if (["_id", "createdAt", "__v"].includes(key)) return null;
-                                                                    return (
-                                                                        <div key={key}>
-                                                                            <span className="text-gray-500 font-medium capitalize">
-                                                                                {key.replace(/_/g, " ")}:
-                                                                            </span>
-                                                                            <span className="text-gray-800 ml-1" style={{ whiteSpace: 'pre-line' }}>
-                                                                                {typeof value === "object"
-                                                                                    ? JSON.stringify(value)
-                                                                                    : highlightText(String(value), query)}
-                                                                            </span>
-
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                    <div className="overflow-y-auto max-h-[calc(70vh-50px)] p-4">
+                                        {loading ? (
+                                            <div className="flex flex-col items-center justify-center py-12">
+                                                <div className="w-10 h-10 border-4 border-gray-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                                <p className="text-gray-500 text-sm">Searching...</p>
+                                            </div>
+                                        ) : error ? (
+                                            <div className="flex flex-col items-center justify-center py-12">
+                                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                                                    <CloseIcon className="text-red-500" fontSize="large" />
                                                 </div>
-                                            </details>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-4 text-gray-500">No results found</div>
-                                    )}
+                                                <p className="text-red-500 font-medium">{error}</p>
+                                                <button
+                                                    onClick={() => setError(null)}
+                                                    className="mt-2 text-sm text-gray-600 hover:text-gray-900"
+                                                >
+                                                    Try again
+                                                </button>
+                                            </div>
+                                        ) : results.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {results.map((group, i) => (
+                                                    <div key={i} className="bg-linear-to-br from-gray-50 to-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                                                        <details className="group">
+                                                            <summary className="flex items-center justify-between px-5 py-3 bg-linear-to-r from-gray-50 to-indigo-50 hover:from-gray-100 hover:to-indigo-100 cursor-pointer select-none transition-all">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                                                    <span className="capitalize font-bold text-gray-800">{group.collection}</span>
+                                                                    <span className="text-xs bg-gray-500 text-white px-2 py-0.5 rounded-full font-semibold">{group.total}</span>
+                                                                </div>
+                                                                <ExpandMoreIcon className="text-gray-600 group-open:rotate-180 transition-transform duration-300" />
+                                                            </summary>
 
-                                    <div className="sticky bottom-0 left-0 bg-white border-t border-gray-100">
+                                                            <div className="p-4 space-y-3">
+                                                                {group.results.map((item, idx) => (
+                                                                    <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-md transition-all duration-300">
+                                                                        <div className="space-y-3">
+                                                                            {Object.entries(item).map(([key, value]) => {
+                                                                                if (["_id", "__v"].includes(key)) return null;
+
+                                                                                const htmlFields = ["description", "survey_note"];
+
+                                                                                if (key === "createdAt") {
+                                                                                    return (
+                                                                                        <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1 text-sm bg-cyan-50 px-2 py-1 rounded">
+                                                                                            <span className="text-cyan-700 font-semibold capitalize min-w-[120px]">
+                                                                                                Created:
+                                                                                            </span>
+                                                                                            <span className="text-cyan-900 flex-1 font-medium">
+                                                                                                {new Date(value).toLocaleDateString("en-CA", {
+                                                                                                    timeZone: "Europe/London",
+                                                                                                })}
+
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    );
+                                                                                }
+
+                                                                                if (key === "client" && typeof value === "object" && value !== null) {
+                                                                                    return (
+                                                                                        <div key={key} className="bg-linear-to-br from-gray-50 to-emerald-50 border border-gray-200 p-3 rounded-lg">
+                                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                                                                                                <span className="text-gray-700 font-bold text-sm capitalize">
+                                                                                                    Client Info
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div className="pl-3.5 space-y-1">
+                                                                                                {Object.entries(value).map(([clientKey, clientValue]) => {
+                                                                                                    if (["_id", "__v", "updatedAt"].includes(clientKey)) return null;
+                                                                                                    return (
+                                                                                                        <div key={clientKey} className="flex gap-2 text-sm">
+                                                                                                            <span className="text-gray-700 font-semibold capitalize min-w-[100px]">
+                                                                                                                {clientKey.replace(/_/g, " ")}:
+                                                                                                            </span>
+                                                                                                            <span className="text-gray-700">
+                                                                                                                {highlightText(String(clientValue || ""), query)}
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                })}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                }
+
+                                                                                if (htmlFields.includes(key)) {
+                                                                                    return (
+                                                                                        <div key={key} className="bg-linear-to-br from-gray-50 to-gray-50 border border-gray-200 p-3 rounded-lg">
+                                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                                                                                                <span className="text-gray-700 font-bold text-sm capitalize">
+                                                                                                    {key.replace(/_/g, " ")}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div
+                                                                                                className="text-gray-700 text-sm leading-relaxed pl-3.5 description-view"
+                                                                                                dangerouslySetInnerHTML={{
+                                                                                                    __html: value || `<em class="text-gray-400">No ${key.replace(/_/g, " ")}</em>`
+                                                                                                }}
+                                                                                            />
+                                                                                        </div>
+                                                                                    );
+                                                                                }
+
+                                                                                return (
+                                                                                    <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1 text-sm">
+                                                                                        <span className="text-gray-500 font-semibold capitalize min-w-[120px]">
+                                                                                            {key.replace(/_/g, " ")}:
+                                                                                        </span>
+                                                                                        <span className="text-gray-800 flex-1">
+                                                                                            {highlightText(String(value || ""), query)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </details>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-12">
+                                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                                    <SearchIcon className="text-gray-400" fontSize="large" />
+                                                </div>
+                                                <p className="text-gray-500 font-medium">No results found</p>
+                                                <p className="text-gray-400 text-sm mt-1">Try different keywords</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="sticky bottom-0 left-0 bg-white border-t border-gray-200">
                                         <button
-                                            className="w-full py-2 text-gray-500 text-sm cursor-pointer hover:text-gray-700 bg-gray-50 hover:bg-gray-200 flex items-center justify-center gap-1 transition-all"
-                                            onClick={() => setShowResults(false)}
+                                            className="w-full py-3 text-gray-600 text-sm font-medium cursor-pointer hover:text-gray-900 hover:bg-gray-50 flex items-center justify-center gap-2 transition-all"
+                                            onClick={closeResults}
                                         >
                                             <CloseIcon fontSize="small" /> Close
                                         </button>
                                     </div>
                                 </div>
                             )}
-
-
                         </div>
                     )}
 

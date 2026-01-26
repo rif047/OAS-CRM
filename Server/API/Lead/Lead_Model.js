@@ -21,13 +21,31 @@ const LeadSchema = Mongoose.Schema({
     company: {
         type: String
     },
-    property_type: {
+    service_type: {
         type: String
     },
-    extention_type: {
+    project_details: {
         type: String
     },
     project_type: {
+        type: String
+    },
+    planning_permission: {
+        type: String
+    },
+    structural_services: {
+        type: String
+    },
+    interior_design: {
+        type: String
+    },
+    building_regulation: {
+        type: String
+    },
+    select_builder: {
+        type: String
+    },
+    help_project_management: {
         type: String
     },
     budget: {
@@ -94,6 +112,9 @@ const LeadSchema = Mongoose.Schema({
         type: String
     },
     status: {
+        type: String
+    },
+    stage: {
         type: String
     },
     lead_status: {

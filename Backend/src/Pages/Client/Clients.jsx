@@ -7,7 +7,6 @@ import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CachedIcon from '@mui/icons-material/Cached';
-// import * as XLSX from 'xlsx';
 
 export default function Clients() {
     document.title = 'Clients';
@@ -89,52 +88,6 @@ export default function Clients() {
 
 
 
-    // const handleExcelImport = async (e) => {
-    //     const file = e.target.files[0];
-    //     if (!file) return;
-
-    //     try {
-    //         setLoading(true);
-
-    //         const reader = new FileReader();
-
-    //         reader.onload = async (evt) => {
-    //             const binaryStr = evt.target.result;
-    //             const workbook = XLSX.read(binaryStr, { type: 'binary' });
-    //             const sheetName = workbook.SheetNames[0];
-    //             const sheet = workbook.Sheets[sheetName];
-    //             const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-    //             if (!jsonData.length) { toast.error("Excel file is empty or invalid."); setLoading(false); return; }
-
-    //             const formattedData = jsonData.map((row) => ({
-    //                 agent: row.agent || row.Agent || "Imported",
-    //                 name: row.name || row.Name,
-    //                 phone: row.phone || row.Phone,
-    //                 alt_phone: row.alt_phone || row["Alternative Phone"] || "",
-    //                 description: row.description || row.Description || "",
-    //             }));
-
-    //             await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/bulk`, formattedData);
-
-    //             toast.success("Data imported successfully!");
-    //             fetchData();
-    //         };
-
-    //         reader.readAsBinaryString(file);
-    //     } catch (error) {
-    //         console.error("Import error:", error);
-    //         toast.error("Failed to import data. Please check the file format.");
-    //     } finally {
-    //         setLoading(false);
-    //         e.target.value = "";
-    //     }
-    // };
-
-
-
-
-
 
     const columns = [
         { key: "createdAt", accessorFn: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '', header: 'Date', maxSize: 80 },
@@ -167,34 +120,6 @@ export default function Clients() {
                 </div>
 
                 <div className="flex gap-3 items-center">
-                    {/* <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => document.getElementById('importExcelInput').click()}
-                            className="flex items-center gap-2 bg-white text-gray-700 px-6 py-2 rounded-xl font-semibold text-sm shadow-sm border border-gray-200 hover:bg-gray-100 hover:shadow transition-all duration-200 cursor-pointer"
-                        >
-                            📥 Import
-                        </button>
-
-                        <a
-                            href="https://docs.google.com/spreadsheets/d/1lUUPi6LoTXKuZXDPAPjDaq4oyewyL29dYETiDg_s-N0/edit?gid=0#gid=0"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 bg-white text-gray-700 px-6 py-2 rounded-xl font-semibold text-sm shadow-sm border border-gray-200 hover:bg-gray-100 hover:shadow transition-all duration-200 cursor-pointer"
-                        >
-                            📄 Import Template
-                        </a>
-                    </div>
-
-                    <input
-                        id="importExcelInput"
-                        type="file"
-                        accept=".xlsx, .xls"
-                        className="hidden"
-                        onChange={handleExcelImport}
-                    /> */}
-
-
-
                     <button
                         onClick={handleAdd}
                         className="flex items-center gap-2 bg-white text-gray-700 px-6 py-2 rounded-xl font-semibold text-sm shadow-sm border border-gray-200 hover:bg-gray-100 hover:shadow transition-all duration-200 cursor-pointer"

@@ -46,11 +46,22 @@ export default function SideMenu() {
                     <MenuItem to="/clients" icon={PeopleTwoTone} label="Clients" />
                     <MenuItem to="/leads" icon={WorkHistoryTwoTone} label="Leads" />
                     <MenuItem to="/in_quote" icon={RequestQuoteTwoTone} label="In Quotation" />
-                    <MenuItem to="/in_survey" icon={TourTwoTone} label="Site Survey" />
                 </>
             )}
 
-            <MenuItem to="/in_design" icon={DesignServices} label="Project Phase" />
+
+
+            {(userType === "Admin" || userType === "Management" || userType === "Surveyor") && (
+                <MenuItem to="/in_survey" icon={TourTwoTone} label="Site Survey" />
+            )}
+
+
+
+            {(userType === "Admin" || userType === "Management" || userType === "Designer") && (
+                <MenuItem to="/in_design" icon={DesignServices} label="Project Phase" />
+            )}
+
+
 
 
             {(userType === "Admin" || userType === "Management") && (
@@ -61,6 +72,8 @@ export default function SideMenu() {
                 </>
             )}
 
+
+
             {(userType === "Admin" || userType === "Management") && (
                 <>
                     <div className="pt-3 border-t border-gray-700/60 mt-3"></div>
@@ -68,6 +81,7 @@ export default function SideMenu() {
                         Admin
                     </p>
                     <MenuItem to="/managements" icon={AdminPanelSettingsTwoTone} label="Management" />
+                    <MenuItem to="/surveyors" icon={AdminPanelSettingsTwoTone} label="Surveyors" />
                     <MenuItem to="/designers" icon={ContactsTwoTone} label="Designers" />
                 </>
             )}

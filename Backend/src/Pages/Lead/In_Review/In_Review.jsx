@@ -8,6 +8,7 @@ import CachedIcon from '@mui/icons-material/Cached';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import RichTextEditor from "../../../Components/RichTextEditor";
 import 'react-toastify/dist/ReactToastify.css';
 
 
@@ -79,7 +80,10 @@ export default function In_Review() {
                 {
                     agent: form.agent,
                     final_price: form.final_price,
-                    description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    // description: selectedRow.description ? selectedRow.description + "\n" + form.description : form.description
+                    // description: selectedRow.description ? selectedRow.description + "<br>" + form.description : form.description
+                    description: form.description
+
                 }
             );
 
@@ -134,6 +138,7 @@ export default function In_Review() {
         { key: "in_review_date", accessorKey: 'in_review_date', header: 'Date', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
         { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
+        { key: "service_type", accessorKey: 'service_type', header: 'Service Type' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "designer", accessorKey: 'designer', header: 'Designer' },
         {
@@ -229,7 +234,7 @@ export default function In_Review() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle><b>Sent To Design Process</b></DialogTitle>
 
                 <DialogContent>
@@ -243,7 +248,7 @@ export default function In_Review() {
                     />
 
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         label="Add Description"
                         size="small"
@@ -252,18 +257,24 @@ export default function In_Review() {
                         minRows={4}
                         value={form.description}
                         onChange={e => setForm({ ...form, description: e.target.value })}
+                    /> */}
+
+                    <RichTextEditor
+                        value={form.description}
+                        onChange={(html) =>
+                            setForm(prev => ({ ...form, description: html }))
+                        }
                     />
 
-                    <TextField
-                        fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Previous Description"
-                        value={selectedRow?.description || ""}
-                        disabled
-                        multiline
-                        minRows={3}
-                    />
+                    <div className='bg-gray-50 p-4 rounded-lg'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
                 </DialogContent>
 
                 <small className='text-gray-600 mx-auto my-2'>All fields are required.</small>

@@ -2,6 +2,9 @@ import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
 
 export default function View({ open, onClose, viewData }) {
+    const loggedUser = JSON.parse(localStorage.getItem('user'));
+
+
     return (
         <Modal open={open} onClose={onClose}>
             <div className="fixed inset-0 flex items-center justify-center p-2">
@@ -36,25 +39,56 @@ export default function View({ open, onClose, viewData }) {
                                         <h3 className="font-semibold text-lg">📋 Lead Details</h3>
                                         <InfoRow label="Company" value={viewData.company} />
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
-                                            <InfoRow label="Agent" value={viewData.agent} />
-                                            <InfoRow label="Status" value={viewData.status} />
-                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="In Design Date" value={formatDate(viewData.in_design_date)} />
+                                            <InfoRow label="Surveyor" value={viewData.surveyor} />
                                             <InfoRow label="Designer" value={viewData.designer} />
+                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
+                                            <InfoRow label="Survey Date" value={formatDate(viewData.survey_date)} />
+                                            <InfoRow label="In Design Date" value={formatDate(viewData.in_design_date)} />
                                             <InfoRow label="Deadline" value={formatDate(viewData.design_deadline)} />
                                         </div>
                                     </div>
 
                                     <div className="bg-white rounded-lg border border-gray-200 shadow p-4">
-                                        <h3 className="font-semibold text-lg mb-4">🏠 Property Details</h3>
+                                        <h3 className="font-semibold text-lg mb-4">🏠 Project Details</h3>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <InfoRow label="Address" value={viewData.address} />
-                                            <InfoRow label="Property Type" value={viewData.property_type} />
+                                            <InfoRow label="Property Type" value={viewData.service_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
-                                            <InfoRow label="Scope Of Work" value={viewData.extention_type} />
+                                        </div>
+                                        <div className="mt-4">
+                                            <InfoRow label="Project Details Note" value={viewData.project_details} />
                                         </div>
                                     </div>
                                 </div>
+
+                                {(loggedUser?.userType === "Admin" || loggedUser?.userType === "Management") && (
+                                    <div>
+                                        <div className='mt-6'>
+                                            <InfoCard title="💬 Survey Note">
+                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                    <div
+                                                        className="text-gray-700 description-view"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: viewData.survey_note || "No description provided"
+                                                        }}
+                                                    />
+                                                </div>
+                                            </InfoCard>
+                                        </div>
+
+                                        <div className='mt-6'>
+                                            <InfoCard title="💬 Description">
+                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                    <div
+                                                        className="text-gray-700 description-view"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: viewData.description || "No description provided"
+                                                        }}
+                                                    />
+                                                </div>
+                                            </InfoCard>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -116,5 +150,14 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
 
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-GB');
+
+    return new Date(dateString).toLocaleString('en-GB', {
+        timeZone: 'Europe/London',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
 }

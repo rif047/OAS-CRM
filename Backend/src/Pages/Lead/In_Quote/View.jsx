@@ -42,12 +42,13 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
+                                            <InfoRow label="Updated Date" value={formatDate(viewData.updatedAt)} />
                                             <InfoRow label="Quote Send" value={formatDate(viewData.in_quote_date)} />
                                         </div>
                                     </div>
 
                                     <div className="bg-white rounded-lg border border-gray-200 shadow p-4">
-                                        <h3 className="font-semibold text-lg mb-4">🏠 Property Details</h3>
+                                        <h3 className="font-semibold text-lg mb-4">🏠 Project Details</h3>
 
                                         <div className="grid grid-cols-2 gap-3 mb-4 py-2 border-b border-gray-300">
                                             <InfoRow label="👤 Client Name" value={viewData.client?.name} />
@@ -55,9 +56,9 @@ export default function View({ open, onClose, viewData }) {
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <InfoRow label="Address" value={viewData.address} />
-                                            <InfoRow label="Property Type" value={viewData.property_type} />
+                                            <InfoRow label="Property Type" value={viewData.service_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
-                                            <InfoRow label="Scope Of Work" value={viewData.extention_type} />
+                                            <InfoRow label="Scope Of Work" value={viewData.project_details} />
                                             <InfoRow label="Quoted Price" value={`£${viewData.quote_price}`} />
                                             <LinkRow label="Quote File" url={viewData.quote_file} linkText="View" />
                                         </div>
@@ -68,9 +69,12 @@ export default function View({ open, onClose, viewData }) {
                                 <div className='mt-6'>
                                     <InfoCard title="💬 Description">
                                         <div className="bg-gray-50 p-4 rounded-lg">
-                                            <p className="text-gray-700 whitespace-pre-line">
-                                                {viewData.description || "No description provided"}
-                                            </p>
+                                            <div
+                                                className="text-gray-700 description-view"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: viewData.description || "No description provided"
+                                                }}
+                                            />
                                         </div>
                                     </InfoCard>
                                 </div>
@@ -135,5 +139,14 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
 
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-GB');
+
+    return new Date(dateString).toLocaleString('en-GB', {
+        timeZone: 'Europe/London',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
 }

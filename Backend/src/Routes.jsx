@@ -12,6 +12,7 @@ import In_Review from './Pages/Lead/In_Review/In_Review';
 import Closed from './Pages/Lead/Closed/Closed';
 import Lost_Lead from './Pages/Lead/Lost_Lead/Lost_Lead';
 import Managements from './Pages/User/Management/Managements';
+import Surveyors from './Pages/User/Surveyor/Surveyors';
 import Designers from './Pages/User/Designer/Designers';
 import Users from './Pages/User/Users';
 import Settings from './Pages/Setting/Settings';
@@ -65,19 +66,20 @@ export default function MainRoutes() {
             <Route path="/" element={loggedIn ? <Dashboard handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
             <Route path="/login" element={loggedIn ? <Navigate to="/" replace /> : <Login setLoggedIn={setLoggedIn} />} />
             <Route path="/in_design" element={loggedIn ? <Project_Phase handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+            <Route path="/in_survey" element={loggedIn ? <In_Survey handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
 
 
             {(userType === "Admin" || userType === "Management") && (
                 <>
                     <Route path="/leads" element={loggedIn ? <Leads handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/in_quote" element={loggedIn ? <In_Quote handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
-                    <Route path="/in_survey" element={loggedIn ? <In_Survey handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/in_review" element={loggedIn ? <In_Review handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/closed" element={loggedIn ? <Closed handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/lost_lead" element={loggedIn ? <Lost_Lead handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/clients" element={loggedIn ? <Clients handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/managements" element={loggedIn ? <Managements handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     <Route path="/designers" element={loggedIn ? <Designers handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                    <Route path="/surveyors" element={loggedIn ? <Surveyors handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                 </>
             )}
 

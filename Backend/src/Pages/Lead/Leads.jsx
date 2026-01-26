@@ -10,6 +10,7 @@ import CachedIcon from '@mui/icons-material/Cached';
 import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import RichTextEditor from "../../Components/RichTextEditor";
 
 export default function Leads() {
     document.title = 'Leads';
@@ -70,6 +71,7 @@ export default function Leads() {
 
     const handleCancelled = (row) => {
         const user = JSON.parse(localStorage.getItem("user"));
+
         setSelectedRow(row);
         setForm({ agent: user?.name || "", description: "" });
         setSelectedStatus("Lost_Lead");
@@ -215,21 +217,17 @@ export default function Leads() {
                 />
             )}
 
-            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} maxWidth='sm'>
+            <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle>
                     <b>{selectedStatus === "Lost_Lead" ? "Write Reason" : "Sent Quote"}</b>
                 </DialogTitle>
                 <DialogContent>
                     {selectedStatus === "Lost_Lead" ? (
-                        <TextField
-                            fullWidth
-                            label="Description"
-                            size="small"
-                            margin="normal"
-                            multiline
-                            minRows={4}
+                        <RichTextEditor
                             value={form.description}
-                            onChange={e => setForm({ ...form, description: e.target.value })}
+                            onChange={(html) =>
+                                setForm(prev => ({ ...form, description: html }))
+                            }
                         />
                     ) : (
                         <>
@@ -250,15 +248,12 @@ export default function Leads() {
                                 value={form.quote_file}
                                 onChange={e => setForm({ ...form, quote_file: e.target.value })}
                             />
-                            <TextField
-                                fullWidth
-                                label="Description"
-                                size="small"
-                                margin="normal"
-                                multiline
-                                minRows={4}
+
+                            <RichTextEditor
                                 value={form.description}
-                                onChange={e => setForm({ ...form, description: e.target.value })}
+                                onChange={(html) =>
+                                    setForm(prev => ({ ...form, description: html }))
+                                }
                             />
                         </>
                     )}

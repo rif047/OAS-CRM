@@ -76,3 +76,75 @@ body {
 td {
     border: 1px solid #F0F0F0 !important;
 }
+
+
+
+.description-view {
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.description-view p {
+    margin: 8px 0;
+    display: block;
+}
+
+.description-view br {
+    display: block;
+    content: "";
+    margin: 8px 0;
+}
+
+.description-view ul {
+    list-style-type: disc;
+    padding-left: 28px;
+    margin: 10px 0;
+    display: block;
+}
+
+.description-view ol {
+    list-style-type: decimal;
+    padding-left: 28px;
+    margin: 10px 0;
+    display: block;
+}
+
+.description-view li {
+    margin: 6px 0;
+    padding-left: 4px;
+    display: list-item;
+}
+
+.description-view a {
+    color: #2563eb !important;
+    text-decoration: underline !important;
+}
+
+.description-view a:hover {
+    color: #1d4ed8 !important;
+}
+
+.description-view strong,
+.description-view b {
+    font-weight: 700;
+}
+
+.description-view em,
+.description-view i {
+    font-style: italic;
+}
+
+.description-view u {
+    text-decoration: underline;
+}
+
+.description-view s,
+.description-view strike {
+    text-decoration: line-through;
+}
+
+.description-view hr {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+}

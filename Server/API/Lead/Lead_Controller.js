@@ -1,30 +1,88 @@
-let Lead = require('./Lead_Model');
+const Lead = require('./Lead_Model');
+const sanitizeHtml = require('sanitize-html');
 
 
 
 
 const formatRemark = (oldRemark, newRemark, agentName) => {
     const today = new Date();
-    const dateStr = today.toLocaleDateString('en-GB');
+    const dateStr = today.toLocaleString('en-GB', {
+        timeZone: 'Europe/London',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
 
     if (!newRemark || newRemark.trim() === "") return oldRemark;
 
     const cleanOld = (oldRemark || "").trim();
-    const cleanNew = newRemark.trim();
+    const cleanNew = newRemark;
+    // const cleanNew = newRemark.trim();
 
-    const header = `${dateStr} - ${agentName}`;
+    // const header = `${dateStr} - ${agentName}`;
+    const header = `<b>${dateStr} - ${agentName}</b>`;
+
 
     if (cleanOld && cleanNew.startsWith(cleanOld)) {
         const newOnly = cleanNew.replace(cleanOld, "").trim();
         if (!newOnly) return cleanOld;
-        return `${cleanOld}\n\n${header}\n${newOnly}`;
+        return `${cleanOld}<br><br>${header}<br>${newOnly}`;
     }
 
-    if (cleanNew.startsWith(header)) { return cleanOld ? `${cleanOld}\n\n${cleanNew}` : cleanNew; }
+    if (cleanNew.startsWith(header)) {
+        return cleanOld ? `${cleanOld}<br><br>${cleanNew}` : cleanNew;
+    }
 
-    const formattedNew = `${header}\n${cleanNew}`;
-    return cleanOld ? `${cleanOld}\n\n${formattedNew}` : formattedNew;
+    const formattedNew = `${header}<br>${cleanNew}`;
+    return cleanOld ? `${cleanOld}<br><br>${formattedNew}` : formattedNew;
 };
+
+
+
+
+const sanitizeDescription = (desc) => {
+    if (!desc) return '';
+    return sanitizeHtml(desc, {
+        allowedTags: [
+            'p', 'b', 'i', 'u', 'strong', 'em',
+            'a', 'ul', 'ol', 'li', 'br', 'span'
+        ],
+
+        allowedAttributes: {
+            'a': ['href', 'target', 'rel'],
+            'span': ['style']
+        },
+        allowedStyles: {
+            '*': {
+                'color': [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(/],
+                'font-weight': [/^bold$/],
+                'font-style': [/^italic$/],
+                'text-decoration': [/^underline$/]
+            }
+        },
+        allowedSchemes: ['http', 'https', 'mailto']
+    });
+};
+
+
+const processDescription = (oldDesc, newDesc, agent, mode = "append") => {
+    if (!newDesc || newDesc?.trim() === '') return oldDesc;
+
+    const sanitized = sanitizeDescription(newDesc);
+
+    if (mode === "replace") {
+        return sanitized;
+    }
+
+    const safeAgent = agent || "System";
+    return formatRemark(oldDesc, sanitized, safeAgent);
+};
+
+
+
 
 
 
@@ -41,7 +99,7 @@ let Leads = async (req, res) => {
 
 const Create = async (req, res) => {
     try {
-        const { client, agent, address, company, property_type, extention_type, project_type, budget, when_to_start, file_link, source, description } = req.body;
+        const { client, agent, address, company, service_type, project_details, project_type, planning_permission, structural_services, interior_design, building_regulation, select_builder, help_project_management, budget, when_to_start, file_link, source, description, stage } = req.body;
 
         for (let [key, label] of Object.entries({
             company: 'Company',
@@ -70,14 +128,21 @@ const Create = async (req, res) => {
             agent,
             address,
             company,
-            property_type,
-            extention_type,
+            service_type,
+            project_details,
             project_type,
+            planning_permission,
+            structural_services,
+            interior_design,
+            building_regulation,
+            select_builder,
+            help_project_management,
             budget,
             when_to_start,
             file_link,
             source,
-            description: formatRemark("", description, agent),
+            stage: "Pending",
+            description: processDescription("", description, agent),
             status: 'Pending'
         });
 
@@ -96,7 +161,7 @@ const Create = async (req, res) => {
 
 let Update = async (req, res) => {
     try {
-        const { client, agent, address, company, property_type, extention_type, project_type, budget, when_to_start, file_link, source, description } = req.body;
+        const { client, agent, address, company, service_type, project_details, project_type, planning_permission, structural_services, interior_design, building_regulation, select_builder, help_project_management, budget, when_to_start, file_link, source, description, survey_date, surveyor, stage } = req.body;
 
         for (let [key, label] of Object.entries({
             company: 'Company',
@@ -112,14 +177,24 @@ let Update = async (req, res) => {
         updateData.agent = agent;
         updateData.address = address;
         updateData.company = company;
-        updateData.property_type = property_type;
-        updateData.extention_type = extention_type;
+        updateData.service_type = service_type;
+        updateData.project_details = project_details;
         updateData.project_type = project_type;
+        updateData.planning_permission = planning_permission;
+        updateData.structural_services = structural_services;
+        updateData.interior_design = interior_design;
+        updateData.building_regulation = building_regulation;
+        updateData.select_builder = select_builder;
+        updateData.help_project_management = help_project_management;
         updateData.budget = budget;
         updateData.when_to_start = when_to_start;
         updateData.file_link = file_link;
         updateData.source = source;
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.survey_date = survey_date;
+        updateData.surveyor = surveyor;
+        updateData.stage = stage;
+        updateData.description = processDescription(updateData.description, description, agent, "replace");
+
 
 
         await updateData.save();
@@ -185,7 +260,8 @@ let In_Quote = async (req, res) => {
         updateData.quote_file = quote_file;
         updateData.status = 'In_Quote';
         updateData.in_quote_date = new Date().toISOString().split('T')[0];
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.description = processDescription(updateData.description, description, agent);
+
 
         await updateData.save();
         console.log('In_Quote updated successfully');
@@ -230,7 +306,7 @@ let Survey_Data = async (req, res) => {
 
 let In_Survey = async (req, res) => {
     try {
-        const { agent, surveyor, survey_done, survey_date, description } = req.body;
+        const { agent, surveyor, survey_date, description } = req.body;
 
         const requiredFields = {
             agent: 'Agent',
@@ -248,7 +324,8 @@ let In_Survey = async (req, res) => {
         updateData.status = 'In_Survey';
         updateData.survey_done = 'No';
         updateData.in_survey_date = new Date().toISOString().split('T')[0];
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.description = processDescription(updateData.description, description, agent);
+
 
         await updateData.save();
         res.status(200).json(updateData);
@@ -284,7 +361,8 @@ let In_Design = async (req, res) => {
         updateData.designer = designer;
         updateData.status = 'In_Design';
         updateData.in_design_date = new Date().toISOString().split('T')[0];
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.description = processDescription(updateData.description, description, agent);
+
 
         await updateData.save();
         res.status(200).json(updateData);
@@ -316,7 +394,8 @@ let In_Review = async (req, res) => {
         updateData.status = 'In_Review';
         updateData.design_file = design_file;
         updateData.in_review_date = new Date().toISOString().split('T')[0];
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.description = processDescription(updateData.description, description, agent);
+
 
         await updateData.save();
         res.status(200).json(updateData);
@@ -349,7 +428,8 @@ let Closed = async (req, res) => {
         updateData.final_price = final_price;
         updateData.status = 'Closed';
         updateData.close_date = new Date().toISOString().split('T')[0];
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.description = processDescription(updateData.description, description, agent);
+
 
         await updateData.save();
         res.status(200).json(updateData);
@@ -375,7 +455,8 @@ let Lost_Lead = async (req, res) => {
         updateData.agent = agent;
         updateData.lost_date = new Date().toISOString().split('T')[0];
         updateData.status = 'Lost_Lead';
-        updateData.description = formatRemark(updateData.description, description, agent);
+        updateData.description = processDescription(updateData.description, description, agent);
+
 
         await updateData.save();
         console.log('Lost_Lead updated successfully');

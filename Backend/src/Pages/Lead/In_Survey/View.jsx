@@ -2,6 +2,9 @@ import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
 
 export default function View({ open, onClose, viewData }) {
+    const loggedUser = JSON.parse(localStorage.getItem('user'));
+
+
     return (
         <Modal open={open} onClose={onClose}>
             <div className="fixed inset-0 flex items-center justify-center p-2">
@@ -40,6 +43,7 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
+                                            <InfoRow label="Updated Date" value={formatDate(viewData.updatedAt)} />
                                             <InfoRow label="In Servey Date" value={formatDate(viewData.in_survey_date)} />
 
 
@@ -47,7 +51,7 @@ export default function View({ open, onClose, viewData }) {
                                     </div>
 
                                     <div className="bg-white rounded-lg border border-gray-200 shadow p-4">
-                                        <h3 className="font-semibold text-lg mb-4">🏠 Property Details</h3>
+                                        <h3 className="font-semibold text-lg mb-4">🏠 Project Details</h3>
 
                                         <div className="grid grid-cols-2 gap-3 mb-4 py-2 border-b border-gray-300">
                                             <InfoRow label="👤 Client Name" value={viewData.client?.name} />
@@ -55,9 +59,9 @@ export default function View({ open, onClose, viewData }) {
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <InfoRow label="Address" value={viewData.address} />
-                                            <InfoRow label="Property Type" value={viewData.property_type} />
+                                            <InfoRow label="Property Type" value={viewData.service_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
-                                            <InfoRow label="Scope Of Work" value={viewData.extention_type} />
+                                            <InfoRow label="Scope Of Work" value={viewData.project_details} />
                                             <InfoRow label="Surveyor" value={viewData.surveyor} />
                                             <InfoRow label="Survey Date" value={formatDate(viewData.survey_date)} />
                                             <InfoRow label="Survey Done" value={viewData.survey_done} />
@@ -67,15 +71,35 @@ export default function View({ open, onClose, viewData }) {
                                 </div>
 
 
+
                                 <div className='mt-6'>
                                     <InfoCard title="💬 Survey Note">
                                         <div className="bg-gray-50 p-4 rounded-lg">
-                                            <p className="text-gray-700 whitespace-pre-line">
-                                                {viewData.survey_note || "No description provided"}
-                                            </p>
+                                            <div
+                                                className="text-gray-700 description-view"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: viewData.survey_note || "No description provided"
+                                                }}
+                                            />
                                         </div>
                                     </InfoCard>
                                 </div>
+
+                                {(loggedUser?.userType === "Admin" || loggedUser?.userType === "Management") && (
+                                    <div className='mt-6'>
+                                        <InfoCard title="💬 Description">
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <div
+                                                    className="text-gray-700 description-view"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: viewData.description || "No description provided"
+                                                    }}
+                                                />
+                                            </div>
+                                        </InfoCard>
+                                    </div>
+                                )}
+
                             </div>
                         )}
                     </div>
@@ -137,5 +161,14 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
 
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-GB');
+
+    return new Date(dateString).toLocaleString('en-GB', {
+        timeZone: 'Europe/London',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
 }

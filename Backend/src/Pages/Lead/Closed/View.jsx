@@ -36,35 +36,32 @@ export default function View({ open, onClose, viewData }) {
 
                                         <InfoRow label="Company" value={viewData.company} />
                                         <InfoRow label="Source" value={viewData.source} />
+                                        <InfoRow label="Final Price" value={viewData.final_price} />
                                         <LinkRow label="Project Drive Files" url={viewData.file_link} linkText="Go to drive" />
-
-                                        <InfoRow label="Status" value={viewData.status} />
-                                        <InfoRow label="Lead Status" value={viewData.lead_status} />
                                         <InfoRow label="Agent" value={viewData.agent} />
 
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Updated Date" value={formatDate(viewData.updatedAt)} />
+                                            <InfoRow label="Closed Date" value={formatDate(viewData.close_date)} />
                                         </div>
                                     </div>
 
                                     <div className="bg-white rounded-lg border border-gray-200 shadow p-4">
-                                        <h3 className="font-semibold text-lg mb-4">🏠 Property Details</h3>
+                                        <h3 className="font-semibold text-lg mb-4">🏠 Project Details</h3>
 
                                         <div className="grid grid-cols-2 gap-3 mb-4 py-2 border-b border-gray-300">
                                             <InfoRow label="👤 Client Name" value={viewData.client?.name} />
                                             <InfoRow label="📞 Phone" value={viewData.client?.phone} />
                                         </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className='mb-3'>
                                             <InfoRow label="Address" value={viewData.address} />
-                                            <InfoRow label="Property Type" value={viewData.property_type} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <InfoRow label="Property Type" value={viewData.service_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
-                                            <InfoRow label="Scope Of Work" value={viewData.extention_type} />
-                                            <InfoRow label="When To Start" value={viewData.when_to_start} />
-                                            <InfoRow label="Budget" value={`£${viewData.budget}`} />
-                                            <InfoRow label="Quote Price" value={viewData.quote_price} />
-                                            <InfoRow label="Final Price" value={viewData.final_price} />
+                                        </div>
+                                        <div className='my-3'>
+                                            <InfoRow label="Scope Of Work" value={viewData.project_details} />
                                         </div>
                                     </div>
                                 </div>
@@ -72,6 +69,7 @@ export default function View({ open, onClose, viewData }) {
                                 <div className="mt-6">
                                     <InfoCard title="💷 Quote Details">
                                         <InfoRow label="In Quote Date" value={viewData.in_quote_date} />
+                                        <InfoRow label="Quote Price" value={viewData.quote_price} />
                                         <LinkRow label="Quote File" url={viewData.quote_file} linkText="Open File" />
                                     </InfoCard>
                                 </div>
@@ -81,41 +79,41 @@ export default function View({ open, onClose, viewData }) {
                                         <InfoRow label="In Survey Date" value={viewData.in_survey_date} />
                                         <InfoRow label="Survey Date" value={viewData.survey_date} />
                                         <InfoRow label="Surveyor" value={viewData.surveyor} />
-                                        <InfoRow label="Survey Note" value={viewData.survey_note} />
-                                        <InfoRow label="Survey Done" value={viewData.survey_done} />
                                         <LinkRow label="Survey File" url={viewData.survey_file} linkText="Open File" />
+                                        <div className='mt-6'>
+                                            <InfoCard title="💬 Survey Note">
+                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                    <div
+                                                        className="text-gray-700 description-view"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: viewData.survey_note || "No description provided"
+                                                        }}
+                                                    />
+                                                </div>
+                                            </InfoCard>
+                                        </div>
                                     </InfoCard>
+
                                 </div>
 
                                 <div className="mt-6">
                                     <InfoCard title="🎨 Design Details">
                                         <InfoRow label="In Design Date" value={viewData.in_design_date} />
-                                        <InfoRow label="Design Deadline" value={viewData.design_deadline} />
+                                        <InfoRow label="In Review Date" value={viewData.in_review_date} />
                                         <InfoRow label="Designer" value={viewData.designer} />
                                         <LinkRow label="Design File" url={viewData.design_file} linkText="Open File" />
                                     </InfoCard>
                                 </div>
 
-                                <div className="mt-6 grid md:grid-cols-3 gap-5">
-                                    <InfoCard title="🔍 Review">
-                                        <InfoRow label="In Review Date" value={viewData.in_review_date} />
-                                    </InfoCard>
-
-                                    <InfoCard title="✅ Closed">
-                                        <InfoRow label="Close Date" value={viewData.close_date} />
-                                    </InfoCard>
-
-                                    <InfoCard title="❌ Lost">
-                                        <InfoRow label="Lost Date" value={viewData.lost_date} />
-                                    </InfoCard>
-                                </div>
-
                                 <div className='mt-6'>
-                                    <InfoCard title="💬 Description">
+                                    <InfoCard title="💬 Project Description">
                                         <div className="bg-gray-50 p-4 rounded-lg">
-                                            <p className="text-gray-700 whitespace-pre-line">
-                                                {viewData.description || "No description provided"}
-                                            </p>
+                                            <div
+                                                className="text-gray-700 description-view"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: viewData.description || "No description provided"
+                                                }}
+                                            />
                                         </div>
                                     </InfoCard>
                                 </div>
@@ -180,5 +178,14 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
 
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-GB');
+
+    return new Date(dateString).toLocaleString('en-GB', {
+        timeZone: 'Europe/London',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
 }
