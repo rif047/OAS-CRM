@@ -38,6 +38,78 @@ export default function Leads() {
     const [selectedRow, setSelectedRow] = useState(null);
     const [form, setForm] = useState({ agent: "", quote_price: "", quote_file: "", description: "" });
 
+
+
+
+
+
+    const [stageModalOpen, setStageModalOpen] = useState(false);
+    const [stageForm, setStageForm] = useState({
+        stage: "",
+        description: ""
+    });
+    const [stageErrors, setStageErrors] = useState({});
+    const handleStageClick = (row) => {
+        setSelectedRow(row);
+        setStageForm({
+            stage: row.stage || "",
+            description: ""
+        });
+        setStageErrors({});
+        setStageModalOpen(true);
+    };
+
+
+    const handleStageSubmit = async () => {
+        const errors = {};
+        if (!stageForm.stage) errors.stage = "Stage required";
+        if (!stageForm.description) errors.description = "Description required";
+
+        setStageErrors(errors);
+        if (Object.keys(errors).length) return;
+
+        const user = JSON.parse(localStorage.getItem("user"));
+
+        const previousDescription = selectedRow.description || "";
+
+        const finalDescription = `
+                    ${previousDescription}
+                    <hr />
+                    <p><b>Stage -  ${stageForm.stage}</b></p>
+                    ${stageForm.description} 
+                `;
+
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${selectedRow._id}`,
+                {
+                    company: selectedRow.company,
+                    client: selectedRow.client?._id || selectedRow.client,
+                    source: selectedRow.source,
+
+                    stage: stageForm.stage,
+                    description: finalDescription,
+                    agent: user?.name
+                }
+            );
+
+            toast.success("Stage updated");
+            fetchData();
+            setStageModalOpen(false);
+        } catch {
+            toast.error("Failed to update stage");
+        }
+    };
+
+
+
+
+
+
+
+
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -121,6 +193,23 @@ export default function Leads() {
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "budget", header: "Budget", accessorFn: row => `£${row.budget || 0}`, maxSize: 80 },
         { key: "source", accessorKey: 'source', header: 'Source' },
+        {
+            key: "stage",
+            header: "Stage",
+            maxSize: 120,
+            Cell: ({ row }) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleStageClick(row.original);
+                    }}
+                    className="px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                >
+                    {row.original.stage}
+                </button>
+            )
+        },
+
         {
             key: "actions", header: 'Set Status', maxSize: 80,
             Cell: ({ row }) => (
@@ -264,6 +353,61 @@ export default function Leads() {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Dialog
+                open={stageModalOpen}
+                onClose={() => setStageModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Change Stage</b>
+                </DialogTitle>
+
+                <DialogContent>
+                    <TextField
+                        select
+                        fullWidth
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={stageForm.stage}
+                        onChange={(e) =>
+                            setStageForm(prev => ({ ...prev, stage: e.target.value }))
+                        }
+                        error={!!stageErrors.stage}
+                        helperText={stageErrors.stage}
+                    >
+                        <option value="">Stage*</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Not Interested">Not Interested</option>
+                        <option value="Decision Pending">Decision Pending</option>
+                    </TextField>
+
+                    <RichTextEditor
+                        value={stageForm.description}
+                        onChange={(html) =>
+                            setStageForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+                    {stageErrors.description && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {stageErrors.description}
+                        </p>
+                    )}
+                </DialogContent>
+
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleStageSubmit}
+                        className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
+                    >
+                        Submit
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
         </Layout>
     );
 }

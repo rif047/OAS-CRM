@@ -44,7 +44,7 @@ export default function AddEditEmployee({ open, onClose, data, refreshData }) {
 
         if (!name) newErrors.name = 'Name is required.';
         if (!/^\d+$/.test(phone || '')) newErrors.phone = 'Phone number must contain numbers.';
-        if (!address) newErrors.address = 'Address is required.';
+        if (!address) newErrors.address = 'Project Address is required.';
         if (!availability) newErrors.availability = 'Availability is required.';
         if (!experience) newErrors.experience = 'Experience is required.';
         if (!right_to_work) newErrors.right_to_work = 'Right to work is required.';
@@ -107,7 +107,7 @@ export default function AddEditEmployee({ open, onClose, data, refreshData }) {
                     { name: 'name', label: 'Employee Name*' },
                     { name: 'phone', label: 'Phone*' },
                     { name: 'alt_phone', label: 'Alternative Phone' },
-                    { name: 'address', label: 'Address*' },
+                    { name: 'address', label: 'Project Address*' },
                     { name: 'city', label: 'City*' },
                     { name: 'preferred_location', label: 'Preferred Location*' },
                     { name: 'position', label: 'Position*' },

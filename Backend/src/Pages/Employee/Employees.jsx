@@ -111,7 +111,7 @@ export default function Employees() {
                     name: row.name || row.Name,
                     phone: row.phone || row.Phone,
                     alt_phone: row.alt_phone || row["Alternative Phone"] || "",
-                    address: row.address || row.Address,
+                    address: row.address || row.Project Address,
                     city: row.city || row.City,
                     preferred_location: row.preferred_location || row["Preferred Location"] || "",
                     availability: row.availability || row.Availability,

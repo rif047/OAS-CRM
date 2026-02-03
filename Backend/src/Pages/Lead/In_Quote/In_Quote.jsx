@@ -42,6 +42,88 @@ export default function In_Quote() {
     const [form, setForm] = useState({ agent: "", surveyor: "", survey_date: "", design_deadline: "", designer: "", description: "" });
     const [projectRemark, setProjectRemark] = useState("");
 
+    const [surveyors, setSurveyors] = useState([]);
+    const [designers, setDesigners] = useState([]);
+
+    const fetchUsers = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+
+            setSurveyors(res.data.filter(user => user.userType === "Surveyor"));
+            setDesigners(res.data.filter(user => user.userType === "Designer"));
+        } catch {
+            toast.error("Failed to fetch users");
+        }
+    };
+
+
+
+
+
+
+    const [stageModalOpen, setStageModalOpen] = useState(false);
+    const [stageForm, setStageForm] = useState({
+        stage: "",
+        description: ""
+    });
+    const [stageErrors, setStageErrors] = useState({});
+    const handleStageClick = (row) => {
+        setSelectedRow(row);
+        setStageForm({
+            stage: row.stage || "",
+            description: ""
+        });
+        setStageErrors({});
+        setStageModalOpen(true);
+    };
+
+
+    const handleStageSubmit = async () => {
+        const errors = {};
+        if (!stageForm.stage) errors.stage = "Stage required";
+        if (!stageForm.description) errors.description = "Description required";
+
+        setStageErrors(errors);
+        if (Object.keys(errors).length) return;
+
+        const user = JSON.parse(localStorage.getItem("user"));
+
+        const previousDescription = selectedRow.description || "";
+
+        const finalDescription = `
+                        ${previousDescription}
+                        <hr />
+                        <p><b>Stage -  ${stageForm.stage}</b></p>
+                        ${stageForm.description} 
+                    `;
+
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${selectedRow._id}`,
+                {
+                    company: selectedRow.company,
+                    client: selectedRow.client?._id || selectedRow.client,
+                    source: selectedRow.source,
+
+                    stage: stageForm.stage,
+                    description: finalDescription,
+                    agent: user?.name
+                }
+            );
+
+            toast.success("Stage updated");
+            fetchData();
+            setStageModalOpen(false);
+        } catch {
+            toast.error("Failed to update stage");
+        }
+    };
+
+
+
+
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -168,7 +250,11 @@ export default function In_Quote() {
         setViewModalOpen(true);
     };
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => {
+        fetchData();
+        fetchUsers();
+    }, [selectedCompany]);
+
 
     const columns = [
         { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
@@ -177,6 +263,23 @@ export default function In_Quote() {
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "quote_price", header: "Quoted P.", accessorFn: row => `£${row.quote_price || 0}`, maxSize: 80 },
         { key: "source", accessorKey: 'source', header: 'Source' },
+        {
+            key: "stage",
+            header: "Stage",
+            maxSize: 120,
+            Cell: ({ row }) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleStageClick(row.original);
+                    }}
+                    className="px-3 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                >
+                    {row.original.stage}
+                </button>
+            )
+        },
+
         {
             key: "actions", header: 'Set Status', maxSize: 80,
             Cell: ({ row }) => (
@@ -300,27 +403,33 @@ export default function In_Quote() {
                     </div>
 
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         size="small"
                         margin="normal"
                         label="Surveyor*"
                         value={form.surveyor}
                         onChange={e => setForm({ ...form, surveyor: e.target.value })}
-                    />
+                    /> */}
 
-
-
-                    {/* <TextField
+                    <TextField
+                        select
                         fullWidth
-                        label="Add Description"
                         size="small"
                         margin="normal"
-                        multiline
-                        minRows={4}
-                        value={form.description}
-                        onChange={e => setForm({ ...form, description: e.target.value })}
-                    /> */}
+                        SelectProps={{ native: true }}
+                        value={form.surveyor}
+                        onChange={e => setForm({ ...form, surveyor: e.target.value })}
+                    >
+                        <option value="">Select Surveyor*</option>
+                        {surveyors.map((s, index) => (
+                            <option key={index} value={s.name}>
+                                {s.name} - {s.phone}
+                            </option>
+                        ))}
+                    </TextField>
+
+
 
                     <RichTextEditor
                         value={form.description}
@@ -370,27 +479,36 @@ export default function In_Quote() {
                     </div>
 
 
-                    <TextField
+                    {/* <TextField
                         fullWidth
                         size="small"
                         margin="normal"
                         label="Designer*"
                         value={form.designer}
                         onChange={e => setForm({ ...form, designer: e.target.value })}
-                    />
+                    /> */}
 
 
-                    {/* <TextField
+                    <TextField
+                        select
                         fullWidth
-                        label="Description*"
                         size="small"
                         margin="normal"
-                        multiline
-                        minRows={4}
-                        value={projectRemark}
-                        onChange={e => setProjectRemark(e.target.value)}
-                        placeholder="Enter description for moving to project phase..."
-                    /> */}
+                        SelectProps={{ native: true }}
+                        value={form.designer}
+                        onChange={e => setForm({ ...form, designer: e.target.value })}
+                    >
+                        <option value="">Select Designer*</option>
+                        {designers.map((d, index) => (
+                            <option key={index} value={d.name}>
+                                {d.name} - {d.phone}
+                            </option>
+                        ))}
+                    </TextField>
+
+
+
+
 
                     <RichTextEditor
                         value={projectRemark}
@@ -421,6 +539,60 @@ export default function In_Quote() {
                         className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
                     >
                         Move to Project Phase
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={stageModalOpen}
+                onClose={() => setStageModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Change Stage</b>
+                </DialogTitle>
+
+                <DialogContent>
+                    <TextField
+                        select
+                        fullWidth
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={stageForm.stage}
+                        onChange={(e) =>
+                            setStageForm(prev => ({ ...prev, stage: e.target.value }))
+                        }
+                        error={!!stageErrors.stage}
+                        helperText={stageErrors.stage}
+                    >
+                        <option value="">Stage*</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Quote Accepted">Quote Accepted</option>
+                        <option value="Invoice Sent">Invoice Sent</option>
+                    </TextField>
+
+                    <RichTextEditor
+                        value={stageForm.description}
+                        onChange={(html) =>
+                            setStageForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+                    {stageErrors.description && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {stageErrors.description}
+                        </p>
+                    )}
+                </DialogContent>
+
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleStageSubmit}
+                        className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
+                    >
+                        Submit
                     </Button>
                 </DialogActions>
             </Dialog>

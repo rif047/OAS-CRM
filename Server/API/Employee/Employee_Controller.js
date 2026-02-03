@@ -17,7 +17,7 @@ let Create = async (req, res) => {
         if (!management) { return res.status(400).send('Management is required!'); }
         if (!name) { return res.status(400).send('Employee Name is required!'); }
         if (!phone) { return res.status(400).send('Phone is required!'); }
-        if (!address) { return res.status(400).send('Address is required!'); }
+        if (!address) { return res.status(400).send('Project Address is required!'); }
         if (!city) { return res.status(400).send('City is required!'); }
         if (!preferred_location) { return res.status(400).send('Preferred Location is required!'); }
         if (!availability) { return res.status(400).send('Availability is required!'); }
@@ -147,7 +147,7 @@ let Update = async (req, res) => {
         if (!management) { return res.status(400).send('Management is required!'); }
         if (!name) { return res.status(400).send('Employee Name is required!'); }
         if (!phone) { return res.status(400).send('Phone is required!'); }
-        if (!address) { return res.status(400).send('Address is required!'); }
+        if (!address) { return res.status(400).send('Project Address is required!'); }
         if (!city) { return res.status(400).send('City is required!'); }
         if (!preferred_location) { return res.status(400).send('Preferred Location is required!'); }
         if (!availability) { return res.status(400).send('Availability is required!'); }

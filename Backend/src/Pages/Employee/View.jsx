@@ -29,7 +29,7 @@ export default function View({ open, onClose, viewData }) {
         { label: "Management Name", value: viewData?.management },
         { label: "Phone", value: viewData?.phone },
         { label: "Alternative Phone", value: viewData?.alt_phone },
-        { label: "Address", value: viewData?.address },
+        { label: "Project Address", value: viewData?.address },
     ];
 
 

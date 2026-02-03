@@ -193,7 +193,24 @@ let Update = async (req, res) => {
         updateData.survey_date = survey_date;
         updateData.surveyor = surveyor;
         updateData.stage = stage;
-        updateData.description = processDescription(updateData.description, description, agent, "replace");
+        // updateData.description = processDescription(updateData.description, description, agent, "replace");
+        if (description !== undefined && description.trim() !== '') {
+            const today = new Date();
+            const dateStr = today.toLocaleString('en-GB', {
+                timeZone: 'Europe/London',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            const sanitized = sanitizeDescription(description);
+            const header = `<b><b>${dateStr} - ${agent}</b>`;
+
+            updateData.description = `${sanitized}<br>${header}`;
+        }
 
 
 
@@ -258,6 +275,7 @@ let In_Quote = async (req, res) => {
         updateData.agent = agent || updateData.agent;
         updateData.quote_price = quote_price;
         updateData.quote_file = quote_file;
+        updateData.stage = "Quote Sent";
         updateData.status = 'In_Quote';
         updateData.in_quote_date = new Date().toISOString().split('T')[0];
         updateData.description = processDescription(updateData.description, description, agent);

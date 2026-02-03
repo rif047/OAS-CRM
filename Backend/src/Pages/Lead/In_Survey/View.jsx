@@ -58,7 +58,7 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="📞 Phone" value={viewData.client?.phone} />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <InfoRow label="Address" value={viewData.address} />
+                                            <InfoRow label="Project Address" value={viewData.address} />
                                             <InfoRow label="Property Type" value={viewData.service_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
                                             <InfoRow label="Scope Of Work" value={viewData.project_details} />

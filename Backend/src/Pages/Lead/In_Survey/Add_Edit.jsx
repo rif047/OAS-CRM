@@ -307,7 +307,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
 
                     <div className="border border-gray-300 pb-4 pt-1 px-3 mt-2 rounded-sm">
                         <Typography fontWeight="bold" mx={.5} my={1} className="text-gray-600">
-                            Address
+                            Project Address
                         </Typography>
 
                         <Box display="flex" gap={1}>
@@ -326,7 +326,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             />
 
                             <TextField
-                                label="Full Address"
+                                label="Full Project Address"
                                 size="small"
                                 sx={{ width: "70%" }}
                                 value={formData.full_address || ""}

@@ -58,7 +58,7 @@ export default function View({ open, onClose, viewData }) {
                                         <h3 className="font-semibold text-lg mb-4">🏠 Project Details</h3>
 
                                         <div className='mb-3'>
-                                            <InfoRow label="Address" value={viewData.address} />
+                                            <InfoRow label="Project Address" value={viewData.address} />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
 
@@ -124,15 +124,25 @@ function InfoCard({ title, children }) {
 }
 
 function InfoRow({ label, value }) {
+    const isElement = typeof value === "object";
+
     return (
         <div>
             <p className="text-sm text-gray-500">{label}</p>
-            <p className="font-medium text-gray-800">
-                {value || <span className="text-gray-400">Not provided</span>}
-            </p>
+
+            {isElement ? (
+                <div className="font-medium text-gray-800">
+                    {value}
+                </div>
+            ) : (
+                <p className="font-medium text-gray-800">
+                    {value || <span className="text-gray-400">Not provided</span>}
+                </p>
+            )}
         </div>
     );
 }
+
 
 function LinkRow({ label, url, linkText = "Go to link" }) {
     if (!url) return <InfoRow label={label} value="Not provided" />;
