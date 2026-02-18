@@ -39,7 +39,7 @@ export default function View({ open, onClose, viewData }) {
                                         <LinkRow label="Project Drive Files" url={viewData.file_link} linkText="Go to drive" />
                                         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-300">
                                             <InfoRow label="👤 Client Name" value={viewData.client?.name} />
-                                            <InfoRow label="📞 Phone" value={viewData.client?.phone} />
+                                            <InfoRow label="📞 Phone" value={viewData.client?.phone || "N/A"} />
                                             <InfoRow label="When To Start" value={viewData.when_to_start} />
                                             <InfoRow label="Budget" value={`£${viewData.budget}`} />
                                         </div>

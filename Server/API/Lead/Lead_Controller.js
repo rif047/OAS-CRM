@@ -1,5 +1,8 @@
 const Lead = require('./Lead_Model');
 const sanitizeHtml = require('sanitize-html');
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
 
 
 
@@ -18,8 +21,13 @@ const formatRemark = (oldRemark, newRemark, agentName) => {
 
     if (!newRemark || newRemark.trim() === "") return oldRemark;
 
-    const cleanOld = (oldRemark || "").trim();
-    const cleanNew = newRemark;
+    const normalizeLegacyHtml = (html = '') =>
+        String(html)
+            .replace(/<b><b>/g, '<b>')
+            .replace(/<strong><strong>/g, '<strong>');
+
+    const cleanOld = normalizeLegacyHtml(oldRemark || "").trim();
+    const cleanNew = normalizeLegacyHtml(newRemark);
     // const cleanNew = newRemark.trim();
 
     // const header = `${dateStr} - ${agentName}`;
@@ -48,12 +56,13 @@ const sanitizeDescription = (desc) => {
     return sanitizeHtml(desc, {
         allowedTags: [
             'p', 'b', 'i', 'u', 'strong', 'em',
-            'a', 'ul', 'ol', 'li', 'br', 'span'
+            'a', 'ul', 'ol', 'li', 'br', 'span', 'img'
         ],
 
         allowedAttributes: {
             'a': ['href', 'target', 'rel'],
-            'span': ['style']
+            'span': ['style'],
+            'img': ['src', 'alt', 'title']
         },
         allowedStyles: {
             '*': {
@@ -81,6 +90,87 @@ const processDescription = (oldDesc, newDesc, agent, mode = "append") => {
     return formatRemark(oldDesc, sanitized, safeAgent);
 };
 
+const hasMeaningfulText = (html = '') => {
+    return String(html).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
+};
+
+const LEAD_DESCRIPTION_DIR = path.join(__dirname, '../../Assets/Images/leads_description');
+const MAX_COMPRESSED_IMAGE_SIZE = 220 * 1024; // aggressive target ~220KB
+
+const ensureLeadDescriptionDir = () => {
+    if (!fs.existsSync(LEAD_DESCRIPTION_DIR)) {
+        fs.mkdirSync(LEAD_DESCRIPTION_DIR, { recursive: true });
+    }
+};
+
+const compressImageToTarget = async (inputBuffer) => {
+    const source = sharp(inputBuffer, { failOnError: false }).rotate();
+    const metadata = await source.metadata();
+    const originalWidth = metadata.width || 1600;
+
+    let width = originalWidth;
+    let quality = 72;
+    let output = await source.webp({ quality }).toBuffer();
+
+    for (let i = 0; i < 25; i++) {
+        let pipeline = sharp(inputBuffer, { failOnError: false }).rotate();
+        if (width < originalWidth) {
+            pipeline = pipeline.resize({ width, withoutEnlargement: true });
+        }
+
+        output = await pipeline.webp({ quality }).toBuffer();
+        if (output.length <= MAX_COMPRESSED_IMAGE_SIZE) return output;
+
+        if (quality > 28) {
+            quality -= 5;
+        } else {
+            width = Math.max(280, Math.floor(width * 0.82));
+            quality = 52;
+        }
+    }
+
+    // Last fallback to strictly stay under target when source is very complex.
+    while (output.length > MAX_COMPRESSED_IMAGE_SIZE && width > 280) {
+        width = Math.max(280, Math.floor(width * 0.78));
+        output = await sharp(inputBuffer, { failOnError: false })
+            .rotate()
+            .resize({ width, withoutEnlargement: true })
+            .webp({ quality: 34 })
+            .toBuffer();
+    }
+
+    return output;
+};
+
+const UploadDescriptionImages = async (req, res) => {
+    try {
+        const files = req.files || [];
+        if (!files.length) return res.status(400).send('No images uploaded.');
+        if (files.length > 10) return res.status(400).send('Maximum 10 images allowed per upload.');
+
+        ensureLeadDescriptionDir();
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+        const urls = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const compressed = await compressImageToTarget(file.buffer);
+            if (compressed.length > MAX_COMPRESSED_IMAGE_SIZE) {
+                return res.status(400).send('Unable to compress image under 220KB. Try a smaller image.');
+            }
+            const fileName = `lead_desc_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.webp`;
+            const filePath = path.join(LEAD_DESCRIPTION_DIR, fileName);
+
+            fs.writeFileSync(filePath, compressed);
+            urls.push(`${baseUrl}/api/Images/leads_description/${fileName}`);
+        }
+
+        res.status(200).json({ urls });
+    } catch (error) {
+        console.error('Lead description image upload failed:', error);
+        res.status(500).send('Image upload failed.');
+    }
+};
 
 
 
@@ -161,7 +251,7 @@ const Create = async (req, res) => {
 
 let Update = async (req, res) => {
     try {
-        const { client, agent, address, company, service_type, project_details, project_type, planning_permission, structural_services, interior_design, building_regulation, select_builder, help_project_management, budget, when_to_start, file_link, source, description, survey_date, surveyor, stage } = req.body;
+        const { client, agent, address, company, service_type, project_details, project_type, planning_permission, structural_services, interior_design, building_regulation, select_builder, help_project_management, budget, when_to_start, file_link, source, description, survey_date, surveyor, designer, design_deadline, stage } = req.body;
 
         for (let [key, label] of Object.entries({
             company: 'Company',
@@ -192,24 +282,11 @@ let Update = async (req, res) => {
         updateData.source = source;
         updateData.survey_date = survey_date;
         updateData.surveyor = surveyor;
+        updateData.designer = designer;
+        updateData.design_deadline = design_deadline;
         updateData.stage = stage;
-        // updateData.description = processDescription(updateData.description, description, agent, "replace");
         if (description !== undefined && description.trim() !== '') {
-            const today = new Date();
-            const dateStr = today.toLocaleString('en-GB', {
-                timeZone: 'Europe/London',
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            });
-
-            const sanitized = sanitizeDescription(description);
-            const header = `<b><b>${dateStr} - ${agent}</b>`;
-
-            updateData.description = `${sanitized}<br>${header}`;
+            updateData.description = processDescription(updateData.description, description, agent);
         }
 
 
@@ -486,6 +563,29 @@ let Lost_Lead = async (req, res) => {
 };
 
 
+let Comment = async (req, res) => {
+    try {
+        const { agent, description } = req.body;
+
+        if (!hasMeaningfulText(description)) {
+            return res.status(400).send('Description is required!');
+        }
+
+        const updateData = await Lead.findById(req.params.id);
+        if (!updateData) return res.status(404).send('Lead not found');
+
+        updateData.agent = agent || updateData.agent;
+        updateData.description = processDescription(updateData.description, description, agent);
+
+        await updateData.save();
+        res.status(200).json(updateData);
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        res.status(500).send('Error adding comment');
+    }
+};
+
+
 
 let Delete = async (req, res) => {
     await Lead.findByIdAndDelete(req.params.id);
@@ -493,4 +593,4 @@ let Delete = async (req, res) => {
 }
 
 
-module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, In_Quote, In_Survey, Survey_Data, In_Design, In_Review };
+module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review };

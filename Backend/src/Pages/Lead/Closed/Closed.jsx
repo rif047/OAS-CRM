@@ -103,7 +103,7 @@ export default function Closed() {
     const columns = [
         { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
+        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "quote_price", header: "Quote Price", accessorFn: row => `£${row.quote_price || 0}`, maxSize: 50 },
         { key: "final_price", header: "Final Price", accessorFn: row => `£${row.final_price || 0}`, maxSize: 50 },

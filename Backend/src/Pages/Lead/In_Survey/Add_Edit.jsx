@@ -20,7 +20,7 @@ const modalStyle = {
     overflowY: "auto",
 };
 
-export default function AddEdit({ open, onClose, data, refreshData }) {
+export default function AddEdit({ open, onClose, data, refreshData, hideDescriptionOnEdit = false }) {
     const EndPoint = "leads";
 
 
@@ -28,6 +28,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
 
     const [errors, setErrors] = useState({});
     const [clients, setClients] = useState([]);
+    const [surveyors, setSurveyors] = useState([]);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         client: "",
@@ -142,6 +143,15 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
         }
     };
 
+    const fetchUsers = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            setSurveyors(res.data.filter(user => user.userType === "Surveyor"));
+        } catch {
+            toast.error("Failed to fetch users.");
+        }
+    };
+
 
     useEffect(() => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
@@ -171,6 +181,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
 
         setErrors({});
         fetchClients();
+        fetchUsers();
     }, [data]);
 
 
@@ -426,14 +437,23 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
 
 
                     <TextField
+                        select
                         fullWidth
                         size="small"
                         margin="normal"
                         name="surveyor"
                         label="Surveyor*"
-                        value={formData.surveyor}
+                        SelectProps={{ native: true }}
+                        value={formData.surveyor || ""}
                         onChange={handleChange}
-                    />
+                    >
+                        <option value="">Select Surveyor*</option>
+                        {surveyors.map((s, index) => (
+                            <option key={index} value={s.name}>
+                                {s.name} - {s.phone}
+                            </option>
+                        ))}
+                    </TextField>
 
 
 
@@ -450,12 +470,14 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                     />
 
 
-                    <RichTextEditor
-                        value={formData.description}
-                        onChange={(html) =>
-                            setFormData(prev => ({ ...prev, description: html }))
-                        }
-                    />
+                    {!(data?._id && hideDescriptionOnEdit) && (
+                        <RichTextEditor
+                            value={formData.description}
+                            onChange={(html) =>
+                                setFormData(prev => ({ ...prev, description: html }))
+                            }
+                        />
+                    )}
 
 
                     <Button

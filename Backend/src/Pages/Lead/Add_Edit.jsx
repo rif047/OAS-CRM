@@ -20,7 +20,7 @@ const modalStyle = {
     overflowY: "auto",
 };
 
-export default function AddEdit({ open, onClose, data, refreshData }) {
+export default function AddEdit({ open, onClose, data, refreshData, hideDescriptionOnEdit = false }) {
     const EndPoint = "leads";
 
     const [errors, setErrors] = useState({});
@@ -703,12 +703,14 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                     />
 
 
-                    <RichTextEditor
-                        value={formData.description}
-                        onChange={(html) =>
-                            setFormData(prev => ({ ...prev, description: html }))
-                        }
-                    />
+                    {!(data?._id && hideDescriptionOnEdit) && (
+                        <RichTextEditor
+                            value={formData.description}
+                            onChange={(html) =>
+                                setFormData(prev => ({ ...prev, description: html }))
+                            }
+                        />
+                    )}
 
 
                     <Button

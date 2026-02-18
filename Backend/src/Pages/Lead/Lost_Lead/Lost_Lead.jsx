@@ -104,7 +104,7 @@ export default function Lost_Lead() {
         { key: "createdAt", accessorFn: (row) => new Date(row.createdAt).toLocaleDateString(), header: 'Created', maxSize: 80 },
         { key: "lost_date", accessorKey: 'lost_date', header: 'Lost', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
+        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         ...(userType === "Admin"
             ? [

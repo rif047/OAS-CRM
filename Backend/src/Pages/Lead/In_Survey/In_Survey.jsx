@@ -10,6 +10,7 @@ import CachedIcon from '@mui/icons-material/Cached';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../../Components/RichTextEditor";
 
@@ -48,6 +49,9 @@ export default function In_Survey() {
     const [selectedRow, setSelectedRow] = useState(null);
     const [form, setForm] = useState({ agent: "", designer: "", design_deadline: "", description: "" });
     const [designers, setDesigners] = useState([]);
+    const [commentModalOpen, setCommentModalOpen] = useState(false);
+    const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
+    const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
 
     const fetchUsers = async () => {
         try {
@@ -191,6 +195,33 @@ export default function In_Survey() {
         setViewModalOpen(true);
     };
 
+    const handleCommentClick = (row) => {
+        document.activeElement?.blur?.();
+        const user = JSON.parse(localStorage.getItem("user"));
+        setSelectedRow(row);
+        setCommentForm({ agent: user?.name || "", description: "" });
+        setCommentModalOpen(true);
+    };
+
+    const handleCommentSubmit = async () => {
+        if (isRichTextEmpty(commentForm.description)) {
+            toast.error("Description is required.");
+            return;
+        }
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
+                commentForm
+            );
+            toast.success("Comment added successfully.");
+            fetchData();
+            setCommentModalOpen(false);
+        } catch {
+            toast.error("Failed to add comment.");
+        }
+    };
+
     useEffect(() => {
         fetchData();
         fetchUsers();
@@ -199,7 +230,7 @@ export default function In_Survey() {
     const columns = [
         { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => `${row.client?.name} (${row.client?.phone})`, header: 'Client' },
+        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "survey_date", accessorKey: 'survey_date', header: 'Survey Date' },
         { key: "survey_done", accessorKey: 'survey_done', header: 'Done', maxSize: 50 },
@@ -236,6 +267,15 @@ export default function In_Survey() {
                             </>
                         )
                     }
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleCommentClick(row.original); }}
+                        className="ml-2 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200 cursor-pointer"
+                        title="Add Comment"
+                    >
+                        <span className="text-center">Comment</span>
+                        <CommentIcon sx={{ fontSize: 15 }} />
+                    </button>
 
                 </div>
             )
@@ -302,6 +342,7 @@ export default function In_Survey() {
                     onClose={() => setModalOpen(false)}
                     data={editData}
                     refreshData={fetchData}
+                    hideDescriptionOnEdit={true}
                 />
             )}
 
@@ -436,6 +477,37 @@ export default function In_Survey() {
                 <DialogActions>
                     <Button fullWidth variant="contained" onClick={handleSurveySubmit} className="bg-[#272e3f]! hover:bg-gray-700! font-bold!">
                         Submit
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={commentModalOpen}
+                onClose={() => setCommentModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Write Comment</b>
+                </DialogTitle>
+                <DialogContent>
+                    <RichTextEditor
+                        value={commentForm.description}
+                        enableImageUpload
+                        imageUploadUrl={`${import.meta.env.VITE_SERVER_URL}/api/leads/description-images`}
+                        onChange={(html) =>
+                            setCommentForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleCommentSubmit}
+                        className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
+                    >
+                        Submit Comment
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -20,11 +20,12 @@ const modalStyle = {
     overflowY: "auto",
 };
 
-export default function AddEdit({ open, onClose, data, refreshData }) {
+export default function AddEdit({ open, onClose, data, refreshData, hideDescriptionOnEdit = false }) {
     const EndPoint = "leads";
 
     const [errors, setErrors] = useState({});
     const [clients, setClients] = useState([]);
+    const [designers, setDesigners] = useState([]);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         client: "",
@@ -137,6 +138,15 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
         }
     };
 
+    const fetchUsers = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            setDesigners(res.data.filter(user => user.userType === "Designer"));
+        } catch {
+            toast.error("Failed to fetch users.");
+        }
+    };
+
 
     useEffect(() => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
@@ -166,6 +176,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
 
         setErrors({});
         fetchClients();
+        fetchUsers();
     }, [data]);
 
 
@@ -697,13 +708,50 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                         helperText={errors.file_link}
                     />
 
+                    {(formData.status === "In_Design" || data?.status === "In_Design") && (
+                        <>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                margin="normal"
+                                name="design_deadline"
+                                label="Design Deadline*"
+                                type="date"
+                                value={formData.design_deadline || ""}
+                                onChange={handleChange}
+                                InputLabelProps={{ shrink: true }}
+                            />
 
-                    <RichTextEditor
-                        value={formData.description}
-                        onChange={(html) =>
-                            setFormData(prev => ({ ...prev, description: html }))
-                        }
-                    />
+                            <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                margin="normal"
+                                name="designer"
+                                label="Designer*"
+                                SelectProps={{ native: true }}
+                                value={formData.designer || ""}
+                                onChange={handleChange}
+                            >
+                                <option value="">Select Designer*</option>
+                                {designers.map((d, index) => (
+                                    <option key={index} value={d.name}>
+                                        {d.name} - {d.phone}
+                                    </option>
+                                ))}
+                            </TextField>
+                        </>
+                    )}
+
+
+                    {!(data?._id && hideDescriptionOnEdit) && (
+                        <RichTextEditor
+                            value={formData.description}
+                            onChange={(html) =>
+                                setFormData(prev => ({ ...prev, description: html }))
+                            }
+                        />
+                    )}
 
 
                     <Button
