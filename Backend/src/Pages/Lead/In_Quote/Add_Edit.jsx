@@ -398,7 +398,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             options={[
                                 "Yes",
                                 "No",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.planning_permission || null}
                             onChange={(e, newVal) =>
@@ -425,7 +425,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             options={[
                                 "Yes",
                                 "No",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.structural_services || null}
                             onChange={(e, newVal) =>
@@ -455,7 +455,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             options={[
                                 "Yes",
                                 "No",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.interior_design || null}
                             onChange={(e, newVal) =>
@@ -482,7 +482,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             options={[
                                 "Yes",
                                 "No",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.building_regulation || null}
                             onChange={(e, newVal) =>
@@ -512,7 +512,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             options={[
                                 "Yes",
                                 "No",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.select_builder || null}
                             onChange={(e, newVal) =>
@@ -539,7 +539,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                             options={[
                                 "Yes",
                                 "No",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.help_project_management || null}
                             onChange={(e, newVal) =>
@@ -606,7 +606,7 @@ export default function AddEdit({ open, onClose, data, refreshData }) {
                                 "6 Months",
                                 "12 Month",
                                 "18 Month",
-                                "Not Sure",
+                                "Not Appropriate",
                             ]}
                             value={formData.when_to_start || null}
                             onChange={(e, newVal) =>

@@ -185,7 +185,7 @@ export default function In_Quote() {
                 }
             );
 
-            toast.success("Project moved to Project Phase!");
+            toast.success("Project moved to Drawing Phase!");
             fetchData();
             setDrawingModalOpen(false);
         } catch (error) {
@@ -296,9 +296,9 @@ export default function In_Quote() {
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDrawingClick(row.original); }}
                         className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
-                        title="Move to Project Phase"
+                        title="Move to Drawing Phase"
                     >
-                        <span className="text-xs mr-1 text-center">Project Phase</span>
+                        <span className="text-xs mr-1 text-center">Drawing Phase</span>
                         <DesignServicesIcon fontSize="small" />
                     </button>
 
@@ -459,7 +459,7 @@ export default function In_Quote() {
 
             <Dialog open={drawingModalOpen} onClose={() => setDrawingModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle>
-                    <b>Move to Project Phase - {selectedRow?.leadCode?.toUpperCase()}</b>
+                    <b>Move to Drawing Phase - {selectedRow?.leadCode?.toUpperCase()}</b>
                 </DialogTitle>
 
 
@@ -538,7 +538,7 @@ export default function In_Quote() {
                         onClick={handleDrawingSubmit}
                         className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
                     >
-                        Move to Project Phase
+                        Move to Drawing Phase
                     </Button>
                 </DialogActions>
             </Dialog>

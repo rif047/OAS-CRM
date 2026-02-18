@@ -2,9 +2,6 @@ import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
 
 export default function View({ open, onClose, viewData }) {
-    const loggedUser = JSON.parse(localStorage.getItem('user'));
-
-
     return (
         <Modal open={open} onClose={onClose}>
             <div className="fixed inset-0 flex items-center justify-center p-2">
@@ -85,20 +82,18 @@ export default function View({ open, onClose, viewData }) {
                                     </InfoCard>
                                 </div>
 
-                                {(loggedUser?.userType === "Admin" || loggedUser?.userType === "Management") && (
-                                    <div className='mt-6'>
-                                        <InfoCard title="💬 Description">
-                                            <div className="bg-gray-50 p-4 rounded-lg">
-                                                <div
-                                                    className="text-gray-700 description-view"
-                                                    dangerouslySetInnerHTML={{
-                                                        __html: viewData.description || "No description provided"
-                                                    }}
-                                                />
-                                            </div>
-                                        </InfoCard>
-                                    </div>
-                                )}
+                                <div className='mt-6'>
+                                    <InfoCard title="💬 Description">
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <div
+                                                className="text-gray-700 description-view"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: viewData.description || "No description provided"
+                                                }}
+                                            />
+                                        </div>
+                                    </InfoCard>
+                                </div>
 
                             </div>
                         )}

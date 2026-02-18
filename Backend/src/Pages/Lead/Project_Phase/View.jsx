@@ -75,20 +75,21 @@ export default function View({ open, onClose, viewData }) {
                                             </InfoCard>
                                         </div>
 
-                                        <div className='mt-6'>
-                                            <InfoCard title="💬 Description">
-                                                <div className="bg-gray-50 p-4 rounded-lg">
-                                                    <div
-                                                        className="text-gray-700 description-view"
-                                                        dangerouslySetInnerHTML={{
-                                                            __html: viewData.description || "No description provided"
-                                                        }}
-                                                    />
-                                                </div>
-                                            </InfoCard>
-                                        </div>
                                     </div>
                                 )}
+
+                                <div className='mt-6'>
+                                    <InfoCard title="💬 Description">
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <div
+                                                className="text-gray-700 description-view"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: viewData.description || "No description provided"
+                                                }}
+                                            />
+                                        </div>
+                                    </InfoCard>
+                                </div>
                             </div>
                         )}
                     </div>

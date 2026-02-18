@@ -58,7 +58,7 @@ export default function SideMenu() {
 
 
             {(userType === "Admin" || userType === "Management" || userType === "Designer") && (
-                <MenuItem to="/in_design" icon={DesignServices} label="Project Phase" />
+                <MenuItem to="/in_design" icon={DesignServices} label="Drawing Phase" />
             )}
 
 

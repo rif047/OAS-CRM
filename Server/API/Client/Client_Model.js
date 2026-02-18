@@ -11,18 +11,22 @@ const ClientSchema = Mongoose.Schema({
         required: true
     },
     phone: {
-        type: Number,
-        required: true,
-        unique: true
+        type: String,
+        trim: true,
+        default: undefined
     },
     email: {
-        type: String
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: undefined
     },
     company: {
         type: String
     },
     alt_phone: {
-        type: Number
+        type: String,
+        trim: true
     },
     description: {
         type: String,
@@ -30,6 +34,24 @@ const ClientSchema = Mongoose.Schema({
 
 }, { timestamps: true })
 
+ClientSchema.index(
+    { phone: 1 },
+    { unique: true, partialFilterExpression: { phone: { $gt: '' } } }
+);
+
+ClientSchema.index(
+    { email: 1 },
+    { unique: true, partialFilterExpression: { email: { $gt: '' } } }
+);
+
 let Client = Mongoose.model('Client', ClientSchema)
+
+Mongoose.connection.once('open', async () => {
+    try {
+        await Client.syncIndexes();
+    } catch (error) {
+        console.error('Client index sync failed:', error?.message || error);
+    }
+});
 
 module.exports = Client;

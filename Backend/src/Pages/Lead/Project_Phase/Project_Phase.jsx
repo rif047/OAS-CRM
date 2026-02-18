@@ -13,7 +13,7 @@ import RichTextEditor from "../../../Components/RichTextEditor";
 
 
 export default function Project_Phase() {
-    document.title = 'Project Phase';
+    document.title = 'Drawing Phase';
 
 
     const EndPoint = 'leads';

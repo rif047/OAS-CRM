@@ -43,11 +43,12 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
 
     const validate = () => {
         const newErrors = {};
-        const { name, phone, alt_phone } = formData;
+        const { name, phone, alt_phone, email } = formData;
 
         if (!name) newErrors.name = 'Name is required.';
-        if (!/^\+?\d+$/.test(phone || '')) { newErrors.phone = 'Phone number must contain numbers.' }
+        if (phone && !/^\+?\d+$/.test(phone || '')) { newErrors.phone = 'Phone number must contain numbers.' }
         if (alt_phone && !/^\+?\d+$/.test(alt_phone)) { newErrors.alt_phone = "Alternative Phone number must contain numbers." }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { newErrors.email = 'Invalid email format.'; }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -106,7 +107,7 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
                 {[
                     { name: 'name', label: 'Client Name*' },
                     { name: 'company', label: 'Conpanies' },
-                    { name: 'phone', label: 'Phone*' },
+                    { name: 'phone', label: 'Phone' },
                     { name: 'alt_phone', label: 'Alternative Phone' },
                     { name: 'email', label: 'Email' },
                 ].map(({ name, label }) => (

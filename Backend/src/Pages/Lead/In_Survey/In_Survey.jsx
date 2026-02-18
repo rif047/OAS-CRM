@@ -47,6 +47,16 @@ export default function In_Survey() {
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
     const [form, setForm] = useState({ agent: "", designer: "", design_deadline: "", description: "" });
+    const [designers, setDesigners] = useState([]);
+
+    const fetchUsers = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            setDesigners(res.data.filter(user => user.userType === "Designer"));
+        } catch {
+            toast.error("Failed to fetch users");
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -181,7 +191,10 @@ export default function In_Survey() {
         setViewModalOpen(true);
     };
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => {
+        fetchData();
+        fetchUsers();
+    }, [selectedCompany]);
 
     const columns = [
         { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
@@ -210,7 +223,7 @@ export default function In_Survey() {
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
                                     className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2">
-                                    <span className="text-xs mr-1 text-center ">Project Phase</span>
+                                    <span className="text-xs mr-1 text-center ">Drawing Phase</span>
                                     <DesignServicesIcon fontSize="small" />
                                 </button>
 
@@ -301,7 +314,7 @@ export default function In_Survey() {
             )}
 
             <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
-                <DialogTitle><b>Sent To Project Phase</b></DialogTitle>
+                <DialogTitle><b>Sent To Drawing Phase</b></DialogTitle>
 
                 <DialogContent>
                     <div onClick={() => startRef.current.showPicker()}>
@@ -318,14 +331,21 @@ export default function In_Survey() {
                     </div>
 
                     <TextField
+                        select
                         fullWidth
-                        label="Designer"
                         size="small"
                         margin="normal"
-                        multiline
+                        SelectProps={{ native: true }}
                         value={form.designer}
                         onChange={e => setForm({ ...form, designer: e.target.value })}
-                    />
+                    >
+                        <option value="">Select Designer*</option>
+                        {designers.map((d, index) => (
+                            <option key={index} value={d.name}>
+                                {d.name} - {d.phone}
+                            </option>
+                        ))}
+                    </TextField>
 
 
                     {/* <TextField
