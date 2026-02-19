@@ -13,6 +13,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 const BACKUP_DIR = path.join(__dirname, "../backups");
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR);
 
+const resolveBackupFilePath = (inputName) => {
+    const safeName = path.basename(String(inputName || ""));
+    if (!/^backup_\d+\.json\.gz$/.test(safeName)) {
+        return null;
+    }
+    return path.join(BACKUP_DIR, safeName);
+};
+
 
 function toObjectIds(obj) {
     if (Array.isArray(obj)) return obj.map(toObjectIds);
@@ -106,8 +114,10 @@ router.get("/backups", (req, res) => {
 
 
 router.get("/backups/:file", (req, res) => {
-    const file = req.params.file;
-    const filePath = path.join(BACKUP_DIR, file);
+    const filePath = resolveBackupFilePath(req.params.file);
+    if (!filePath) {
+        return res.status(400).json({ message: "Invalid file name" });
+    }
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: "File not found" });
     }
@@ -116,8 +126,10 @@ router.get("/backups/:file", (req, res) => {
 
 
 router.delete("/backups/:file", (req, res) => {
-    const file = req.params.file;
-    const filePath = path.join(BACKUP_DIR, file);
+    const filePath = resolveBackupFilePath(req.params.file);
+    if (!filePath) {
+        return res.status(400).json({ message: "Invalid file name" });
+    }
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: "File not found" });
@@ -157,8 +169,10 @@ router.post("/restore", upload.single("backupFile"), async (req, res) => {
 
 router.post("/restore-from-file/:file", async (req, res) => {
     try {
-        const file = req.params.file;
-        const filePath = path.join(BACKUP_DIR, file);
+        const filePath = resolveBackupFilePath(req.params.file);
+        if (!filePath) {
+            return res.status(400).json({ message: "Invalid file name" });
+        }
 
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ message: "File not found" });

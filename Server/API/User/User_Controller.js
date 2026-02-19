@@ -1,10 +1,11 @@
 let User = require('./User_Model');
 let bcrypt = require("bcrypt");
 
+const PUBLIC_USER_FIELDS = '-password -secret_code';
 
 
 let Users = async (req, res) => {
-    let Data = await User.find();
+    let Data = await User.find().select(PUBLIC_USER_FIELDS).sort({ createdAt: -1 }).lean();
     res.status(200).json(Data);
 }
 
@@ -49,7 +50,8 @@ let Create = async (req, res) => {
         });
 
         await newData.save();
-        res.status(200).json(newData);
+        const safeUser = await User.findById(newData._id).select(PUBLIC_USER_FIELDS).lean();
+        res.status(200).json(safeUser);
         console.log('Created Successfully');
 
     } catch (error) {
@@ -64,7 +66,8 @@ let Create = async (req, res) => {
 
 
 let View = async (req, res) => {
-    let viewOne = await User.findById(req.params.id);
+    let viewOne = await User.findById(req.params.id).select(PUBLIC_USER_FIELDS).lean();
+    if (!viewOne) return res.status(404).send('User not found');
     res.send(viewOne)
 }
 
@@ -92,6 +95,7 @@ let Update = async (req, res) => {
         if (checkEmail) { return res.status(400).send('Email already exists. Use different one.'); }
 
         let updateData = await User.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('User not found'); }
 
         updateData.name = name;
         updateData.phone = phone;
@@ -108,7 +112,8 @@ let Update = async (req, res) => {
         }
 
         await updateData.save();
-        res.status(200).json(updateData);
+        const safeUser = await User.findById(updateData._id).select(PUBLIC_USER_FIELDS).lean();
+        res.status(200).json(safeUser);
         console.log('Updated Successfully');
 
     } catch (error) {
@@ -122,7 +127,8 @@ let Update = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    await User.findByIdAndDelete(req.params.id);
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).send('User not found');
     res.status(200).send('Deleted')
 }
 

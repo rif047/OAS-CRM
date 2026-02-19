@@ -56,6 +56,8 @@ const EmployeeSchema = Mongoose.Schema({
 
 }, { timestamps: true })
 
+EmployeeSchema.index({ createdAt: -1 });
+
 let Employee = Mongoose.model('Employee', EmployeeSchema)
 
 module.exports = Employee;

@@ -3,7 +3,7 @@ let Employee = require('./Employee_Model');
 
 
 let Employees = async (req, res) => {
-    let Data = await Employee.find();
+    let Data = await Employee.find().sort({ createdAt: -1 }).lean();
     res.status(200).json(Data);
 }
 
@@ -133,7 +133,8 @@ let BulkImport = async (req, res) => {
 
 
 let View = async (req, res) => {
-    let viewOne = await Employee.findById(req.params.id);
+    let viewOne = await Employee.findById(req.params.id).lean();
+    if (!viewOne) return res.status(404).send('Employee not found');
     res.send(viewOne)
 }
 
@@ -161,6 +162,7 @@ let Update = async (req, res) => {
 
 
         let updateData = await Employee.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Employee not found'); }
 
         updateData.management = management;
         updateData.name = name;
@@ -190,7 +192,8 @@ let Update = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    await Employee.findByIdAndDelete(req.params.id);
+    const deleted = await Employee.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).send('Employee not found');
     res.status(200).send('Deleted')
 }
 

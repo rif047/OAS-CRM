@@ -10,6 +10,7 @@ import './MUI.css';
 export default function Datatable({ columns, data, onEdit, onView, onDelete, permissions }) {
 
     const excludedFields = ['_id', 'secret_code', 'password', '__v', 'images'];
+    const centeredColumns = new Set(['stage', 'setstatus', 'set_status', 'actions']);
 
     const userType = localStorage.getItem("userType");
 
@@ -40,6 +41,46 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
     };
 
 
+    const normalizedColumns = columns.map((column) => {
+        const normalizedId = String(
+            column.id || column.key || column.accessorKey || column.header || ''
+        ).toLowerCase().replace(/\s+/g, '_');
+        const plainId = normalizedId.replace(/_/g, '');
+        const shouldCenter = centeredColumns.has(normalizedId) || centeredColumns.has(plainId);
+        const isSetStatus = normalizedId === 'set_status' || plainId === 'setstatus';
+
+        if (!shouldCenter) return column;
+
+        return {
+            ...column,
+            ...(isSetStatus && {
+                size: column.size ?? 1,
+                minSize: column.minSize ?? 1,
+                maxSize: column.maxSize ?? 320,
+                grow: false,
+            }),
+            muiTableHeadCellProps: {
+                ...column.muiTableHeadCellProps,
+                align: 'center',
+                sx: {
+                    ...(column.muiTableHeadCellProps?.sx || {}),
+                    ...(isSetStatus ? { width: '1%', whiteSpace: 'nowrap', px: '6px' } : {}),
+                },
+            },
+            muiTableBodyCellProps: {
+                ...column.muiTableBodyCellProps,
+                align: 'center',
+                sx: {
+                    ...(column.muiTableBodyCellProps?.sx || {}),
+                    ...(isSetStatus ? { width: '1%', whiteSpace: 'nowrap', px: '6px' } : {}),
+                    '& > div': {
+                        justifyContent: 'center',
+                    },
+                },
+            },
+        };
+    });
+
     const dynamicColumns = [
         {
             id: 'serial',
@@ -50,18 +91,34 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             },
         },
 
-
-        ...columns,
+        ...normalizedColumns,
         {
             id: 'actions',
             header: 'Actions',
-            maxSize: 130,
+            size: 1,
+            minSize: 1,
+            maxSize: 180,
+            grow: false,
+            muiTableHeadCellProps: {
+                align: 'center',
+            },
+            muiTableBodyCellProps: {
+                align: 'center',
+                sx: {
+                    '& > div': {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                    },
+                },
+            },
             Cell: ({ row }) => (
-                <div className="space-x-2">
+                <div className="tableActionGroup">
 
                     {permissions.canView && (
                         <button
-                            className="actionBtn cursor-pointer px-2 py-0.5 rounded hover:shadow-2xl bg-blue-100 hover:bg-blue-300"
+                            className="actionBtn actionBtnView"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onView(row.original);
@@ -73,7 +130,7 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
 
                     {permissions.canEdit && (
                         <button
-                            className="actionBtn cursor-pointer px-2 py-0.5 rounded hover:shadow-2xl bg-orange-100 hover:bg-orange-300"
+                            className="actionBtn actionBtnEdit"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onEdit(row.original);
@@ -85,7 +142,7 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
 
                     {permissions.canDelete && (
                         <button
-                            className="actionBtn cursor-pointer px-2 py-0.5 rounded hover:shadow-2xl bg-red-100 text-red-500 hover:bg-red-200"
+                            className="actionBtn actionBtnDelete"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onDelete(row.original);
@@ -125,9 +182,21 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             muiPaginationProps={{ rowsPerPageOptions: [10, 50, 100] }}
             enableColumnActions={false}
             enableCellActions={true}
+            muiTablePaperProps={{
+                className: 'crmDataTablePaper',
+            }}
+            muiTableContainerProps={{
+                className: 'crmDataTableContainer',
+            }}
+            muiTopToolbarProps={{
+                className: 'crmDataTableToolbar',
+            }}
+            muiBottomToolbarProps={{
+                className: 'crmDataTableFooter',
+            }}
             renderTopToolbarCustomActions={() =>
                 userType !== "Management" && (
-                    <section>
+                    <section className="crmDataTableExportWrap">
                         <Button className="text-black! capitalize!" onClick={handleExportCsv} startIcon={<IosShareTwoToneIcon />}>
                             Export
                         </Button>
@@ -138,4 +207,3 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         />
     );
 }
-

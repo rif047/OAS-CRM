@@ -1,46 +1,152 @@
-.MuiTableRow-head th {
+.crmDataTablePaper {
+    border: 1px solid #F0F0F0 !important;
+    border-radius: 0.75rem !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    --Paper-shadow: none !important;
+}
+
+.crmDataTablePaper .MuiPaper-root {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.crmDataTableToolbar {
+    min-height: 48px !important;
+    padding: 8px 10px !important;
+    border-bottom: 1px solid #F0F0F0 !important;
+}
+
+.crmDataTableFooter {
+    border-top: 1px solid #F0F0F0 !important;
+    min-height: 48px !important;
+}
+
+.crmDataTableContainer {
+    overflow-x: auto !important;
+}
+
+.crmDataTableContainer table {
+    min-width: 980px !important;
+}
+
+.crmDataTablePaper .MuiTableHead-root .MuiTableCell-root {
     font-family: 'PT Sans', sans-serif !important;
     letter-spacing: 2px !important;
-    font-size: .8rem !important;
+    font-size: 0.78rem !important;
     text-transform: uppercase !important;
     border: 1px solid #F0F0F0 !important;
     background-color: #a6adb8 !important;
     color: black !important;
+    padding: 10px 8px !important;
 }
 
-.MuiTableRow-root td {
-    padding: 7px !important;
+.crmDataTablePaper .MuiTableBody-root .MuiTableCell-root {
+    font-family: 'PT Sans', sans-serif !important;
+    color: #4F5664 !important;
+    border: 1px solid #F0F0F0 !important;
+    padding: 10px 8px !important;
+    vertical-align: middle !important;
 }
 
+.crmDataTablePaper .MuiTableBody-root .MuiTableRow-root:hover {
+    background-color: #f2f2f2 !important;
+}
 
-.MuiTableCell-root:last-child>div:nth-child(1) {
+.crmDataTablePaper .MuiTableCell-root:first-child > div,
+.crmDataTablePaper .MuiTableCell-root:last-child > div {
     display: flex !important;
     justify-content: center !important;
+    align-items: center !important;
 }
 
-.MuiTableCell-root:first-child>div:nth-child(1) {
-    display: flex !important;
-    justify-content: center !important;
-}
-
-.css-1768eoe-MuiTableBody-root tr td:first-child {
+.crmDataTablePaper .MuiTableBody-root tr td:first-child {
     text-align: center !important;
 }
 
-.MuiPaper-elevation2 {
-    --Paper-shadow: 0 !important;
+.crmDataTableExportWrap .MuiButton-root {
+    border-radius: 0.5rem !important;
+    font-weight: 700 !important;
+    padding: 4px 10px !important;
 }
 
-.css-1768eoe-MuiTableBody-root tr td {
-    font-family: 'PT Sans', sans-serif;
-    color: #4F5664;
-    border: 1px solid #F0F0F0 !important;
+.tableActionGroup {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    width: max-content;
+    white-space: nowrap;
+    margin: 0 auto;
 }
 
-.css-10gei56 {
-    margin-top: 20px;
+.actionBtn {
+    width: 32px;
+    height: 28px;
+    min-width: 32px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    border: 0;
+    border-radius: 0.375rem;
+    line-height: 1;
+    cursor: pointer;
 }
 
-.MuiTableCell-root .MuiTableCell-body .MuiTableCell-alignLeft .MuiTableCell-sizeMedium {
-    border: 1px solid #F0F0F0 !important;
+.actionBtn .MuiSvgIcon-root {
+    width: 17px !important;
+    height: 17px !important;
+    font-size: 17px !important;
+}
+
+.actionBtnView {
+    background-color: #dbeafe;
+}
+
+.actionBtnView:hover {
+    background-color: #93c5fd;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.actionBtnEdit {
+    background-color: #ffedd5;
+}
+
+.actionBtnEdit:hover {
+    background-color: #fdba74;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.actionBtnDelete {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.actionBtnDelete:hover {
+    background-color: #fecaca;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+@media (max-width: 768px) {
+    .crmDataTableToolbar,
+    .crmDataTableFooter {
+        padding: 6px 8px !important;
+    }
+
+    .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root,
+    .crmDataTablePaper .MuiTableBody-root .MuiTableCell-root {
+        padding: 8px 6px !important;
+        font-size: 0.78rem !important;
+    }
+
+    .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root {
+        letter-spacing: 1px !important;
+    }
+
+    .tableActionGroup {
+        gap: 6px;
+    }
 }

@@ -1,15 +1,20 @@
 const Express = require("express");
 const Route = Express.Router();
+const asyncHandler = require('../../Middlewares/Async_Handler');
+const validateObjectId = require('../../Middlewares/Validate_ObjectId');
+const authorize = require('../../Middlewares/Authorize');
 const { Clients, Create, BulkImport, View, Update, Delete } = require('./Client_Controller')
 
 
 
-Route.get('/', Clients)
-Route.post('/', Create)
-Route.post('/bulk', BulkImport);
-Route.get('/:id', View)
-Route.patch('/:id', Update)
-Route.delete('/:id', Delete)
+Route.param('id', validateObjectId('id'));
+
+Route.get('/', asyncHandler(Clients))
+Route.post('/', asyncHandler(Create))
+Route.post('/bulk', asyncHandler(BulkImport));
+Route.get('/:id', asyncHandler(View))
+Route.patch('/:id', asyncHandler(Update))
+Route.delete('/:id', authorize('Admin'), asyncHandler(Delete))
 
 
 

@@ -34,6 +34,8 @@ const ClientSchema = Mongoose.Schema({
 
 }, { timestamps: true })
 
+ClientSchema.index({ createdAt: -1 });
+
 ClientSchema.index(
     { phone: 1 },
     { unique: true, partialFilterExpression: { phone: { $gt: '' } } }

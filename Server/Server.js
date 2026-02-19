@@ -10,6 +10,7 @@ const path = require('path');
 const routes = require('./Routes');
 const Login = require('./API/Auth/Login');
 const Check_Login = require('./Middlewares/Check_Login');
+const authorize = require('./Middlewares/Authorize');
 const BackupRoutes = require('./Config/Backup');
 const Search = require('./Config/Search');
 
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 9000;
 
 // Rate limiting
 app.use(rateLimit({ windowMs: 60000, max: 200 }));
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 25 });
 
 
 
@@ -72,11 +74,10 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 // Routes
 app.get('/favicon.ico', (_, res) => res.sendStatus(204));
 app.get('/', (_, res) => res.send('✅ Server Running Successfully...'));
-app.use('/login', Login);
-// app.use('/api', Check_Login, routes);
-app.use('/api', routes);
-app.use('/db', BackupRoutes);
-app.use('/search', Search);
+app.use('/login', loginLimiter, Login);
+app.use('/api', Check_Login, routes);
+app.use('/db', Check_Login, authorize('Admin'), BackupRoutes);
+app.use('/search', Check_Login, authorize('Admin', 'Management'), Search);
 
 
 

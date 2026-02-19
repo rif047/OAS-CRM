@@ -3,27 +3,24 @@ import SideMenuItem from "./SideMenuItem";
 
 export default function SideMenu() {
     return (
-        <aside className="w-full md:w-[250px] h-screen bg-[#0f172a]/90 backdrop-blur-xl border-r border-white/10 flex flex-col">
-            <div className="h-16 flex items-center justify-between px-8 bg-[#192032] border-b border-white/10 backdrop-blur-sm">
+        <aside className="flex h-auto w-full flex-col border-r border-white/10 bg-[#0f172a]/90 backdrop-blur-xl md:h-screen md:w-[250px]">
+            <div className="flex h-14 items-center justify-between border-b border-white/10 bg-[#192032] px-4 backdrop-blur-sm md:h-16 md:px-8">
                 <NavLink to={'/'}
-                    className="text-[22px] font-semibold tracking-wide bg-linear-to-r from-[#f8fafc] via-[#e2e8f0] to-[#88bb99] bg-clip-text text-transparent select-none"
+                    className="select-none bg-linear-to-r from-[#f8fafc] via-[#e2e8f0] to-[#88bb99] bg-clip-text text-[18px] font-semibold tracking-wide text-transparent md:text-[22px]"
                 >
                     KPCL Group
                 </NavLink>
 
-                <span className="px-3 py-[3px] rounded-full bg-white/10 text-gray-300 text-[12px] font-medium tracking-wide border border-white/10 shadow-inner select-none">
+                <span className="select-none rounded-full border border-white/10 bg-white/10 px-2 py-[3px] text-[11px] font-medium tracking-wide text-gray-300 shadow-inner md:px-3 md:text-[12px]">
                     v{import.meta.env.VITE_VERSION}
                 </span>
             </div>
 
-
-
-
-            <div className="flex-1 overflow-y-auto px-3 py-5 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            <div className="max-h-[60vh] flex-1 overflow-y-auto px-3 py-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent md:max-h-none md:py-5">
                 <SideMenuItem />
             </div>
 
-            <div className="h-[55px] relative bg-[#111827] border-t border-white/10 flex items-center justify-center text-[13px] font-medium text-gray-500 overflow-hidden group">
+            <div className="relative hidden h-[55px] items-center justify-center overflow-hidden border-t border-white/10 bg-[#111827] text-[13px] font-medium text-gray-500 group md:flex">
                 <span className="transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-2">
                     © 2025 KPCL Group
                 </span>

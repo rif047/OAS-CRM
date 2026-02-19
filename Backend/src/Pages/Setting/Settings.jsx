@@ -8,10 +8,12 @@ export default function Settings() {
     const [backups, setBackups] = useState([]);
     const [restoreFile, setRestoreFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const token = localStorage.getItem("token");
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
     const loadBackups = async () => {
         try {
-            const res = await fetch(`${API}/backups`);
+            const res = await fetch(`${API}/backups`, { headers: authHeaders });
             const data = await res.json();
             setBackups(data || []);
         } catch (err) {
@@ -29,10 +31,9 @@ export default function Settings() {
         if (!confirm("Create a new backup now? (Server keeps max 10 backups)")) return;
         setLoading(true);
         try {
-            const res = await fetch(`${API}/backup`, { method: "POST" });
-            const json = await res.json();
+            await fetch(`${API}/backup`, { method: "POST", headers: authHeaders });
             await loadBackups();
-        } catch (err) {
+        } catch {
             alert("Backup failed");
         } finally {
             setLoading(false);
@@ -40,8 +41,22 @@ export default function Settings() {
     };
 
 
-    const handleDownload = (name) => {
-        window.open(`${API}/backups/${encodeURIComponent(name)}`, "_blank");
+    const handleDownload = async (name) => {
+        try {
+            const res = await fetch(`${API}/backups/${encodeURIComponent(name)}`, { headers: authHeaders });
+            if (!res.ok) throw new Error("Download failed");
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch {
+            alert("Download failed");
+        }
     };
 
 
@@ -49,10 +64,9 @@ export default function Settings() {
         if (!confirm(`Delete backup "${name}" permanently? This cannot be undone.`)) return;
         setLoading(true);
         try {
-            const res = await fetch(`${API}/backups/${encodeURIComponent(name)}`, { method: "DELETE" });
-            const json = await res.json();
+            await fetch(`${API}/backups/${encodeURIComponent(name)}`, { method: "DELETE", headers: authHeaders });
             await loadBackups();
-        } catch (err) {
+        } catch {
             alert("Delete failed");
         } finally {
             setLoading(false);
@@ -64,10 +78,10 @@ export default function Settings() {
         if (!confirm(`Restore database from "${name}"? This will overwrite current Data.`)) return;
         setLoading(true);
         try {
-            const res = await fetch(`${API}/restore-from-file/${encodeURIComponent(name)}`, { method: "POST" });
+            const res = await fetch(`${API}/restore-from-file/${encodeURIComponent(name)}`, { method: "POST", headers: authHeaders });
             const json = await res.json();
             alert(json.message || "Restored successfully");
-        } catch (err) {
+        } catch {
             alert("Restore failed");
         } finally {
             setLoading(false);
@@ -82,11 +96,11 @@ export default function Settings() {
         try {
             const fd = new FormData();
             fd.append("backupFile", restoreFile);
-            const res = await fetch(`${API}/restore`, { method: "POST", body: fd });
+            const res = await fetch(`${API}/restore`, { method: "POST", headers: authHeaders, body: fd });
             const json = await res.json();
             alert(json.message || "Restored successfully");
             await loadBackups();
-        } catch (err) {
+        } catch {
             alert("Restore failed");
         } finally {
             setLoading(false);

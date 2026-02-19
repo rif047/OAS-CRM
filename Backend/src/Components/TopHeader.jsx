@@ -141,7 +141,7 @@ export default function TopHeader() {
                     part
                 )
             );
-        } catch (err) {
+        } catch {
             return text;
         }
     }, []);
@@ -151,18 +151,18 @@ export default function TopHeader() {
     }, []);
 
     return (
-        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
-            <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between h-[60px]">
-                    <div className="flex items-center gap-2">
+        <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur-md shadow-sm">
+            <div className="mx-auto w-full max-w-[1700px] px-2 sm:px-4 lg:px-5 xl:px-6">
+                <div className="flex min-h-[60px] flex-wrap items-center gap-2 py-2 md:flex-nowrap md:justify-between md:py-0">
+                    <div className="min-w-0 flex items-center gap-2">
                         <EastIcon className="text-gray-600" />
-                        <h1 className="tracking-wide font-semibold text-gray-800 text-base md:text-lg uppercase">
+                        <h1 className="truncate text-sm font-semibold tracking-wide text-gray-800 uppercase sm:text-base md:text-lg">
                             {pathName || "Dashboard"}
                         </h1>
                     </div>
 
                     {(userType === "Admin" || userType === "Management") && (
-                        <div className="flex-1 mx-4 relative max-w-full md:max-w-[400px]" ref={searchRef}>
+                        <div className="order-3 relative w-full md:order-none md:mx-4 md:max-w-[420px] md:flex-1" ref={searchRef}>
                             <div className={`relative transition-all duration-300 rounded-xl ${focused
                                 ? "shadow-[0_0_0_3px_rgba(156,163,175,0.3)] border-gray-400"
                                 : "shadow-sm border-gray-200"
@@ -182,7 +182,7 @@ export default function TopHeader() {
                             {showResults && (
                                 <div
                                     ref={resultsRef}
-                                    className="absolute top-13 left-1/2 w-[320px] md:w-[600px] bg-white border border-gray-200 shadow-2xl rounded-2xl max-h-[70vh] overflow-hidden z-50 animate-fade-down -translate-x-1/2"
+                                    className="animate-fade-down absolute top-13 left-0 z-50 max-h-[70vh] w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl md:left-1/2 md:w-[600px] md:-translate-x-1/2"
                                 >
                                     <div className="overflow-y-auto max-h-[calc(70vh-50px)] p-4">
                                         {loading ? (
@@ -332,7 +332,7 @@ export default function TopHeader() {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-5">
+                    <div className="ml-auto flex items-center gap-3 md:ml-0 md:gap-5">
                         <div className="relative hidden md:flex items-center">
                             <button
                                 onClick={() => setShowLogout(!showLogout)}
@@ -363,7 +363,7 @@ export default function TopHeader() {
                         </div>
 
                         <button
-                            className="md:hidden p-2 border border-gray-300 rounded-md hover:bg-gray-100 transition"
+                            className="rounded-md border border-gray-300 p-2 transition hover:bg-gray-100 md:hidden"
                             onClick={() => setShowMenu(!showMenu)}
                         >
                             <ListIcon />
@@ -373,18 +373,18 @@ export default function TopHeader() {
             </div>
 
             {showMenu && (
-                <div className="md:hidden bg-white border-t border-gray-100 shadow-sm animate-fade-down">
+                <div className="animate-fade-down border-t border-gray-100 bg-white shadow-sm md:hidden">
                     <SideMenu />
-                    <div className="flex justify-around py-3 border-t border-gray-100">
+                    <div className="flex justify-around border-t border-gray-100 py-3">
                         <NavLink
                             to="/settings"
-                            className="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition"
+                            className="rounded-md bg-gray-600 p-2 text-white transition hover:bg-gray-700"
                         >
                             <SettingsOutlinedIcon />
                         </NavLink>
                         <button
                             onClick={handleLogout}
-                            className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                            className="rounded-md bg-red-600 p-2 text-white transition hover:bg-red-700"
                         >
                             <LogoutOutlinedIcon />
                         </button>

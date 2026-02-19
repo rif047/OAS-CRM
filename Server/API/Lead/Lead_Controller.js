@@ -178,8 +178,24 @@ const UploadDescriptionImages = async (req, res) => {
 
 
 
+const ALLOWED_STATUSES = new Set(['Pending', 'In_Quote', 'In_Survey', 'In_Design', 'In_Review', 'Closed', 'Lost_Lead']);
+
 let Leads = async (req, res) => {
-    let Data = await Lead.find().populate(['client']);
+    const { status, company } = req.query;
+    const filter = {};
+
+    if (status && ALLOWED_STATUSES.has(status)) {
+        filter.status = status;
+    }
+    if (company && String(company).trim() !== '') {
+        filter.company = String(company).trim();
+    }
+
+    let Data = await Lead.find(filter)
+        .sort({ createdAt: -1 })
+        .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+        .lean();
+
     res.status(200).json(Data);
 };
 
@@ -262,6 +278,7 @@ let Update = async (req, res) => {
         }
 
         let updateData = await Lead.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.client = client;
         updateData.agent = agent;
@@ -307,6 +324,7 @@ let Update = async (req, res) => {
 
 let View = async (req, res) => {
     let viewOne = await Lead.findById(req.params.id).populate('client');
+    if (!viewOne) return res.status(404).send('Lead not found');
     res.send(viewOne);
 };
 
@@ -377,6 +395,7 @@ let Survey_Data = async (req, res) => {
         const { agent, survey_file, survey_note, survey_done } = req.body;
 
         let updateData = await Lead.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
         updateData.survey_done = survey_done;
@@ -412,6 +431,7 @@ let In_Survey = async (req, res) => {
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
         let updateData = await Lead.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
         updateData.surveyor = surveyor;
@@ -450,6 +470,7 @@ let In_Design = async (req, res) => {
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
         let updateData = await Lead.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
         updateData.design_deadline = design_deadline;
@@ -484,6 +505,7 @@ let In_Review = async (req, res) => {
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
         let updateData = await Lead.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
         updateData.status = 'In_Review';
@@ -518,6 +540,7 @@ let Closed = async (req, res) => {
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
         let updateData = await Lead.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
         updateData.final_price = final_price;
@@ -588,7 +611,8 @@ let Comment = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    await Lead.findByIdAndDelete(req.params.id);
+    const deleted = await Lead.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).send('Lead not found');
     res.send('Deleted')
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
@@ -24,7 +24,6 @@ export default function In_Review() {
         canDelete: false,
     };
 
-    const startRef = useRef(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -46,8 +45,10 @@ export default function In_Review() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
-            const filteredData = response.data.filter(item => item.status === "In_Review");
+            const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
+                params: { status: "In_Review" }
+            });
+            const filteredData = response.data;
 
             const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
             setCompanies(uniqueCompanies);
@@ -56,7 +57,7 @@ export default function In_Review() {
                 ? filteredData
                 : filteredData.filter(item => item.company === selectedCompany);
 
-            setData(filteredByCompany.reverse());
+            setData(filteredByCompany);
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
@@ -120,7 +121,7 @@ export default function In_Review() {
                 await axios.delete(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${row._id}`);
                 toast.success(`${row.leadCode.toUpperCase()} deleted.`);
                 fetchData();
-            } catch (error) {
+            } catch {
                 toast.error('Failed to delete. Please try again.');
             }
         }
@@ -173,9 +174,15 @@ export default function In_Review() {
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "designer", accessorKey: 'designer', header: 'Designer' },
         {
-            key: "actions", header: 'Set Status', maxSize: 80,
+            id: "setStatus",
+            key: "actions",
+            header: 'Set Status',
+            size: 1,
+            minSize: 1,
+            maxSize: 420,
+            grow: false,
             Cell: ({ row }) => (
-                <div className='flex'>
+                <div className='inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
                         className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
@@ -208,53 +215,60 @@ export default function In_Review() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="flex justify-between px-1 md:px-4 py-2 bg-[#4c5165]">
-                <div className='flex justify-center items-center'>
-                    <h1 className="font-bold text-sm md:text-lg text-white mr-2">Under Review</h1>
+            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
+                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
+                    <div className='flex items-center gap-2 text-white'>
+                        <h1 className="text-lg font-bold">Under Review</h1>
 
-                    {loading ? (
-                        <div className="flex justify-center items-center text-white">
-                            <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="10" strokeDashoffset="75" />
-                            </svg>
-                        </div>
-                    ) : <button className="text-gray-200 cursor-pointer" onClick={fetchData}><CachedIcon /></button>
-                    }
+                        {loading ? (
+                            <div className="flex items-center justify-center text-white">
+                                <svg className="h-5 w-5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="10" strokeDashoffset="75" />
+                                </svg>
+                            </div>
+                        ) : (
+                            <button className="text-gray-200 hover:text-white cursor-pointer" onClick={fetchData} title="Refresh">
+                                <CachedIcon />
+                            </button>
+                        )}
 
-                    <span className="ml-2 text-xs text-gray-300">
-                        Total: {data.length}
-                    </span>
+                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
+                            Total: {data.length}
+                        </span>
+                    </div>
+
+                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                        <select
+                            className="rounded-md border border-gray-500 bg-gray-700 px-3 py-2 text-sm text-white focus:outline-none cursor-pointer"
+                            value={selectedCompany}
+                            onChange={(e) => setSelectedCompany(e.target.value)}
+                        >
+                            <option value="All">All Companies</option>
+                            {companies.map((company, index) => (
+                                <option key={index} value={company}>{company}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
-                <select
-                    className="mr-4 px-3 py-1.5 rounded-md bg-gray-700 text-sm text-white border border-gray-500 focus:outline-none cursor-pointer"
-                    value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                >
-                    <option value="All">All Companies</option>
-                    {companies.map((company, index) => (
-                        <option key={index} value={company}>{company}</option>
-                    ))}
-                </select>
-            </section>
-
-            <section>
-                {loading ? (
-                    <div className="flex justify-center py-4">
-                        <svg className="animate-spin p-5 h-32 w-32 text-gray-700" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
-                        </svg>
-                    </div>
-                ) : (
-                    <Datatable
-                        columns={columns}
-                        data={data}
-                        onEdit={handleEdit}
-                        onView={handleView}
-                        onDelete={handleDelete}
-                        permissions={userPermissions}
-                    />
-                )}
+                <div className="p-3 md:p-4">
+                    {loading ? (
+                        <div className="flex justify-center py-10">
+                            <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
+                            </svg>
+                        </div>
+                    ) : (
+                        <Datatable
+                            columns={columns}
+                            data={data}
+                            onEdit={handleEdit}
+                            onView={handleView}
+                            onDelete={handleDelete}
+                            permissions={userPermissions}
+                        />
+                    )}
+                </div>
             </section>
 
             {modalOpen && (
@@ -302,7 +316,7 @@ export default function In_Review() {
                     <RichTextEditor
                         value={form.description}
                         onChange={(html) =>
-                            setForm(prev => ({ ...form, description: html }))
+                            setForm(prev => ({ ...prev, description: html }))
                         }
                     />
 

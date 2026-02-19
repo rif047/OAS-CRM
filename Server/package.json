@@ -5,6 +5,8 @@
   "main": "Server.js",
   "scripts": {
     "start": "nodemon Server.js",
+    "bench:load": "node scripts/load_test.js",
+    "bench:mongo": "node scripts/mongo_benchmark.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

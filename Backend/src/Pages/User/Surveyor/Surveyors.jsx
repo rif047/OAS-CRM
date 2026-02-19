@@ -73,14 +73,47 @@ export default function Surveyors() {
     return (
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
-            <section className="flex justify-between px-1 md:px-4 py-2 bg-[#4c5165]">
-                <div className="flex items-center">
-                    <h1 className="font-bold text-sm md:text-lg text-white mr-2">Surveyor List</h1>
+            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
+                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-2 text-white">
+                        <h1 className="text-lg font-bold">Surveyor List</h1>
 
+                        {loading ? (
+                            <div className="flex items-center justify-center text-white">
+                                <svg
+                                    className="h-5 w-5 animate-spin text-white"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="8"
+                                        stroke="currentColor"
+                                        strokeWidth="3"
+                                        strokeDasharray="10"
+                                        strokeDashoffset="75"
+                                    />
+                                </svg>
+                            </div>
+                        ) : (
+                            <button className="text-gray-200 hover:text-white cursor-pointer" onClick={fetchData} title="Refresh">
+                                <CachedIcon />
+                            </button>
+                        )}
+
+                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
+                            Total: {data.length}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="p-3 md:p-4">
                     {loading ? (
-                        <div className="flex items-center text-white">
+                        <div className="flex justify-center py-10">
                             <svg
-                                className="animate-spin h-6 w-6 text-white"
+                                className="h-20 w-20 animate-spin p-4 text-gray-700"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -91,52 +124,20 @@ export default function Surveyors() {
                                     r="8"
                                     stroke="currentColor"
                                     strokeWidth="3"
-                                    strokeDasharray="10"
-                                    strokeDashoffset="75"
+                                    strokeDasharray="50"
+                                    strokeDashoffset="80"
                                 />
                             </svg>
                         </div>
                     ) : (
-                        <button className="text-gray-200 cursor-pointer" onClick={fetchData}>
-                            <CachedIcon />
-                        </button>
+                        <Datatable
+                            columns={columns}
+                            data={data}
+                            onView={handleView}
+                            permissions={userPermissions}
+                        />
                     )}
-
-                    <span className="ml-2 text-xs text-gray-300">
-                        Total: {data.length}
-                    </span>
                 </div>
-            </section>
-
-
-            <section>
-                {loading ? (
-                    <div className="flex justify-center py-4">
-                        <svg
-                            className="animate-spin p-5 h-32 w-32 text-gray-700"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <circle
-                                cx="12"
-                                cy="12"
-                                r="8"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeDasharray="50"
-                                strokeDashoffset="80"
-                            />
-                        </svg>
-                    </div>
-                ) : (
-                    <Datatable
-                        columns={columns}
-                        data={data}
-                        onView={handleView}
-                        permissions={userPermissions}
-                    />
-                )}
             </section>
 
 

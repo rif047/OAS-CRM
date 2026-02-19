@@ -125,6 +125,10 @@ const LeadSchema = Mongoose.Schema({
     },
 }, { timestamps: true })
 
+LeadSchema.index({ status: 1, company: 1, createdAt: -1 });
+LeadSchema.index({ client: 1 });
+LeadSchema.index({ stage: 1 });
+
 let Lead = Mongoose.model('Lead', LeadSchema)
 
 module.exports = Lead;

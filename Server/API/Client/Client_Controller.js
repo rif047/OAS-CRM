@@ -32,7 +32,7 @@ const normalizeOptionalEmail = (value) => {
 
 
 let Clients = async (req, res) => {
-    let Data = await Client.find();
+    let Data = await Client.find().sort({ createdAt: -1 }).lean();
     res.status(200).json(Data);
 }
 
@@ -169,7 +169,8 @@ let BulkImport = async (req, res) => {
 
 
 let View = async (req, res) => {
-    let viewOne = await Client.findById(req.params.id);
+    let viewOne = await Client.findById(req.params.id).lean();
+    if (!viewOne) return res.status(404).send('Client not found');
     res.send(viewOne)
 }
 
@@ -206,6 +207,7 @@ let Update = async (req, res) => {
 
 
         let updateData = await Client.findById(req.params.id);
+        if (!updateData) { return res.status(404).send('Client not found'); }
 
         updateData.agent = normalizedAgent;
         updateData.name = normalizedName;
@@ -234,7 +236,8 @@ let Update = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    await Client.findByIdAndDelete(req.params.id);
+    const deleted = await Client.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).send('Client not found');
     res.status(200).send('Deleted')
 }
 

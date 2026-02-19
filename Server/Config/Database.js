@@ -7,6 +7,9 @@ Mongoose.set('debug', process.env.NODE_ENV !== 'production');
 Mongoose.connect(process.env.MONGO_URI, {
     serverSelectionTimeoutMS: 5000, // Wait 5 seconds for MongoDB to respond
     socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    maxPoolSize: 50,
+    minPoolSize: 5,
+    autoIndex: process.env.NODE_ENV !== 'production',
 })
     .then(() => console.log('Database Connected Successfully'))
     .catch((err) => {

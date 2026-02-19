@@ -33,7 +33,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
 
     useEffect(() => {
         if (data) {
-            const { password, ...restData } = data;
+            const { password: _password, ...restData } = data;
             setFormData(restData);
         } else {
             setFormData({});
@@ -43,7 +43,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
 
     const validate = () => {
         const newErrors = {};
-        const { name, phone, username, email, password, userType, secret_code, designation, description } = formData;
+        const { name, phone, username, email, password, userType, secret_code, designation } = formData;
 
         if (!name) newErrors.name = 'Name is required.';
         if (!phone) newErrors.phone = 'Phone is required.';

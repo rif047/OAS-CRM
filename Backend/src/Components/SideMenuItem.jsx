@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { NavLink } from "react-router-dom";
 import {
     DashboardOutlined,
@@ -18,7 +19,7 @@ import {
 export default function SideMenu() {
     const userType = localStorage.getItem("userType");
 
-    const MenuItem = ({ to, icon: Icon, label }) => (
+    const MenuItem = ({ to, icon, label }) => (
         <NavLink
             to={to}
             className={({ isActive }) =>
@@ -28,7 +29,7 @@ export default function SideMenu() {
                 }`
             }
         >
-            <Icon fontSize="small" />
+            {icon ? createElement(icon, { fontSize: "small" }) : null}
             <span className="text-[15px] font-medium">{label}</span>
         </NavLink>
     );

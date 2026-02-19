@@ -5,6 +5,9 @@ const mongoose = require("mongoose");
 router.get("/", async (req, res) => {
     const q = req.query.query?.trim();
     if (!q) return res.json([]);
+    if (q.length > 80) return res.status(400).json({ error: "Query too long" });
+
+    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     try {
         const collections = await mongoose.connection.db.listCollections().toArray();
@@ -26,7 +29,7 @@ router.get("/", async (req, res) => {
                     $expr: {
                         $regexMatch: {
                             input: { $toString: `$${key}` },
-                            regex: q,
+                            regex: escapedQuery,
                             options: "i",
                         },
                     },

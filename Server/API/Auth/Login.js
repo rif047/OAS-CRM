@@ -6,6 +6,12 @@ const jwt = require('jsonwebtoken');
 Route.post("/", async (req, res) => {
     try {
         const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ error: 'Server authentication is not configured' });
+        }
 
         const user = await User.findOne({ username: username.toLowerCase() });
         if (!user) {

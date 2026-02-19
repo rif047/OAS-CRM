@@ -1,6 +1,9 @@
 const Express = require("express");
 const Route = Express.Router();
 const multer = require('multer');
+const asyncHandler = require('../../Middlewares/Async_Handler');
+const validateObjectId = require('../../Middlewares/Validate_ObjectId');
+const authorize = require('../../Middlewares/Authorize');
 const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review } = require('./Lead_Controller')
 
 const leadDescriptionUpload = multer({
@@ -31,22 +34,23 @@ const handleLeadDescriptionUpload = (req, res, next) => {
 };
 
 
+Route.param('id', validateObjectId('id'));
 
-Route.get('/', Leads)
-Route.post('/', Create)
-Route.post('/description-images', handleLeadDescriptionUpload, UploadDescriptionImages)
-Route.get('/:id', View)
-Route.patch('/:id', Update)
-Route.delete('/:id', Delete)
-Route.patch('/pending/:id', Pending)
-Route.patch('/in_quote/:id', In_Quote)
-Route.patch('/in_survey/:id', In_Survey)
-Route.patch('/survey_data/:id', Survey_Data)
-Route.patch('/in_design/:id', In_Design)
-Route.patch('/In_review/:id', In_Review)
-Route.patch('/closed/:id', Closed)
-Route.patch('/lost_lead/:id', Lost_Lead)
-Route.patch('/comment/:id', Comment)
+Route.get('/', asyncHandler(Leads))
+Route.post('/', asyncHandler(Create))
+Route.post('/description-images', handleLeadDescriptionUpload, asyncHandler(UploadDescriptionImages))
+Route.get('/:id', asyncHandler(View))
+Route.patch('/:id', asyncHandler(Update))
+Route.delete('/:id', authorize('Admin'), asyncHandler(Delete))
+Route.patch('/pending/:id', asyncHandler(Pending))
+Route.patch('/in_quote/:id', asyncHandler(In_Quote))
+Route.patch('/in_survey/:id', asyncHandler(In_Survey))
+Route.patch('/survey_data/:id', asyncHandler(Survey_Data))
+Route.patch('/in_design/:id', asyncHandler(In_Design))
+Route.patch('/In_review/:id', asyncHandler(In_Review))
+Route.patch('/closed/:id', asyncHandler(Closed))
+Route.patch('/lost_lead/:id', asyncHandler(Lost_Lead))
+Route.patch('/comment/:id', asyncHandler(Comment))
 
 
 
