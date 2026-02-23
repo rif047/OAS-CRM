@@ -39,7 +39,9 @@ export default function SideMenu() {
             <p className="text-xs font-semibold text-gray-500 ml-4 uppercase tracking-wider mb-2">
                 Main
             </p>
-            <MenuItem to="/" icon={DashboardOutlined} label="Dashboard" />
+            {(userType === "Admin" || userType === "Management") && (
+                <MenuItem to="/" icon={DashboardOutlined} label="Dashboard" />
+            )}
 
 
             {(userType === "Admin" || userType === "Management") && (

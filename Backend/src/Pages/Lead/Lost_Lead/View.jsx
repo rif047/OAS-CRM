@@ -1,5 +1,6 @@
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
+import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 
 export default function View({ open, onClose, viewData }) {
     return (
@@ -40,8 +41,8 @@ export default function View({ open, onClose, viewData }) {
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
-                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Lost Date" value={formatDate(viewData.lost_date)} />
+                                            <InfoRow label="Created Date" value={formatLondonDateTime(viewData.createdAt)} />
+                                            <InfoRow label="Lost Date" value={formatLondonDateTime(viewData.lost_date)} />
                                         </div>
                                     </div>
 
@@ -59,7 +60,7 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Scope Of Work" value={viewData.project_details} />
 
                                             <InfoRow label="When To Start" value={viewData.when_to_start} />
-                                            <InfoRow label="Budget" value={`£${viewData.budget}`} />
+                                            <InfoRow label="Budget" value={formatCurrencyGBP(viewData.budget)} />
                                         </div>
                                     </div>
                                 </div>
@@ -133,19 +134,4 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
             </a>
         </div>
     );
-}
-
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-
-    return new Date(dateString).toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
 }

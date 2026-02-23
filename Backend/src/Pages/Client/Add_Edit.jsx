@@ -9,12 +9,13 @@ const modalStyle = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '90%',
-    maxWidth: 500,
-    bgcolor: '#fdfdfd',
-    boxShadow: 24,
-    p: 3,
-    borderRadius: 2,
+    width: 'min(95vw, 620px)',
+    maxHeight: '92vh',
+    bgcolor: '#ffffff',
+    boxShadow: '0 24px 60px rgba(15, 23, 42, 0.18)',
+    p: { xs: 2, sm: 2.5 },
+    borderRadius: 3,
+    border: '1px solid #e5e7eb',
     overflowY: 'auto',
 };
 
@@ -86,15 +87,16 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
 
     return (
         <Modal open={open}>
-            <Box sx={modalStyle} className='max-h-[95vh]'>
+            <Box sx={modalStyle} className='crm-form-modal'>
                 <Box
                     display="flex"
                     justifyContent="space-between"
                     alignItems="center"
                     mb={1}
-                    sx={{ position: 'sticky', top: 0, backgroundColor: '#fdfdfd', zIndex: 10, borderBottom: '1px solid #ddd', pb: 1, }}
+                    className="crm-form-header"
+                    sx={{ position: 'sticky', top: -16, backgroundColor: '#ffffff', zIndex: 10, pb: 1 }}
                 >
-                    <Typography className='font-bold!' variant="h6">
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.05rem" }}>
                         {data ? 'Update Data' : 'Create New'}
                     </Typography>
                     <IconButton onClick={onClose}>
@@ -148,7 +150,7 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
                     variant="contained"
                     onClick={handleSubmit}
                     disabled={loading}
-                    className='bg-[#272e3f]! hover:bg-gray-700! font-bold!'
+                    className='crm-submit-btn'
                 >
                     {data ? 'Update' : 'Create'}
                 </Button>

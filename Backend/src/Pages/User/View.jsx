@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
+import { formatLondonDate, formatLondonDateTime } from '../../utils/formatters';
 
 
 const modalStyle = {
@@ -57,11 +58,11 @@ export default function View({ open, onClose, viewData }) {
                     <Typography>Loading...</Typography>
                 )}
                 <Typography>
-                    <strong>User Created On: </strong>{viewData.createdAt ? new Date(viewData.createdAt).toLocaleDateString() : ''}
+                    <strong>User Created On: </strong>{formatLondonDate(viewData.createdAt, '')}
                 </Typography>
 
                 <Typography>
-                    {viewData.updatedAt && (<><strong>User Updated On: </strong> {new Date(viewData.updatedAt).toLocaleString()}</>)}
+                    {viewData.updatedAt && (<><strong>User Updated On: </strong> {formatLondonDateTime(viewData.updatedAt)}</>)}
                 </Typography>
             </Box>
         </Modal>

@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.TZ = 'Europe/London';
 require('./Config/Database');
 
 const express = require('express');

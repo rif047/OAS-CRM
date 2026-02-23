@@ -1,5 +1,6 @@
 let User = require('./User_Model');
 let bcrypt = require("bcrypt");
+const { isReservedUsername } = require("../../Config/Builtin_Admin");
 
 const PUBLIC_USER_FIELDS = '-password -secret_code';
 
@@ -15,6 +16,7 @@ let Users = async (req, res) => {
 let Create = async (req, res) => {
     try {
         let { name, phone, username, userType, email, password, secret_code, designation, description } = req.body;
+        const normalizedUsername = String(username || "").toLowerCase();
 
         if (!name) { return res.status(400).send('Name is required!'); }
         if (!phone) { return res.status(400).send('Phone is required!'); }
@@ -23,9 +25,10 @@ let Create = async (req, res) => {
         if (!password) { return res.status(400).send('Password is required!'); }
         if (!secret_code) { return res.status(400).send('Secret Code is required!'); }
         if (!designation) { return res.status(400).send('Designation is required!'); }
+        if (isReservedUsername(normalizedUsername)) { return res.status(400).send('Username is reserved. Use different one.'); }
 
 
-        let checkUserName = await User.findOne({ username });
+        let checkUserName = await User.findOne({ username: normalizedUsername });
         if (checkUserName) { return res.status(400).send('Username already exists. Use different one.'); };
 
         let checkPhone = await User.findOne({ phone });
@@ -43,7 +46,7 @@ let Create = async (req, res) => {
             userType,
             designation,
             description,
-            username: username.toLowerCase(),
+            username: normalizedUsername,
             email: email.toLowerCase(),
             password: hashPassword,
             secret_code: secret_code.toLowerCase()
@@ -77,6 +80,7 @@ let View = async (req, res) => {
 let Update = async (req, res) => {
     try {
         let { name, phone, username, userType, email, password, secret_code, designation, description } = req.body;
+        const normalizedUsername = String(username || "").toLowerCase();
 
         if (!name) { return res.status(400).send('Name is required!'); }
         if (!phone) { return res.status(400).send('Phone is required!'); }
@@ -84,8 +88,9 @@ let Update = async (req, res) => {
         if (!email) { return res.status(400).send('Email is required!'); }
         if (!secret_code) { return res.status(400).send('Secret Code is required!'); }
         if (!designation) { return res.status(400).send('Designation is required!'); }
+        if (isReservedUsername(normalizedUsername)) { return res.status(400).send('Username is reserved. Use different one.'); }
 
-        let checkUserName = await User.findOne({ username: username, _id: { $ne: req.params.id } });
+        let checkUserName = await User.findOne({ username: normalizedUsername, _id: { $ne: req.params.id } });
         if (checkUserName) { return res.status(400).send('Username already exists. Use different one.'); }
 
         let checkPhone = await User.findOne({ phone: phone, _id: { $ne: req.params.id } });
@@ -102,7 +107,7 @@ let Update = async (req, res) => {
         updateData.userType = userType;
         updateData.designation = designation;
         updateData.description = description;
-        updateData.username = username.toLowerCase();
+        updateData.username = normalizedUsername;
         updateData.email = email.toLowerCase();
         updateData.secret_code = secret_code.toLowerCase();
 

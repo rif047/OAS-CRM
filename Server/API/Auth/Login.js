@@ -2,6 +2,7 @@ const Route = require("express").Router();
 const User = require("../User/User_Model");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
+const { authenticateBuiltinAdmin } = require("../../Config/Builtin_Admin");
 
 Route.post("/", async (req, res) => {
     try {
@@ -13,7 +14,37 @@ Route.post("/", async (req, res) => {
             return res.status(500).json({ error: 'Server authentication is not configured' });
         }
 
-        const user = await User.findOne({ username: username.toLowerCase() });
+        const normalizedUsername = username.toLowerCase();
+        const builtinAdmin = await authenticateBuiltinAdmin({ username: normalizedUsername, password });
+        if (builtinAdmin) {
+            const token = jwt.sign(
+                {
+                    userId: builtinAdmin._id,
+                    username: builtinAdmin.username,
+                    userType: builtinAdmin.userType,
+                    name: builtinAdmin.name,
+                    phone: builtinAdmin.phone,
+                    email: builtinAdmin.email,
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '1d' }
+            );
+
+            return res.status(200).json({
+                token,
+                user: {
+                    id: builtinAdmin.id,
+                    username: builtinAdmin.username,
+                    userType: builtinAdmin.userType,
+                    name: builtinAdmin.name,
+                    phone: builtinAdmin.phone,
+                    email: builtinAdmin.email,
+                },
+                message: "Login successful!"
+            });
+        }
+
+        const user = await User.findOne({ username: normalizedUsername });
         if (!user) {
             return res.status(401).json({ error: 'Invalid username or password' });
         }

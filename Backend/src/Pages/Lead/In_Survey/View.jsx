@@ -1,5 +1,6 @@
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
+import { formatLondonDateTime } from '../../../utils/formatters';
 
 export default function View({ open, onClose, viewData }) {
     return (
@@ -39,9 +40,9 @@ export default function View({ open, onClose, viewData }) {
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
-                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Updated Date" value={formatDate(viewData.updatedAt)} />
-                                            <InfoRow label="In Servey Date" value={formatDate(viewData.in_survey_date)} />
+                                            <InfoRow label="Created Date" value={formatLondonDateTime(viewData.createdAt)} />
+                                            <InfoRow label="Updated Date" value={formatLondonDateTime(viewData.updatedAt)} />
+                                            <InfoRow label="In Servey Date" value={formatLondonDateTime(viewData.in_survey_date)} />
 
 
                                         </div>
@@ -60,7 +61,7 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Project Type" value={viewData.project_type} />
                                             <InfoRow label="Scope Of Work" value={viewData.project_details} />
                                             <InfoRow label="Surveyor" value={viewData.surveyor} />
-                                            <InfoRow label="Survey Date" value={formatDate(viewData.survey_date)} />
+                                            <InfoRow label="Survey Date" value={formatLondonDateTime(viewData.survey_date)} />
                                             <InfoRow label="Survey Done" value={viewData.survey_done} />
                                             <LinkRow label="Survey File" url={viewData.survey_file} linkText="View" />
                                         </div>
@@ -151,19 +152,4 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
             </a>
         </div>
     );
-}
-
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-
-    return new Date(dateString).toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
 }

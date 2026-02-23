@@ -53,6 +53,14 @@ export default function MainRoutes() {
         delete axios.defaults.headers.common['Authorization'];
     };
 
+    const getDefaultPath = () => {
+        if (!loggedIn) return "/login";
+        if (userType === "Admin" || userType === "Management") return "/";
+        if (userType === "Surveyor") return "/in_survey";
+        if (userType === "Designer") return "/in_design";
+        return "/login";
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -70,10 +78,39 @@ export default function MainRoutes() {
             }
         >
             <Routes>
-                <Route path="/" element={loggedIn ? <Dashboard handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
-                <Route path="/login" element={loggedIn ? <Navigate to="/" replace /> : <Login setLoggedIn={setLoggedIn} />} />
-                <Route path="/in_design" element={loggedIn ? <Project_Phase handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
-                <Route path="/in_survey" element={loggedIn ? <In_Survey handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                <Route
+                    path="/"
+                    element={
+                        loggedIn
+                            ? (userType === "Admin" || userType === "Management")
+                                ? <Dashboard handleLogout={handleLogout} />
+                                : (userType === "Surveyor" || userType === "Designer")
+                                    ? <Navigate to={getDefaultPath()} replace />
+                                    : <Navigate to="/login" replace />
+                            : <Navigate to="/login" replace />
+                    }
+                />
+                <Route path="/login" element={loggedIn && userType ? <Navigate to={getDefaultPath()} replace /> : <Login setLoggedIn={setLoggedIn} />} />
+                <Route
+                    path="/in_design"
+                    element={
+                        loggedIn
+                            ? (userType === "Admin" || userType === "Management" || userType === "Designer")
+                                ? <Project_Phase handleLogout={handleLogout} />
+                                : <Navigate to={getDefaultPath()} replace />
+                            : <Navigate to="/login" replace />
+                    }
+                />
+                <Route
+                    path="/in_survey"
+                    element={
+                        loggedIn
+                            ? (userType === "Admin" || userType === "Management" || userType === "Surveyor")
+                                ? <In_Survey handleLogout={handleLogout} />
+                                : <Navigate to={getDefaultPath()} replace />
+                            : <Navigate to="/login" replace />
+                    }
+                />
 
 
                 {(userType === "Admin" || userType === "Management") && (
@@ -98,7 +135,7 @@ export default function MainRoutes() {
                 )}
 
 
-                <Route path="*" element={<Navigate to={loggedIn ? "/" : "/login"} replace />} />
+                <Route path="*" element={<Navigate to={getDefaultPath()} replace />} />
             </Routes>
         </Suspense>
     );

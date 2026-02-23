@@ -4,13 +4,26 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
+const LONDON_TIME_ZONE = 'Europe/London';
+
+const getLondonDateOnly = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: LONDON_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date());
+
+    const mapped = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${mapped.year}-${mapped.month}-${mapped.day}`;
+};
 
 
 
 const formatRemark = (oldRemark, newRemark, agentName) => {
     const today = new Date();
     const dateStr = today.toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
+        timeZone: LONDON_TIME_ZONE,
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -372,7 +385,7 @@ let In_Quote = async (req, res) => {
         updateData.quote_file = quote_file;
         updateData.stage = "Quote Sent";
         updateData.status = 'In_Quote';
-        updateData.in_quote_date = new Date().toISOString().split('T')[0];
+        updateData.in_quote_date = getLondonDateOnly();
         updateData.description = processDescription(updateData.description, description, agent);
 
 
@@ -438,7 +451,7 @@ let In_Survey = async (req, res) => {
         updateData.survey_date = survey_date;
         updateData.status = 'In_Survey';
         updateData.survey_done = 'No';
-        updateData.in_survey_date = new Date().toISOString().split('T')[0];
+        updateData.in_survey_date = getLondonDateOnly();
         updateData.description = processDescription(updateData.description, description, agent);
 
 
@@ -476,7 +489,7 @@ let In_Design = async (req, res) => {
         updateData.design_deadline = design_deadline;
         updateData.designer = designer;
         updateData.status = 'In_Design';
-        updateData.in_design_date = new Date().toISOString().split('T')[0];
+        updateData.in_design_date = getLondonDateOnly();
         updateData.description = processDescription(updateData.description, description, agent);
 
 
@@ -510,7 +523,7 @@ let In_Review = async (req, res) => {
         updateData.agent = agent;
         updateData.status = 'In_Review';
         updateData.design_file = design_file;
-        updateData.in_review_date = new Date().toISOString().split('T')[0];
+        updateData.in_review_date = getLondonDateOnly();
         updateData.description = processDescription(updateData.description, description, agent);
 
 
@@ -545,7 +558,7 @@ let Closed = async (req, res) => {
         updateData.agent = agent;
         updateData.final_price = final_price;
         updateData.status = 'Closed';
-        updateData.close_date = new Date().toISOString().split('T')[0];
+        updateData.close_date = getLondonDateOnly();
         updateData.description = processDescription(updateData.description, description, agent);
 
 
@@ -571,7 +584,7 @@ let Lost_Lead = async (req, res) => {
 
 
         updateData.agent = agent;
-        updateData.lost_date = new Date().toISOString().split('T')[0];
+        updateData.lost_date = getLondonDateOnly();
         updateData.status = 'Lost_Lead';
         updateData.description = processDescription(updateData.description, description, agent);
 

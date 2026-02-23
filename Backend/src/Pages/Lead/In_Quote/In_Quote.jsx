@@ -13,6 +13,7 @@ import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../../Components/RichTextEditor";
 import 'react-toastify/dist/ReactToastify.css';
+import { formatCurrencyGBP } from '../../../utils/formatters';
 
 export default function In_Quote() {
     document.title = 'In Quote';
@@ -294,7 +295,7 @@ export default function In_Quote() {
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
         { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "quote_price", header: "Quoted P.", accessorFn: row => `£${row.quote_price || 0}`, maxSize: 80 },
+        { key: "quote_price", header: "Quoted P.", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 80 },
         { key: "source", accessorKey: 'source', header: 'Source' },
         {
             key: "stage",

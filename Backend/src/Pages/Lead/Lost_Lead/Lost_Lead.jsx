@@ -7,6 +7,7 @@ import axios from 'axios';
 import CachedIcon from '@mui/icons-material/Cached';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
 import 'react-toastify/dist/ReactToastify.css';
+import { formatLondonDate } from '../../../utils/formatters';
 
 export default function Lost_Lead() {
     document.title = 'Lost Leads';
@@ -96,7 +97,7 @@ export default function Lost_Lead() {
 
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => new Date(row.createdAt).toLocaleDateString(), header: 'Created', maxSize: 80 },
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Created', maxSize: 80 },
         { key: "lost_date", accessorKey: 'lost_date', header: 'Lost', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
         { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },

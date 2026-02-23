@@ -1,402 +1,582 @@
-// import { useEffect, useState } from "react";
-// import axios from "axios";
-// import Layout from "../../Layout";
-// import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, } from "recharts";
-// import CachedIcon from "@mui/icons-material/Cached";
-
-// const formatCurrency = (val) =>
-//     new Intl.NumberFormat("en-GB", {
-//         style: "currency",
-//         currency: "GBP",
-//         minimumFractionDigits: 0,
-//         maximumFractionDigits: 0,
-//     }).format(val);
-
-// export default function Dashboard() {
-//     document.title = "Dashboard";
-//     const [loading, setLoading] = useState(true);
-//     const [stats, setStats] = useState({
-//         pendingPayments: 0,
-//         pendingLeads: 0,
-//         totalClients: 0,
-//         monthClients: 0,
-//         totalEmployees: 0,
-//         monthEmployees: 0,
-//         totalClosed: 0,
-//         monthClosed: 0,
-//         totalLost: 0,
-//         monthLost: 0,
-//     });
-//     const [charts, setCharts] = useState({
-//         closedDaily: [],
-//         lostDaily: [],
-//         incomeMonthly: [],
-//         leadMonthly: [],
-//         sixMonth: [],
-//     });
-
-//     const monthLabel = new Date().toLocaleString("default", {
-//         month: "short",
-//         year: "numeric",
-//     });
-//     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-//     const loadDashboard = async () => {
-//         setLoading(true);
-//         try {
-//             const [leadsRes, clientsRes, employeesRes] = await Promise.all([
-//                 axios.get(`${import.meta.env.VITE_SERVER_URL}/api/leads`),
-//                 axios.get(`${import.meta.env.VITE_SERVER_URL}/api/clients`),
-//                 axios.get(`${import.meta.env.VITE_SERVER_URL}/api/employees`),
-//             ]);
-
-//             const leads = leadsRes.data || [];
-//             const clients = clientsRes.data || [];
-//             const employees = employeesRes.data || [];
-
-//             let pendingPayments = 0,
-//                 pendingLeads = 0,
-//                 totalClosed = 0,
-//                 totalLost = 0,
-//                 monthClosed = 0,
-//                 monthLost = 0;
-
-//             const closedDaily = {},
-//                 lostDaily = {},
-//                 closedMonthly = {},
-//                 lostMonthly = {},
-//                 incomeMonthly = {},
-//                 leadMonthly = {};
-
-//             leads.forEach((lead) => {
-//                 const created = new Date(lead.createdAt);
-//                 const date = lead.date ? new Date(lead.date) : created;
-//                 const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
-//                 const createdKey = `${created.getFullYear()}-${created.getMonth() + 1}`;
-//                 const dateStr = date.toISOString().split("T")[0];
-
-//                 if (lead.status === "PendingPayment") pendingPayments++;
-//                 if (lead.status === "Pending") pendingLeads++;
-
-//                 if (lead.status === "Closed") {
-//                     totalClosed++;
-//                     if (date >= startOfMonth) monthClosed++;
-//                     closedDaily[dateStr] = (closedDaily[dateStr] || 0) + 1;
-//                     closedMonthly[key] = (closedMonthly[key] || 0) + 1;
-//                     incomeMonthly[key] = (incomeMonthly[key] || 0) + (Number(lead.fee) || 0);
-//                 }
-
-//                 if (lead.status === "LeadLost") {
-//                     totalLost++;
-//                     if (date >= startOfMonth) monthLost++;
-//                     lostDaily[dateStr] = (lostDaily[dateStr] || 0) + 1;
-//                     lostMonthly[key] = (lostMonthly[key] || 0) + 1;
-//                 }
-
-//                 leadMonthly[createdKey] = (leadMonthly[createdKey] || 0) + 1;
-//             });
-
-//             const now = new Date();
-//             const months = [];
-//             for (let i = 5; i >= 0; i--) {
-//                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-//                 const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
-//                 months.push({
-//                     month: d.toLocaleString("default", { month: "short" }),
-//                     closed: closedMonthly[key] || 0,
-//                     lost: lostMonthly[key] || 0,
-//                     income: incomeMonthly[key] || 0,
-//                     leads: leadMonthly[key] || 0,
-//                 });
-//             }
-
-//             setStats({
-//                 pendingPayments,
-//                 pendingLeads,
-//                 totalClients: clients.length,
-//                 monthClients: clients.filter((o) => new Date(o.createdAt) >= startOfMonth).length,
-//                 totalEmployees: employees.length,
-//                 monthEmployees: employees.filter((e) => new Date(e.createdAt) >= startOfMonth).length,
-//                 totalClosed,
-//                 monthClosed,
-//                 totalLost,
-//                 monthLost,
-//             });
-
-//             const currentYear = new Date().getFullYear();
-//             const currentMonth = new Date().getMonth();
-//             const filterCurrentMonth = (obj) =>
-//                 Object.entries(obj)
-//                     .filter(([date]) => {
-//                         const d = new Date(date);
-//                         return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
-//                     })
-//                     .map(([date, count]) => ({ date, count }));
-
-//             setCharts({
-//                 closedDaily: filterCurrentMonth(closedDaily),
-//                 lostDaily: filterCurrentMonth(lostDaily),
-//                 incomeMonthly: months.map((m) => ({ month: m.month, income: m.income })),
-//                 leadMonthly: months.map((m) => ({ month: m.month, leads: m.leads })),
-//                 sixMonth: months.map((m) => ({ month: m.month, closed: m.closed, lost: m.lost })),
-//             });
-//         } catch (err) {
-//             console.error(err);
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     useEffect(() => {
-//         loadDashboard();
-//     }, []);
-
-//     const StatCard = ({ icon, title, value, sub }) => (
-//         <div className="bg-white hover:bg-gray-50 transition-all p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md">
-//             <div className="text-3xl mb-1">{icon}</div>
-//             <p className="text-gray-500 text-sm">{title}</p>
-//             <p className="text-3xl font-bold text-gray-800">{value}</p>
-//             {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
-//         </div>
-//     );
-
-//     const SimpleBar = ({ title, color, data, dataKey, format }) => (
-//         <div className="bg-white p-5 rounded-xl shadow border border-gray-400 hover:shadow-md transition">
-//             <h2 className="text-lg font-semibold mb-3 text-gray-800">{title}</h2>
-//             <ResponsiveContainer width="100%" height={250}>
-//                 <BarChart data={data}>
-//                     <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-//                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-//                     <YAxis tick={{ fontSize: 12 }} />
-//                     <Tooltip formatter={(val) => (format === "currency" ? formatCurrency(val) : val)} />
-//                     <Bar dataKey={dataKey} fill={color} radius={[6, 6, 0, 0]} />
-//                 </BarChart>
-//             </ResponsiveContainer>
-//         </div>
-//     );
-
-//     const PieBox = () => {
-//         const colors = ["#0fb07a", "#f87171"];
-//         const monthRate =
-//             stats.monthClosed + stats.monthLost > 0
-//                 ? ((stats.monthClosed / (stats.monthClosed + stats.monthLost)) * 100).toFixed(1)
-//                 : 0;
-//         const totalRate =
-//             stats.totalClosed + stats.totalLost > 0
-//                 ? ((stats.totalClosed / (stats.totalClosed + stats.totalLost)) * 100).toFixed(1)
-//                 : 0;
-
-//         const dataSets = [
-//             {
-//                 label: "Current Month",
-//                 data: [
-//                     { name: "Closed", value: stats.monthClosed },
-//                     { name: "Lost", value: stats.monthLost },
-//                 ],
-//                 rate: monthRate,
-//             },
-//             {
-//                 label: "Overall",
-//                 data: [
-//                     { name: "Closed", value: stats.totalClosed },
-//                     { name: "Lost", value: stats.totalLost },
-//                 ],
-//                 rate: totalRate,
-//             },
-//         ];
-
-//         return (
-//             <div className="bg-white p-5 rounded-xl shadow border border-gray-400 hover:shadow-md transition">
-//                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Closed vs Lost Leads</h2>
-//                 <p className="text-sm text-gray-500 mb-4">Monthly & All-time comparison</p>
-//                 <div className="flex flex-col sm:flex-row justify-around items-center gap-4">
-//                     {dataSets.map((v, i) => (
-//                         <div key={i} className="flex flex-col items-center w-full sm:w-1/2">
-//                             <ResponsiveContainer width="100%" height={220}>
-//                                 <PieChart>
-//                                     <Pie data={v.data} dataKey="value" cx="50%" cy="50%" outerRadius={70} label>
-//                                         {v.data.map((_, i2) => (
-//                                             <Cell key={i2} fill={colors[i2]} />
-//                                         ))}
-//                                     </Pie>
-//                                     <Tooltip />
-//                                 </PieChart>
-//                             </ResponsiveContainer>
-//                             <p className="text-sm text-gray-600 mt-2">
-//                                 {v.label} Success Rate:{" "}
-//                                 <span className="font-semibold text-gray-600">{v.rate}%</span>
-//                             </p>
-//                         </div>
-//                     ))}
-//                 </div>
-//             </div>
-//         );
-//     };
-
-//     const SixMonthBox = () => (
-//         <div className="bg-white p-5 rounded-xl shadow border border-gray-400 hover:shadow-md transition">
-//             <h2 className="text-lg font-semibold text-gray-800">Closed vs Lost Leads</h2>
-//             <p className="text-sm text-gray-500 mb-4">Last 6 Months</p>
-//             <ResponsiveContainer width="100%" height={250}>
-//                 <BarChart data={charts.sixMonth}>
-//                     <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-//                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-//                     <YAxis tick={{ fontSize: 12 }} />
-//                     <Tooltip />
-//                     <Legend />
-//                     <Bar dataKey="closed" fill="#0fb07a" radius={[6, 6, 0, 0]} />
-//                     <Bar dataKey="lost" fill="#f87171" radius={[6, 6, 0, 0]} />
-//                 </BarChart>
-//             </ResponsiveContainer>
-//         </div>
-//     );
-
-//     if (loading)
-//         return (
-//             <Layout>
-//                 <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-//                     <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-//                     <p>Loading Dashboard...</p>
-//                 </div>
-//             </Layout>
-//         );
-
-//     return (
-//         <Layout>
-//             <section className="p-2 space-y-8 min-h-screen">
-//                 <div className="flex justify-between items-center flex-wrap gap-3 mb-6">
-//                     <h1 className="text-2xl font-bold text-gray-800">📊 Dashboard Overview</h1>
-//                     <button
-//                         onClick={loadDashboard}
-//                         disabled={loading}
-//                         className="flex items-center gap-2 border-2 text-gray-700 border-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 cursor-pointer"
-//                     >
-//                         <CachedIcon className={loading ? "animate-spin" : ""} />
-//                         {loading ? "Refreshing..." : "Reload"}
-//                     </button>
-//                 </div>
-
-//                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 [&>*]:border [&>*]:border-gray-400">
-//                     <StatCard icon="⏳" title="Hot Leads (Backlog)" value={stats.pendingLeads} />
-//                     <StatCard icon="💷" title="Pending Payments" value={stats.pendingPayments} />
-//                     <StatCard
-//                         icon="👤"
-//                         title={`Clients (${monthLabel})`}
-//                         value={stats.monthClients}
-//                         sub={`${stats.totalClients} total`}
-//                     />
-//                     <StatCard
-//                         icon="👔"
-//                         title={`Employees (${monthLabel})`}
-//                         value={stats.monthEmployees}
-//                         sub={`${stats.totalEmployees} total`}
-//                     />
-//                 </div>
-
-//                 <div className="bg-white p-5 rounded-xl shadow border hover:shadow-md transition border-gray-400">
-//                     <h2 className="text-lg font-semibold mb-3 text-gray-800">
-//                         Closed vs Lost Leads ({monthLabel})
-//                     </h2>
-//                     <ResponsiveContainer width="100%" height={300}>
-//                         <BarChart
-//                             barCategoryGap="20%"
-//                             data={(() => {
-//                                 const map = {};
-//                                 charts.closedDaily.forEach((i) => {
-//                                     map[i.date] = { date: i.date, closed: i.count, lost: 0 };
-//                                 });
-//                                 charts.lostDaily.forEach((i) => {
-//                                     if (!map[i.date]) map[i.date] = { date: i.date, closed: 0, lost: 0 };
-//                                     map[i.date].lost = i.count;
-//                                 });
-
-//                                 const year = new Date().getFullYear();
-//                                 const month = new Date().getMonth();
-//                                 const days = new Date(year, month + 1, 0).getDate();
-//                                 const data = [];
-
-//                                 for (let d = 1; d <= days; d++) {
-//                                     const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(
-//                                         2,
-//                                         "0"
-//                                     )}`;
-//                                     const item = map[date] || { date, closed: 0, lost: 0 };
-//                                     const total = item.closed + item.lost;
-//                                     const rate = total ? ((item.closed / total) * 100).toFixed(1) : 0;
-//                                     data.push({ ...item, rate });
-//                                 }
-
-//                                 return data;
-//                             })()}
-//                         >
-//                             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-//                             <XAxis
-//                                 dataKey="date"
-//                                 tickFormatter={(v) => new Date(v).getDate()}
-//                                 tick={{ fontSize: 10 }}
-//                                 height={40}
-//                             />
-//                             <YAxis tick={{ fontSize: 11 }} />
-//                             <Tooltip
-//                                 formatter={(value, name, props) => {
-//                                     const key = props?.dataKey;
-//                                     const label =
-//                                         key === "closed" ? "Closed" :
-//                                             key === "lost" ? "Lost" :
-//                                                 key === "rate" ? "Success Rate" :
-//                                                     key;
-//                                     return key === "rate" ? [`${value}%`, label] : [value, label];
-//                                 }}
-//                                 labelFormatter={(label) =>
-//                                     new Date(label).toLocaleDateString("en-GB", {
-//                                         day: "numeric",
-//                                         month: "short",
-//                                     })
-//                                 }
-//                                 cursor={{ fill: "rgba(0,0,0,0.05)" }}
-//                             />
-
-//                             <Legend />
-//                             <Bar dataKey="closed" name="Closed" fill="#0fb07a" radius={[6, 6, 0, 0]} />
-//                             <Bar dataKey="lost" name="Lost" fill="#f87171" radius={[6, 6, 0, 0]} />
-//                         </BarChart>
-//                     </ResponsiveContainer>
-//                 </div>
-
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <PieBox />
-//                     <SixMonthBox />
-//                 </div>
-
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <SimpleBar
-//                         title="💵 Income (Last 6 Months)"
-//                         color="#64748b"
-//                         data={charts.incomeMonthly}
-//                         dataKey="income"
-//                         format="currency"
-//                     />
-//                     <SimpleBar
-//                         title="🗓️ Collected Leads (Last 6 Months)"
-//                         color="#0ea5e9"
-//                         data={charts.leadMonthly}
-//                         dataKey="leads"
-//                     />
-//                 </div>
-//             </section>
-//         </Layout>
-//     );
-// }
-
-
-
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { NavLink } from "react-router-dom";
 import Layout from "../../Layout";
+import CachedIcon from "@mui/icons-material/Cached";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CurrencyPoundIcon from "@mui/icons-material/CurrencyPound";
+import Groups2Icon from "@mui/icons-material/Groups2";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    CartesianGrid,
+    ComposedChart,
+    Line,
+    PieChart,
+    Pie,
+    Cell,
+    Legend,
+} from "recharts";
+import { formatCurrencyGBP, formatLondonDateShort, formatLondonDateTime, LONDON_TIME_ZONE } from "../../utils/formatters";
+
+const STATUS_META = {
+    Pending: { label: "Leads", color: "#64748b" },
+    In_Quote: { label: "In Quotation", color: "#0ea5e9" },
+    In_Survey: { label: "Site Survey", color: "#06b6d4" },
+    In_Design: { label: "Drawing Phase", color: "#a855f7" },
+    In_Review: { label: "Under Review", color: "#f59e0b" },
+    Closed: { label: "Closed", color: "#22c55e" },
+    Lost_Lead: { label: "Lost Lead", color: "#ef4444" },
+};
+
+const PIPELINE_STATUSES = ["Pending", "In_Quote", "In_Survey", "In_Design", "In_Review"];
+
+const parseDate = (value) => {
+    if (!value) return null;
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split("-").map(Number);
+        return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const parseAmount = (value) => {
+    if (value === null || value === undefined) return 0;
+    const cleaned = String(value).replace(/[^0-9.-]/g, "");
+    const amount = Number(cleaned);
+    return Number.isFinite(amount) ? amount : 0;
+};
+
+const getLondonDateParts = (value = new Date()) => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: LONDON_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(value);
+
+    const mapped = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return {
+        year: Number(mapped.year),
+        month: Number(mapped.month),
+        day: Number(mapped.day),
+    };
+};
+
+const getLondonToday = () => {
+    const { year, month, day } = getLondonDateParts();
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+};
+
+const formatDate = (value) => {
+    const parsed = parseDate(value);
+    if (!parsed) return "N/A";
+    return formatLondonDateShort(parsed);
+};
+
+const daysLeft = (value) => {
+    const parsed = parseDate(value);
+    if (!parsed) return null;
+    const today = getLondonToday();
+    today.setUTCHours(0, 0, 0, 0);
+    const target = new Date(parsed);
+    target.setUTCHours(0, 0, 0, 0);
+    return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+};
+
+const monthKey = (date) => `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`;
 
 export default function Dashboard() {
+    document.title = "Dashboard";
+
+    const userType = localStorage.getItem("userType");
+    const canAccess = userType === "Admin" || userType === "Management";
+
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [dashboardData, setDashboardData] = useState({ leads: [], clients: [], users: [] });
+    const [lastUpdated, setLastUpdated] = useState(null);
+
+    const loadDashboard = async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const [leadRes, clientRes, userRes] = await Promise.all([
+                axios.get(`${import.meta.env.VITE_SERVER_URL}/api/leads`),
+                axios.get(`${import.meta.env.VITE_SERVER_URL}/api/clients`),
+                axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`),
+            ]);
+
+            setDashboardData({
+                leads: Array.isArray(leadRes.data) ? leadRes.data : [],
+                clients: Array.isArray(clientRes.data) ? clientRes.data : [],
+                users: Array.isArray(userRes.data) ? userRes.data : [],
+            });
+            setLastUpdated(new Date());
+        } catch {
+            setError("Unable to load dashboard data. Please refresh.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (canAccess) {
+            loadDashboard();
+        }
+    }, [canAccess]);
+
+    const metrics = useMemo(() => {
+        const { leads, clients, users } = dashboardData;
+        const londonToday = getLondonToday();
+        const startOfMonth = new Date(Date.UTC(londonToday.getUTCFullYear(), londonToday.getUTCMonth(), 1, 0, 0, 0, 0));
+
+        const statusCounts = Object.keys(STATUS_META).reduce((acc, key) => {
+            acc[key] = 0;
+            return acc;
+        }, {});
+
+        const companyCounter = {};
+        const monthlyCounter = {};
+        const cycleDurations = [];
+
+        const months = [];
+        for (let i = 5; i >= 0; i -= 1) {
+            const d = new Date(Date.UTC(londonToday.getUTCFullYear(), londonToday.getUTCMonth() - i, 1, 12, 0, 0, 0));
+            months.push({
+                key: monthKey(d),
+                label: new Intl.DateTimeFormat("en-GB", { timeZone: LONDON_TIME_ZONE, month: "short" }).format(d),
+                leads: 0,
+                closed: 0,
+                lost: 0,
+                revenue: 0,
+            });
+        }
+        const monthMap = Object.fromEntries(months.map((m) => [m.key, m]));
+
+        leads.forEach((lead) => {
+            const status = lead.status;
+            if (statusCounts[status] !== undefined) {
+                statusCounts[status] += 1;
+            }
+
+            const company = lead.company?.trim?.();
+            if (company) companyCounter[company] = (companyCounter[company] || 0) + 1;
+
+            const createdAt = parseDate(lead.createdAt);
+            if (createdAt) {
+                const mk = monthKey(createdAt);
+                if (monthMap[mk]) monthMap[mk].leads += 1;
+                if (createdAt >= startOfMonth) {
+                    monthlyCounter.newLeads = (monthlyCounter.newLeads || 0) + 1;
+                }
+            }
+
+            if (status === "Closed") {
+                const closeAt = parseDate(lead.close_date) || parseDate(lead.updatedAt);
+                if (closeAt) {
+                    const mk = monthKey(closeAt);
+                    if (monthMap[mk]) {
+                        monthMap[mk].closed += 1;
+                        monthMap[mk].revenue += parseAmount(lead.final_price);
+                    }
+                    if (closeAt >= startOfMonth) {
+                        monthlyCounter.closedThisMonth = (monthlyCounter.closedThisMonth || 0) + 1;
+                    }
+                }
+
+                if (createdAt && closeAt) {
+                    const days = Math.ceil((closeAt - createdAt) / (1000 * 60 * 60 * 24));
+                    if (days >= 0) cycleDurations.push(days);
+                }
+            }
+
+            if (status === "Lost_Lead") {
+                const lostAt = parseDate(lead.lost_date) || parseDate(lead.updatedAt);
+                if (lostAt) {
+                    const mk = monthKey(lostAt);
+                    if (monthMap[mk]) monthMap[mk].lost += 1;
+                    if (lostAt >= startOfMonth) {
+                        monthlyCounter.lostThisMonth = (monthlyCounter.lostThisMonth || 0) + 1;
+                    }
+                }
+            }
+        });
+
+        const activePipeline = PIPELINE_STATUSES.reduce((sum, key) => sum + (statusCounts[key] || 0), 0);
+        const closedCount = statusCounts.Closed || 0;
+        const lostCount = statusCounts.Lost_Lead || 0;
+        const decidedCount = closedCount + lostCount;
+        const conversionRate = decidedCount > 0 ? ((closedCount / decidedCount) * 100).toFixed(1) : "0.0";
+        const avgCycle = cycleDurations.length
+            ? Math.round(cycleDurations.reduce((sum, day) => sum + day, 0) / cycleDurations.length)
+            : 0;
+
+        const quotedPipelineValue = leads
+            .filter((lead) => ["In_Quote", "In_Survey", "In_Design", "In_Review"].includes(lead.status))
+            .reduce((sum, lead) => sum + parseAmount(lead.quote_price), 0);
+
+        const closedRevenue = leads
+            .filter((lead) => lead.status === "Closed")
+            .reduce((sum, lead) => sum + parseAmount(lead.final_price), 0);
+
+        const usersByType = users.reduce((acc, user) => {
+            const key = user.userType || "Other";
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        const recentLeads = [...leads]
+            .sort((a, b) => parseDate(b.createdAt) - parseDate(a.createdAt))
+            .slice(0, 8);
+
+        const pendingItems = leads
+            .filter((lead) => lead.status === "In_Survey" || lead.status === "In_Design")
+            .map((lead) => {
+                const targetDate = lead.status === "In_Survey" ? lead.survey_date : lead.design_deadline;
+                return {
+                    _id: lead._id,
+                    leadCode: lead.leadCode,
+                    client: lead.client?.name || "N/A",
+                    company: lead.company || "N/A",
+                    status: STATUS_META[lead.status]?.label || lead.status,
+                    targetDate,
+                    dueInDays: daysLeft(targetDate),
+                };
+            })
+            .filter((item) => item.targetDate && item.dueInDays !== null)
+            .sort((a, b) => parseDate(a.targetDate) - parseDate(b.targetDate))
+            .slice(0, 7);
+
+        return {
+            statusCounts,
+            activePipeline,
+            conversionRate,
+            avgCycle,
+            quotedPipelineValue,
+            closedRevenue,
+            newLeadsThisMonth: monthlyCounter.newLeads || 0,
+            closedThisMonth: monthlyCounter.closedThisMonth || 0,
+            lostThisMonth: monthlyCounter.lostThisMonth || 0,
+            totalClients: clients.length,
+            newClientsThisMonth: clients.filter((client) => parseDate(client.createdAt) >= startOfMonth).length,
+            totalUsers: users.length,
+            usersByType,
+            topCompanies: Object.entries(companyCounter)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6)
+                .map(([name, value]) => ({ name, value })),
+            monthTrend: months,
+            pipelineChart: Object.entries(STATUS_META).map(([key, meta]) => ({
+                name: meta.label,
+                value: statusCounts[key] || 0,
+                fill: meta.color,
+            })),
+            teamChart: [
+                { name: "Admin", value: usersByType.Admin || 0, fill: "#334155" },
+                { name: "Management", value: usersByType.Management || 0, fill: "#475569" },
+                { name: "Surveyor", value: usersByType.Surveyor || 0, fill: "#06b6d4" },
+                { name: "Designer", value: usersByType.Designer || 0, fill: "#a855f7" },
+            ].filter((item) => item.value > 0),
+            recentLeads,
+            pendingItems,
+        };
+    }, [dashboardData]);
+
+    if (!canAccess) {
+        return (
+            <Layout>
+                <div className="rounded-xl border border-red-100 bg-red-50 p-5 text-red-800">
+                    Dashboard access is limited to Admin and Management users.
+                </div>
+            </Layout>
+        );
+    }
+
     return (
         <Layout>
-            <div>Exciting Dashboard Coming Soon..</div>
+            <section className="space-y-4 pb-2">
+                <div className="overflow-hidden rounded-xl border border-[#48506a] bg-linear-to-r from-[#4c5165] to-[#2f3548] shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-5">
+                        <div>
+                            <h1 className="text-xl font-bold text-white">Business Dashboard</h1>
+                            <p className="text-sm text-gray-200">
+                                KPCL lead pipeline, revenue, team distribution and upcoming workload.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {lastUpdated && (
+                                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-gray-100">
+                                    Updated: {formatLondonDateTime(lastUpdated)}
+                                </span>
+                            )}
+                            <button
+                                onClick={loadDashboard}
+                                disabled={loading}
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <CachedIcon className={loading ? "animate-spin" : ""} fontSize="small" />
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
+                {error && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {error}
+                    </div>
+                )}
+
+                {loading && (
+                    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></span>
+                        Loading latest dashboard metrics...
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-700">
+                            <PendingActionsIcon fontSize="small" />
+                            <p className="text-sm font-semibold">Active Pipeline</p>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{metrics.activePipeline}</p>
+                        <p className="text-xs text-gray-500">Across Leads to Under Review</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-700">
+                            <AssignmentTurnedInIcon fontSize="small" />
+                            <p className="text-sm font-semibold">Win Rate</p>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{metrics.conversionRate}%</p>
+                        <p className="text-xs text-gray-500">
+                            Closed {metrics.statusCounts.Closed || 0} vs Lost {metrics.statusCounts.Lost_Lead || 0}
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-700">
+                            <CurrencyPoundIcon fontSize="small" />
+                            <p className="text-sm font-semibold">Closed Revenue</p>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{formatCurrencyGBP(metrics.closedRevenue)}</p>
+                        <p className="text-xs text-gray-500">Quoted pipeline: {formatCurrencyGBP(metrics.quotedPipelineValue)}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-700">
+                            <Groups2Icon fontSize="small" />
+                            <p className="text-sm font-semibold">Clients</p>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{metrics.totalClients}</p>
+                        <p className="text-xs text-gray-500">+{metrics.newClientsThisMonth} this month</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-700">
+                            <TrendingUpIcon fontSize="small" />
+                            <p className="text-sm font-semibold">Avg. Close Cycle</p>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{metrics.avgCycle}d</p>
+                        <p className="text-xs text-gray-500">
+                            New leads: {metrics.newLeadsThisMonth} this month
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:col-span-2">
+                        <div className="mb-2">
+                            <h2 className="text-base font-bold text-gray-900">Monthly Lead Performance</h2>
+                            <p className="text-xs text-gray-500">Last 6 months: leads created, closed, lost and closed revenue.</p>
+                        </div>
+                        <div className="h-[290px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={metrics.monthTrend}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} allowDecimals={false} />
+                                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                                    <Tooltip
+                                        formatter={(value, key) => {
+                                            if (key === "revenue") return formatCurrencyGBP(value);
+                                            return value;
+                                        }}
+                                    />
+                                    <Legend />
+                                    <Bar yAxisId="left" dataKey="leads" name="New Leads" fill="#64748b" radius={[4, 4, 0, 0]} />
+                                    <Bar yAxisId="left" dataKey="closed" name="Closed" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                                    <Bar yAxisId="left" dataKey="lost" name="Lost" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                    <Line yAxisId="right" type="monotone" dataKey="revenue" name="Revenue" stroke="#0ea5e9" strokeWidth={2} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2">
+                            <h2 className="text-base font-bold text-gray-900">Team Mix</h2>
+                            <p className="text-xs text-gray-500">Total users: {metrics.totalUsers}</p>
+                        </div>
+                        <div className="h-[290px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={metrics.teamChart}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="48%"
+                                        outerRadius={78}
+                                        innerRadius={48}
+                                    >
+                                        {metrics.teamChart.map((entry) => (
+                                            <Cell key={entry.name} fill={entry.fill} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend verticalAlign="bottom" height={36} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:col-span-2">
+                        <div className="mb-3">
+                            <h2 className="text-base font-bold text-gray-900">Pipeline Distribution</h2>
+                            <p className="text-xs text-gray-500">Current volume by status.</p>
+                        </div>
+                        <div className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={metrics.pipelineChart} layout="vertical" margin={{ left: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        width={110}
+                                        tick={{ fontSize: 12 }}
+                                        tickFormatter={(value) => value.replace(" ", "\u00A0")}
+                                    />
+                                    <Tooltip />
+                                    <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                                        {metrics.pipelineChart.map((item) => (
+                                            <Cell key={item.name} fill={item.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <h2 className="mb-2 text-base font-bold text-gray-900">Top Companies</h2>
+                        <p className="mb-3 text-xs text-gray-500">By total lead volume.</p>
+                        <div className="space-y-2">
+                            {metrics.topCompanies.length === 0 && (
+                                <p className="text-sm text-gray-500">No company data yet.</p>
+                            )}
+                            {metrics.topCompanies.map((item, index) => (
+                                <div key={item.name} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-gray-500">#{index + 1}</span>
+                                        <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                                    </div>
+                                    <span className="rounded-full bg-[#4c5165] px-2 py-0.5 text-xs font-semibold text-white">
+                                        {item.value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <div className="border-b border-gray-100 px-4 py-3">
+                            <h2 className="text-base font-bold text-gray-900">Upcoming Deadlines</h2>
+                            <p className="text-xs text-gray-500">Survey and drawing phase schedule.</p>
+                        </div>
+                        <div className="max-h-[340px] overflow-auto px-4 py-2">
+                            {metrics.pendingItems.length === 0 ? (
+                                <p className="py-6 text-sm text-gray-500">No scheduled deadlines available.</p>
+                            ) : (
+                                metrics.pendingItems.map((item) => (
+                                    <div key={item._id} className="flex items-center justify-between border-b border-gray-100 py-3 last:border-b-0">
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">{item.leadCode} - {item.client}</p>
+                                            <p className="text-xs text-gray-500">{item.company} | {item.status}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-semibold text-gray-700">{formatDate(item.targetDate)}</p>
+                                            <p className={`text-xs ${item.dueInDays < 0 ? "text-red-600" : item.dueInDays <= 2 ? "text-amber-600" : "text-gray-500"}`}>
+                                                {item.dueInDays < 0 ? `${Math.abs(item.dueInDays)}d overdue` : `${item.dueInDays}d left`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <div className="border-b border-gray-100 px-4 py-3">
+                            <h2 className="text-base font-bold text-gray-900">Recent Leads</h2>
+                            <p className="text-xs text-gray-500">Latest created lead entries.</p>
+                        </div>
+                        <div className="max-h-[340px] overflow-auto px-4 py-2">
+                            {metrics.recentLeads.length === 0 ? (
+                                <p className="py-6 text-sm text-gray-500">No lead records yet.</p>
+                            ) : (
+                                metrics.recentLeads.map((lead) => (
+                                    <div key={lead._id} className="flex items-center justify-between border-b border-gray-100 py-3 last:border-b-0">
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">{lead.leadCode || "N/A"}</p>
+                                            <p className="text-xs text-gray-500">{lead.client?.name || "Unknown Client"} | {lead.company || "N/A"}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                                                {STATUS_META[lead.status]?.label || lead.status || "N/A"}
+                                            </span>
+                                            <p className="mt-1 text-xs text-gray-500">{formatDate(lead.createdAt)}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <span>Quick Links:</span>
+                    <NavLink to="/leads" className="rounded-full bg-gray-200 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-300">
+                        Leads
+                    </NavLink>
+                    <NavLink to="/in_quote" className="rounded-full bg-gray-200 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-300">
+                        In Quotation
+                    </NavLink>
+                    <NavLink to="/in_survey" className="rounded-full bg-gray-200 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-300">
+                        Site Survey
+                    </NavLink>
+                    <NavLink to="/in_design" className="rounded-full bg-gray-200 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-300">
+                        Drawing Phase
+                    </NavLink>
+                    <NavLink to="/in_review" className="rounded-full bg-gray-200 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-300">
+                        Under Review
+                    </NavLink>
+                </div>
+            </section>
         </Layout>
-    )
+    );
 }

@@ -1,5 +1,6 @@
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
+import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 
 export default function View({ open, onClose, viewData }) {
     return (
@@ -41,9 +42,9 @@ export default function View({ open, onClose, viewData }) {
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
                                             <InfoRow label="Status" value={viewData.status} />
-                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Updated Date" value={formatDate(viewData.updatedAt)} />
-                                            <InfoRow label="Quote Send" value={formatDate(viewData.in_quote_date)} />
+                                            <InfoRow label="Created Date" value={formatLondonDateTime(viewData.createdAt)} />
+                                            <InfoRow label="Updated Date" value={formatLondonDateTime(viewData.updatedAt)} />
+                                            <InfoRow label="Quote Send" value={formatLondonDateTime(viewData.in_quote_date)} />
                                         </div>
                                     </div>
 
@@ -59,7 +60,7 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Property Type" value={viewData.service_type} />
                                             <InfoRow label="Project Type" value={viewData.project_type} />
                                             <InfoRow label="Scope Of Work" value={viewData.project_details} />
-                                            <InfoRow label="Quoted Price" value={`£${viewData.quote_price}`} />
+                                            <InfoRow label="Quoted Price" value={formatCurrencyGBP(viewData.quote_price)} />
                                             <LinkRow label="Quote File" url={viewData.quote_file} linkText="View" />
                                         </div>
                                     </div>
@@ -134,19 +135,4 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
             </a>
         </div>
     );
-}
-
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-
-    return new Date(dateString).toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
 }

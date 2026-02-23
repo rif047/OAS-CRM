@@ -54,6 +54,11 @@ export default function In_Survey() {
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
 
     const fetchUsers = async () => {
+        if (!isAdminOrManagement) {
+            setDesigners([]);
+            return;
+        }
+
         try {
             const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
             setDesigners(res.data.filter(user => user.userType === "Designer"));
@@ -226,7 +231,9 @@ export default function In_Survey() {
 
     useEffect(() => {
         fetchData();
-        fetchUsers();
+        if (isAdminOrManagement) {
+            fetchUsers();
+        }
     }, [selectedCompany]);
 
     const columns = [

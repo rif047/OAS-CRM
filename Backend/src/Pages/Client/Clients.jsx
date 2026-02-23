@@ -7,6 +7,7 @@ import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CachedIcon from '@mui/icons-material/Cached';
+import { formatLondonDate } from '../../utils/formatters';
 
 export default function Clients() {
     document.title = 'Clients';
@@ -90,7 +91,7 @@ export default function Clients() {
 
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '', header: 'Date', maxSize: 80 },
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 80 },
         { accessorKey: 'name', header: 'Client Name' },
         { accessorKey: 'phone', header: 'Phone', enableClickToCopy: true, },
         { accessorKey: 'agent', header: 'Agent', maxSize: 60 },

@@ -11,12 +11,13 @@ const modalStyle = {
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: "90%",
-    maxWidth: 700,
-    bgcolor: "#fdfdfd",
-    boxShadow: 24,
-    p: 3,
-    borderRadius: 2,
+    width: "min(95vw, 840px)",
+    maxHeight: "94vh",
+    bgcolor: "#ffffff",
+    boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+    p: { xs: 2, sm: 2.5 },
+    borderRadius: 3,
+    border: "1px solid #e5e7eb",
     overflowY: "auto",
 };
 
@@ -222,16 +223,17 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
     return (
         <>
             <Modal open={open}>
-                <Box sx={modalStyle} className="max-h-[96vh] overflow-y-auto">
+                <Box sx={modalStyle} className="crm-form-modal">
                     <Box
                         display="flex"
                         justifyContent="space-between"
                         alignItems="center"
-                        mb={3}
+                        mb={2}
                         py={1}
-                        sx={{ position: 'sticky', top: 0, backgroundColor: '#fdfdfd', zIndex: 10, borderBottom: '1px solid #ddd' }}
+                        className="crm-form-header"
+                        sx={{ position: "sticky", top: -16, backgroundColor: "#ffffff", zIndex: 10 }}
                     >
-                        <Typography className='font-bold!' variant="h6">
+                        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.05rem" }}>
                             {data ? 'Update Data' : 'Create New'}
                         </Typography>
                         <IconButton onClick={onClose}>
@@ -239,7 +241,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                         </IconButton>
                     </Box>
 
-                    <Box display="flex" gap={1} alignItems="center" className='pb-2!'>
+                    <Box display="flex" gap={1} alignItems="center" className="crm-form-row crm-form-row--client">
                         <Autocomplete
                             autoHighlight
                             selectOnFocus
@@ -296,7 +298,8 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
 
                         <IconButton
                             color="primary"
-                            sx={{ alignSelf: "center" }}
+                            sx={{ alignSelf: "center", flex: "0 0 auto" }}
+                            className="crm-add-btn"
                             onClick={() => setClientModalOpen(true)}
                         >
                             <AddIcon />
@@ -305,12 +308,12 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
 
 
 
-                    <div className="border border-gray-300 pb-4 pt-1 px-3 mt-2 rounded-sm">
-                        <Typography fontWeight="bold" mx={.5} my={1} className="text-gray-600">
+                    <div className="crm-address-card">
+                        <Typography fontWeight="bold" mx={.5} my={1}>
                             Project Address
                         </Typography>
 
-                        <Box display="flex" gap={1}>
+                        <Box display="flex" gap={1} className="crm-form-row crm-form-row--address">
                             <TextField
                                 label="Post Code"
                                 size="small"
@@ -344,7 +347,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                     </div>
 
 
-                    <Box display="flex" gap={1} mt={2} alignItems="center">
+                    <Box display="flex" gap={1} mt={2} alignItems="center" className="crm-form-row">
                         <Autocomplete
                             autoHighlight
                             selectOnFocus
@@ -396,7 +399,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                     </Box>
 
 
-                    <Box display="flex" gap={1} alignItems="center">
+                    <Box display="flex" gap={1} alignItems="center" className="crm-form-row">
                         <Autocomplete
                             fullWidth
                             size="small"
@@ -453,7 +456,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                     </Box>
 
 
-                    <Box display="flex" gap={1} alignItems="center">
+                    <Box display="flex" gap={1} alignItems="center" className="crm-form-row">
                         <Autocomplete
                             fullWidth
                             size="small"
@@ -510,7 +513,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                     </Box>
 
 
-                    <Box display="flex" gap={1} alignItems="center">
+                    <Box display="flex" gap={1} alignItems="center" className="crm-form-row">
                         <Autocomplete
                             fullWidth
                             size="small"
@@ -586,7 +589,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
 
 
 
-                    <Box display="flex" gap={1} alignItems="center">
+                    <Box display="flex" gap={1} alignItems="center" className="crm-form-row crm-form-row--three">
                         <TextField
                             fullWidth
                             label="Budget in £"
@@ -718,7 +721,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                         variant="contained"
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="bg-[#272e3f]! hover:bg-gray-700! font-bold! mt-4!"
+                        className="crm-submit-btn"
                     >
                         {data ? "Update" : "Create"}
                     </Button>

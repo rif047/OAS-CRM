@@ -1,5 +1,6 @@
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
+import { formatLondonDateTime } from '../../../utils/formatters';
 
 export default function View({ open, onClose, viewData }) {
     return (
@@ -42,9 +43,9 @@ export default function View({ open, onClose, viewData }) {
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Surveyor" value={viewData.surveyor} />
                                             <InfoRow label="Designer" value={viewData.designer} />
-                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Survey Date" value={formatDate(viewData.survey_date)} />
-                                            <InfoRow label="In Review Date" value={formatDate(viewData.in_review_date)} />
+                                            <InfoRow label="Created Date" value={formatLondonDateTime(viewData.createdAt)} />
+                                            <InfoRow label="Survey Date" value={formatLondonDateTime(viewData.survey_date)} />
+                                            <InfoRow label="In Review Date" value={formatLondonDateTime(viewData.in_review_date)} />
                                             <LinkRow label="Design Files" url={viewData.design_file} linkText="View" />
                                         </div>
                                     </div>
@@ -138,19 +139,4 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
             </a>
         </div>
     );
-}
-
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-
-    return new Date(dateString).toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
 }

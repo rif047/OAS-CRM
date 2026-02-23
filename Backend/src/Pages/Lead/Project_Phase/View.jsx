@@ -1,5 +1,6 @@
 import Modal from '@mui/material/Modal';
 import CloseIcon from '@mui/icons-material/Close';
+import { formatLondonDateTime } from '../../../utils/formatters';
 
 export default function View({ open, onClose, viewData }) {
     const loggedUser = JSON.parse(localStorage.getItem('user'));
@@ -41,10 +42,10 @@ export default function View({ open, onClose, viewData }) {
                                         <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-gray-300">
                                             <InfoRow label="Surveyor" value={viewData.surveyor} />
                                             <InfoRow label="Designer" value={viewData.designer} />
-                                            <InfoRow label="Created Date" value={formatDate(viewData.createdAt)} />
-                                            <InfoRow label="Survey Date" value={formatDate(viewData.survey_date)} />
-                                            <InfoRow label="In Design Date" value={formatDate(viewData.in_design_date)} />
-                                            <InfoRow label="Deadline" value={formatDate(viewData.design_deadline)} />
+                                            <InfoRow label="Created Date" value={formatLondonDateTime(viewData.createdAt)} />
+                                            <InfoRow label="Survey Date" value={formatLondonDateTime(viewData.survey_date)} />
+                                            <InfoRow label="In Design Date" value={formatLondonDateTime(viewData.in_design_date)} />
+                                            <InfoRow label="Deadline" value={formatLondonDateTime(viewData.design_deadline)} />
                                         </div>
                                     </div>
 
@@ -146,19 +147,4 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
             </a>
         </div>
     );
-}
-
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-
-    return new Date(dateString).toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
 }

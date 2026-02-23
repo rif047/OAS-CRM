@@ -68,6 +68,171 @@ body {
     bottom: 30px !important;
 }
 
+.crm-form-modal {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.crm-form-header {
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+}
+
+.crm-form-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.crm-form-row--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.crm-form-row--client {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: start;
+}
+
+.crm-form-row--address {
+    grid-template-columns: minmax(120px, 0.6fr) minmax(0, 1.4fr);
+}
+
+.crm-form-row .MuiFormControl-root {
+    width: 100%;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.crm-address-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 10px 10px;
+    margin-top: 8px;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.crm-address-card .MuiTypography-root {
+    color: #334155;
+}
+
+.crm-form-modal .MuiInputLabel-root {
+    font-size: 0.8rem;
+}
+
+.crm-form-modal .MuiInputBase-input,
+.crm-form-modal .MuiSelect-select,
+.crm-form-modal .MuiAutocomplete-input {
+    font-size: 0.8rem !important;
+}
+
+.crm-form-modal .MuiOutlinedInput-root:not(.MuiInputBase-multiline) {
+    height: 34px;
+    min-height: 34px;
+}
+
+.crm-form-modal .MuiInputBase-inputSizeSmall:not(textarea),
+.crm-form-modal .MuiOutlinedInput-inputSizeSmall:not(textarea),
+.crm-form-modal .MuiSelect-select.MuiInputBase-inputSizeSmall,
+.crm-form-modal .MuiAutocomplete-input {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.crm-form-modal .MuiAutocomplete-endAdornment {
+    right: 8px;
+}
+
+.crm-form-modal .MuiFormControl-root {
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+}
+
+.crm-form-modal .crm-form-row .MuiFormControl-root {
+    margin-top: 0 !important;
+}
+
+.crm-form-modal .MuiFormHelperText-root {
+    font-size: 0.72rem;
+    margin-left: 2px;
+    margin-top: 3px;
+}
+
+.crm-form-modal .MuiOutlinedInput-root {
+    border-radius: 10px;
+    background-color: #fcfdff;
+}
+
+.crm-form-modal .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #b6c2d1;
+}
+
+.crm-form-modal .Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #334155 !important;
+    border-width: 1px !important;
+}
+
+.crm-add-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    color: #334155 !important;
+    background: #f8fafc !important;
+}
+
+.crm-add-btn:hover {
+    background: #eef2f7 !important;
+}
+
+.crm-submit-btn {
+    margin-top: 14px !important;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em;
+    padding: 9px 14px !important;
+    box-shadow: 0 10px 20px rgba(30, 41, 59, 0.22);
+}
+
+.crm-submit-btn:hover {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
+.crm-form-modal .description-editor {
+    min-height: 240px !important;
+    font-size: 12.5px !important;
+}
+
+.crm-form-modal .MuiInputBase-multiline {
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+}
+
+.crm-form-modal input[type="date"] {
+    min-height: 40px;
+    border-radius: 10px;
+    border-color: #cbd5e1;
+}
+
+@media (max-width: 900px) {
+    .crm-form-row--three {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .crm-form-row,
+    .crm-form-row--three,
+    .crm-form-row--address {
+        grid-template-columns: 1fr;
+    }
+
+    .crm-form-row--client {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 td {
     border: 1px solid #F0F0F0 !important;

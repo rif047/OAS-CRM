@@ -12,6 +12,7 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../Components/RichTextEditor";
+import { formatCurrencyGBP, formatLondonDate } from "../../utils/formatters";
 
 export default function Leads() {
     document.title = 'Leads';
@@ -222,11 +223,11 @@ export default function Leads() {
     };
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => new Date(row.createdAt).toLocaleDateString(), header: 'Date', maxSize: 80 },
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
         { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "budget", header: "Budget", accessorFn: row => `£${row.budget || 0}`, maxSize: 80 },
+        { key: "budget", header: "Budget", accessorFn: row => formatCurrencyGBP(row.budget), maxSize: 80 },
         { key: "source", accessorKey: 'source', header: 'Source' },
         {
             key: "stage",

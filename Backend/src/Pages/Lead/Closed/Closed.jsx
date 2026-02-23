@@ -7,6 +7,7 @@ import axios from 'axios';
 import CachedIcon from '@mui/icons-material/Cached';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
 import 'react-toastify/dist/ReactToastify.css';
+import { formatCurrencyGBP } from '../../../utils/formatters';
 
 export default function Closed() {
     document.title = 'Closed Projects';
@@ -100,8 +101,8 @@ export default function Closed() {
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
         { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "quote_price", header: "Quote Price", accessorFn: row => `£${row.quote_price || 0}`, maxSize: 50 },
-        { key: "final_price", header: "Final Price", accessorFn: row => `£${row.final_price || 0}`, maxSize: 50 },
+        { key: "quote_price", header: "Quote Price", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 50 },
+        { key: "final_price", header: "Final Price", accessorFn: row => formatCurrencyGBP(row.final_price), maxSize: 50 },
         ...(userType === "Admin"
             ? [
                 {

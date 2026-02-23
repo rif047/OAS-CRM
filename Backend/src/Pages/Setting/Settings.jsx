@@ -1,5 +1,6 @@
 import Layout from "../../Layout";
 import { useEffect, useState } from "react";
+import { formatLondonDateTime } from "../../utils/formatters";
 
 export default function Settings() {
     document.title = "Settings";
@@ -207,7 +208,7 @@ export default function Settings() {
                                             className="odd:bg-white even:bg-gray-50 border-gray-200 text-center"
                                         >
                                             <td className="px-4 sm:px-6 py-4 text-gray-700">
-                                                {b.date ? new Date(b.date).toLocaleString() : "-"}
+                                                {formatLondonDateTime(b.date, "-")}
                                             </td>
                                             <td className="px-4 sm:px-6 py-4 text-gray-700 break-all">
                                                 {b.name}

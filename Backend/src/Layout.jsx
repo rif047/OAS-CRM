@@ -7,7 +7,7 @@ import Footer from "./Components/Footer";
 function Layout({ children }) {
     return (
         <main className="flex min-h-screen w-full">
-            <aside className="hidden shrink-0 bg-[#ffffff] md:block">
+            <aside className="hidden shrink-0 md:sticky md:top-0 md:block md:h-screen">
                 <SideMenu />
             </aside>
 

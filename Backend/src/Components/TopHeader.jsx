@@ -10,6 +10,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SideMenu from "./SideMenu";
+import { formatLondonInputDate } from "../utils/formatters";
 
 export default function TopHeader() {
     const userType = localStorage.getItem("userType");
@@ -233,9 +234,7 @@ export default function TopHeader() {
                                                                                                 Created:
                                                                                             </span>
                                                                                             <span className="text-cyan-900 flex-1 font-medium">
-                                                                                                {new Date(value).toLocaleDateString("en-CA", {
-                                                                                                    timeZone: "Europe/London",
-                                                                                                })}
+                                                                                                {formatLondonInputDate(value)}
 
                                                                                             </span>
                                                                                         </div>
