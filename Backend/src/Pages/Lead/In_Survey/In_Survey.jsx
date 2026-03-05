@@ -402,7 +402,7 @@ export default function In_Survey() {
                         value={form.designer}
                         onChange={e => setForm({ ...form, designer: e.target.value })}
                     >
-                        <option value="">Select Designer*</option>
+                        <option value="">Select Architect*</option>
                         {designers.map((d, index) => (
                             <option key={index} value={d.name}>
                                 {d.name} - {d.phone}

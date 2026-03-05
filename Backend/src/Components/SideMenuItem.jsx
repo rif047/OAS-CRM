@@ -85,7 +85,7 @@ export default function SideMenu() {
                     </p>
                     <MenuItem to="/managements" icon={AdminPanelSettingsTwoTone} label="Management" />
                     <MenuItem to="/surveyors" icon={AdminPanelSettingsTwoTone} label="Surveyors" />
-                    <MenuItem to="/designers" icon={ContactsTwoTone} label="Designers" />
+                    <MenuItem to="/designers" icon={ContactsTwoTone} label="Architect" />
                 </>
             )}
 
