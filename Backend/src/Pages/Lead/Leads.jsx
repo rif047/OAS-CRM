@@ -473,6 +473,11 @@ export default function Leads() {
                         <option value="Follow-up">Follow-up</option>
                         <option value="Not Interested">Not Interested</option>
                         <option value="Decision Pending">Decision Pending</option>
+                        <option value="Survey Paid">Survey Paid</option>
+                        <option value="Drawing Paid">Drawing Paid</option>
+                        <option value="Full Paid">Full Paid</option>
+                        <option value="Hold">Hold</option>
+                        <option value="Other">Other</option>
                     </TextField>
 
                     <RichTextEditor

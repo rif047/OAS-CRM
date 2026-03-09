@@ -627,6 +627,11 @@ export default function In_Quote() {
                         <option value="Follow-up">Follow-up</option>
                         <option value="Quote Accepted">Quote Accepted</option>
                         <option value="Invoice Sent">Invoice Sent</option>
+                        <option value="Survey Paid">Survey Paid</option>
+                        <option value="Drawing Paid">Drawing Paid</option>
+                        <option value="Full Paid">Full Paid</option>
+                        <option value="Hold">Hold</option>
+                        <option value="Other">Other</option>
                     </TextField>
 
                     <RichTextEditor

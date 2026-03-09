@@ -158,17 +158,6 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                 agent: data.agent || loggedUser?.name
             }));
 
-            if (data?.address) {
-                const [pc, full] = data.address.split("-");
-                setFormData((prev) => ({
-                    ...prev,
-                    post_code: pc || "",
-                    full_address: full || "",
-                }));
-            }
-
-
-
         } else {
             setFormData({ agent: loggedUser?.name || '' });
         }
@@ -313,33 +302,14 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                             Project Address
                         </Typography>
 
-                        <Box display="flex" gap={1} className="crm-form-row crm-form-row--address">
+                        <Box mt={1}>
                             <TextField
-                                label="Post Code"
+                                fullWidth
+                                label="Enter Full Address"
+                                name="address"
                                 size="small"
-                                sx={{ width: "30%" }}
-                                value={formData.post_code || ""}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        post_code: e.target.value,
-                                        address: `${e.target.value}-${prev.full_address || ""}`,
-                                    }))
-                                }
-                            />
-
-                            <TextField
-                                label="Full Project Address"
-                                size="small"
-                                sx={{ width: "70%" }}
-                                value={formData.full_address || ""}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        full_address: e.target.value,
-                                        address: `${prev.post_code || ""}-${e.target.value}`,
-                                    }))
-                                }
+                                value={formData.address || ""}
+                                onChange={handleChange}
                                 error={!!errors.address}
                                 helperText={errors.address}
                             />
