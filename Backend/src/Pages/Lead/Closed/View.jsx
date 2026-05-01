@@ -53,6 +53,8 @@ export default function View({ open, onClose, viewData }) {
                                         <div className="grid grid-cols-2 gap-3 mb-4 py-2 border-b border-gray-300">
                                             <InfoRow label="👤 Client Name" value={viewData.client?.name} />
                                             <InfoRow label="📞 Phone" value={viewData.client?.phone || "N/A"} />
+                                            <InfoRow label="🏢 Client Company" value={viewData.client?.company || viewData.company || "N/A"} />
+                                            <InfoRow label="✉️ Email" value={viewData.client?.email || "N/A"} />
                                         </div>
                                         <div className='mb-3'>
                                             <InfoRow label="Project Address" value={viewData.address} />
@@ -146,12 +148,27 @@ function InfoCard({ title, children }) {
 }
 
 function InfoRow({ label, value }) {
+    const isCopyField = label?.includes("Phone") || label?.includes("Email");
+    const textValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const canCopy = isCopyField && textValue && textValue !== "N/A" && textValue !== "Not provided";
+
     return (
         <div>
             <p className="text-sm text-gray-500">{label}</p>
-            <p className="font-medium text-gray-800">
-                {value || <span className="text-gray-400">Not provided</span>}
-            </p>
+            {canCopy ? (
+                <button
+                    type="button"
+                    className="font-medium text-gray-800 cursor-copy hover:text-blue-700"
+                    title={`Click to copy: ${textValue}`}
+                    onClick={() => navigator.clipboard?.writeText(textValue)}
+                >
+                    {textValue}
+                </button>
+            ) : (
+                <p className="font-medium text-gray-800">
+                    {value || <span className="text-gray-400">Not provided</span>}
+                </p>
+            )}
         </div>
     );
 }

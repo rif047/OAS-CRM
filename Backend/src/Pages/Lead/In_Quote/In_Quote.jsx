@@ -289,14 +289,59 @@ export default function In_Quote() {
         fetchUsers();
     }, [selectedCompany]);
 
+    const renderClientWithCompany = (row) => {
+        const clientName = row.client?.name || "N/A";
+        const companyName = row.client?.company?.trim() ? row.client.company : null;
+        const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+
+        return (
+            <div className="max-w-60 min-w-0">
+                <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
+                {(row.client?.phone || row.client?.email) && (
+                    <p
+                        className="truncate text-xs text-slate-500 cursor-copy"
+                        title={`Click to copy: ${row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard?.writeText(
+                                row.client?.phone && row.client?.email
+                                    ? `${row.client.phone} (${row.client.email})`
+                                    : (row.client?.phone || row.client?.email || "")
+                            );
+                        }}
+                    >
+                        {row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}
+                    </p>
+                )}
+            </div>
+        );
+    };
+
+    const renderAddressCell = (row) => {
+        const address = row.address?.trim() || "N/A";
+        return (
+            <p
+                className="max-w-[260px] text-xs leading-4 text-slate-600"
+                title={address}
+                style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                }}
+            >
+                {address}
+            </p>
+        );
+    };
 
     const columns = [
         { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
-        { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
+        { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
+        { key: "address", header: 'Project Address', minSize: 220, maxSize: 300, Cell: ({ row }) => renderAddressCell(row.original) },
         { key: "quote_price", header: "Quoted P.", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 80 },
-        { key: "source", accessorKey: 'source', header: 'Source' },
         {
             key: "stage",
             header: "Stage",
@@ -307,7 +352,7 @@ export default function In_Quote() {
                         e.stopPropagation();
                         handleStageClick(row.original);
                     }}
-                    className="px-3 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                    className="crmStageBtn cursor-pointer"
                 >
                     {row.original.stage}
                 </button>
@@ -323,7 +368,7 @@ export default function In_Quote() {
             maxSize: 420,
             grow: false,
             Cell: ({ row }) => (
-                <div className='inline-flex w-max items-center whitespace-nowrap'>
+                <div className='crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
                         className="text-emerald-600 font-bold flex items-center cursor-pointer border-r-2 pr-2"
@@ -368,10 +413,10 @@ export default function In_Quote() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">Under Quote</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">Under Quote</h1>
 
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
@@ -385,14 +430,14 @@ export default function In_Quote() {
                             </button>
                         )}
 
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
+                        <span className="leadPageCount">
                             Total: {data.length}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions'>
                         <select
-                            className="rounded-md border border-gray-500 bg-gray-700 px-3 py-2 text-sm text-white focus:outline-none cursor-pointer"
+                            className="leadPageFilterSelect"
                             value={selectedCompany}
                             onChange={(e) => setSelectedCompany(e.target.value)}
                         >
@@ -404,7 +449,7 @@ export default function In_Quote() {
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
+                <div className="leadPageTableWrap">
                     {loading ? (
                         <div className="flex justify-center py-10">
                             <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none">

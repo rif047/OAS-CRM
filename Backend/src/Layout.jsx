@@ -17,7 +17,7 @@ function Layout({ children }) {
                 </header>
 
                 <section className="min-h-0 flex-1 overflow-auto bg-[#f2f2f2]">
-                    <div className="mx-auto my-3 w-full max-w-[1700px] px-2 sm:my-4 sm:px-4 lg:px-5 xl:px-6">
+                    <div className="mx-auto my-3 w-full max-w-[1820px] px-2 sm:my-4 sm:px-4 lg:px-5 xl:px-6">
                         <main> {children} </main>
                     </div>
                 </section>

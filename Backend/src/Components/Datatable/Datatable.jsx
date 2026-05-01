@@ -48,8 +48,9 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         const plainId = normalizedId.replace(/_/g, '');
         const shouldCenter = centeredColumns.has(normalizedId) || centeredColumns.has(plainId);
         const isSetStatus = normalizedId === 'set_status' || plainId === 'setstatus';
+        const isPriceColumn = normalizedId.includes('price') || plainId.includes('price');
 
-        if (!shouldCenter) return column;
+        if (!shouldCenter && !isPriceColumn) return column;
 
         return {
             ...column,
@@ -69,12 +70,13 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             },
             muiTableBodyCellProps: {
                 ...column.muiTableBodyCellProps,
-                align: 'center',
+                ...(shouldCenter ? { align: 'center' } : {}),
                 sx: {
                     ...(column.muiTableBodyCellProps?.sx || {}),
+                    ...(isPriceColumn ? { fontWeight: 700, color: '#1f2937' } : {}),
                     ...(isSetStatus ? { width: '1%', whiteSpace: 'nowrap', px: '6px' } : {}),
                     '& > div': {
-                        justifyContent: 'center',
+                        ...(shouldCenter ? { justifyContent: 'center' } : {}),
                     },
                 },
             },

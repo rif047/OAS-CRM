@@ -279,7 +279,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                             sx={{ flex: 1 }}
                             size="small"
                             options={clients}
-                            getOptionLabel={(o) => o ? `${o.name} (${o.phone})` : ""}
+                            getOptionLabel={(o) => o ? `${o.name}${o.company?.trim() ? ` (${o.company})` : ""}` : ""}
                             value={clients.find(o => o._id === formData.client) || null}
                             onChange={(e, newVal) =>
                                 setFormData(prev => ({ ...prev, client: newVal?._id || "" }))

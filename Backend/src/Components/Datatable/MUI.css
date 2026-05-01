@@ -1,9 +1,10 @@
 .crmDataTablePaper {
-    border: 1px solid #F0F0F0 !important;
-    border-radius: 0.75rem !important;
+    border: 1px solid #d9e1ec !important;
+    border-radius: 0.9rem !important;
     overflow: hidden !important;
-    box-shadow: none !important;
-    --Paper-shadow: none !important;
+    box-shadow: 0 10px 30px rgb(15 23 42 / 7%) !important;
+    --Paper-shadow: 0 10px 30px rgb(15 23 42 / 7%) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
 }
 
 .crmDataTablePaper .MuiPaper-root {
@@ -12,14 +13,16 @@
 }
 
 .crmDataTableToolbar {
-    min-height: 48px !important;
-    padding: 8px 10px !important;
-    border-bottom: 1px solid #F0F0F0 !important;
+    min-height: 50px !important;
+    padding: 9px 12px !important;
+    border-bottom: 1px solid #e4eaf3 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
 }
 
 .crmDataTableFooter {
-    border-top: 1px solid #F0F0F0 !important;
-    min-height: 48px !important;
+    border-top: 1px solid #e4eaf3 !important;
+    min-height: 50px !important;
+    background: linear-gradient(180deg, #fcfdff 0%, #f7faff 100%) !important;
 }
 
 .crmDataTableContainer {
@@ -31,26 +34,35 @@
 }
 
 .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root {
-    font-family: 'PT Sans', sans-serif !important;
-    letter-spacing: 2px !important;
-    font-size: 0.78rem !important;
+    font-family: 'Source Sans 3', sans-serif !important;
+    letter-spacing: 0.75px !important;
+    font-size: 0.73rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
     text-transform: uppercase !important;
-    border: 1px solid #F0F0F0 !important;
-    background-color: #a6adb8 !important;
-    color: black !important;
-    padding: 10px 8px !important;
+    border: 1px solid #d6deea !important;
+    background: linear-gradient(180deg, #b9c2cf 0%, #a7b1be 100%) !important;
+    color: #111827 !important;
+    padding: 9px 8px !important;
 }
 
 .crmDataTablePaper .MuiTableBody-root .MuiTableCell-root {
-    font-family: 'PT Sans', sans-serif !important;
-    color: #4F5664 !important;
-    border: 1px solid #F0F0F0 !important;
-    padding: 10px 8px !important;
+    font-family: 'Source Sans 3', sans-serif !important;
+    font-size: 0.8rem !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+    color: #334155 !important;
+    border: 1px solid #e6ebf3 !important;
+    padding: 9px 8px !important;
     vertical-align: middle !important;
 }
 
+.crmDataTablePaper .MuiTableBody-root .MuiTableRow-root:nth-of-type(2n) {
+    background-color: #fbfcff !important;
+}
+
 .crmDataTablePaper .MuiTableBody-root .MuiTableRow-root:hover {
-    background-color: #f2f2f2 !important;
+    background: linear-gradient(180deg, #f8fbff 0%, #f1f6fd 100%) !important;
 }
 
 .crmDataTablePaper .MuiTableCell-root:first-child > div,
@@ -65,9 +77,18 @@
 }
 
 .crmDataTableExportWrap .MuiButton-root {
-    border-radius: 0.5rem !important;
+    border: 1px solid #d2dcea !important;
+    border-radius: 999px !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%) !important;
+    color: #1f3353 !important;
     font-weight: 700 !important;
-    padding: 4px 10px !important;
+    padding: 4px 12px !important;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.crmDataTableExportWrap .MuiButton-root:hover {
+    border-color: #becce0 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf4ff 100%) !important;
 }
 
 .tableActionGroup {
@@ -81,6 +102,91 @@
     margin: 0 auto;
 }
 
+.crmSetStatusGroup {
+    gap: 6px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.crmSetStatusGroup button {
+    min-height: 25px;
+    padding: 3px 8px !important;
+    border: 1px solid #ccd5e2 !important;
+    border-right-width: 1px !important;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+    box-shadow:
+        0 1px 1px rgb(15 23 42 / 0.05),
+        inset 0 1px 0 rgb(255 255 255 / 0.8);
+    transition: all 0.18s ease, box-shadow 0.22s ease, border-color 0.18s ease;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+}
+
+.crmSetStatusGroup button:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 10px rgb(15 23 42 / 0.12),
+        inset 0 1px 0 rgb(255 255 255 / 0.85);
+    border-color: #b8c5d8 !important;
+}
+
+.crmSetStatusGroup button:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 1px;
+}
+
+.crmSetStatusGroup button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
+.crmSetStatusGroup button span {
+    font-size: 0.69rem !important;
+    line-height: 1.1 !important;
+}
+
+.crmSetStatusGroup .MuiSvgIcon-root {
+    font-size: 0.9rem !important;
+}
+
+.crmStageBtn {
+    min-height: 25px;
+    padding: 3px 10px;
+    border: 1px solid #cfd7e3;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f8fafd 0%, #eef3f8 100%);
+    color: #243b5a;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    box-shadow:
+        0 1px 1px rgb(15 23 42 / 0.06),
+        inset 0 1px 0 rgb(255 255 255 / 0.85);
+    transition: all 0.18s ease, box-shadow 0.22s ease;
+}
+
+.crmStageBtn:hover {
+    transform: translateY(-1px);
+    border-color: #bcc9db;
+    box-shadow:
+        0 4px 10px rgb(15 23 42 / 0.12),
+        inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.crmStageBtn:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 1px;
+}
+
+.crmStageBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
 .actionBtn {
     width: 32px;
     height: 28px;
@@ -91,9 +197,11 @@
     justify-content: center;
     padding: 0 !important;
     border: 0;
-    border-radius: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d7e0ec;
     line-height: 1;
     cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease;
 }
 
 .actionBtn .MuiSvgIcon-root {
@@ -103,31 +211,181 @@
 }
 
 .actionBtnView {
-    background-color: #dbeafe;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1d4ed8;
 }
 
 .actionBtnView:hover {
-    background-color: #93c5fd;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 22%);
 }
 
 .actionBtnEdit {
-    background-color: #ffedd5;
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+    color: #92400e;
 }
 
 .actionBtnEdit:hover {
-    background-color: #fdba74;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-color: #fdba74;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(249 115 22 / 22%);
 }
 
 .actionBtnDelete {
-    background-color: #fee2e2;
+    background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
     color: #ef4444;
 }
 
 .actionBtnDelete:hover {
-    background-color: #fecaca;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-color: #fda4af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(239 68 68 / 20%);
+}
+
+.crmDataTablePaper .MuiTablePagination-root,
+.crmDataTablePaper .MuiTablePagination-toolbar,
+.crmDataTablePaper .MuiIconButton-root,
+.crmDataTablePaper .MuiSelect-select,
+.crmDataTablePaper .MuiInputBase-input {
+    color: #334155 !important;
+}
+
+.crmDataTablePaper .MuiTablePagination-toolbar {
+    min-height: 46px !important;
+    font-weight: 500 !important;
+}
+
+.crmDataTablePaper .MuiTablePagination-selectLabel,
+.crmDataTablePaper .MuiTablePagination-displayedRows {
+    font-size: 0.8rem !important;
+    font-weight: 400 !important;
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableCell-root p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableCell-root .text-xs {
+    font-size: 0.72rem !important;
+    line-height: 1.25 !important;
+}
+
+.crmDataTablePaper .MuiIconButton-root {
+    border-radius: 8px !important;
+}
+
+.crmDataTablePaper .MuiIconButton-root:hover {
+    background-color: #eaf2ff !important;
+}
+
+.leadPageShell {
+    overflow: hidden;
+    border: 1px solid #d9e1ec;
+    border-radius: 0.95rem;
+    background: #fff;
+    box-shadow: 0 10px 30px rgb(15 23 42 / 7%);
+}
+
+.leadPageHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #d6deea;
+    background: linear-gradient(180deg, #556077 0%, #48536a 100%);
+}
+
+.leadPageHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+}
+
+.leadPageTitle {
+    font-size: 1.03rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: #fff;
+}
+
+.leadPageCount {
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 26%);
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #e3ebfa;
+    background: rgb(255 255 255 / 8%);
+}
+
+.leadPageHeaderActions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leadPageFilterSelect {
+    height: 38px;
+    min-width: 172px;
+    border-radius: 0.55rem;
+    border: 1px solid #7f8aa3;
+    background: linear-gradient(180deg, #3f4b63 0%, #344055 100%);
+    padding: 0 12px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #f5f8ff;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.leadPageFilterSelect:focus {
+    border-color: #bdd1f5;
+    box-shadow: 0 0 0 2px rgb(191 219 254 / 35%);
+}
+
+.leadPagePrimaryBtn {
+    height: 38px;
+    min-width: 118px;
+    border: 1px solid #d6deea;
+    border-radius: 0.58rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f6fd 100%);
+    color: #1f3353;
+    padding: 0 16px;
+    font-size: 0.87rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease;
+}
+
+.leadPagePrimaryBtn:hover {
+    transform: translateY(-1px);
+    border-color: #b9c8dd;
+    box-shadow: 0 5px 14px rgb(15 23 42 / 14%);
+}
+
+.leadPageTableWrap {
+    padding: 12px;
+}
+
+@media (min-width: 768px) {
+    .leadPageHeader {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .leadPageHeaderActions {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .leadPageTableWrap {
+        padding: 14px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -139,7 +397,7 @@
     .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root,
     .crmDataTablePaper .MuiTableBody-root .MuiTableCell-root {
         padding: 8px 6px !important;
-        font-size: 0.78rem !important;
+        font-size: 0.74rem !important;
     }
 
     .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root {
@@ -148,5 +406,18 @@
 
     .tableActionGroup {
         gap: 6px;
+    }
+
+    .leadPageFilterSelect,
+    .leadPagePrimaryBtn {
+        width: 100%;
+    }
+
+    .leadPageTitle {
+        font-size: 0.98rem;
+    }
+
+    .leadPageTableWrap {
+        padding: 8px;
     }
 }

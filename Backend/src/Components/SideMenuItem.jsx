@@ -23,20 +23,37 @@ export default function SideMenu() {
         <NavLink
             to={to}
             className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-300 ${isActive
-                    ? "bg-linear-to-r from-[#88bb99] to-[#3a4259] text-white shadow-md"
-                    : "text-gray-400 hover:text-white hover:bg-[#3a4259]/80"
+                `group relative flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all duration-200 ${isActive
+                    ? "bg-linear-to-r from-[#88bb99] to-[#3a4259] text-white"
+                    : "text-gray-400 hover:text-white hover:bg-[#3a4259]/65"
                 }`
             }
         >
-            {icon ? createElement(icon, { fontSize: "small" }) : null}
-            <span className="text-[15px] font-medium">{label}</span>
+            {({ isActive }) => (
+                <>
+                    <span
+                        className={`absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-r-sm transition-all duration-200 ${isActive ? "bg-white/90 opacity-100" : "opacity-0 group-hover:opacity-60 bg-white/60"
+                            }`}
+                    />
+
+                    <span
+                        className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-all duration-200 ${isActive
+                            ? "border-white/20 bg-white/15 text-white"
+                            : "border-white/10 bg-[#111827]/25 text-gray-400 group-hover:border-white/15 group-hover:text-white"
+                            }`}
+                    >
+                        {icon ? createElement(icon, { sx: { fontSize: 18 } }) : null}
+                    </span>
+
+                    <span className="truncate text-[13.5px] font-normal tracking-[0.01em] leading-4">{label}</span>
+                </>
+            )}
         </NavLink>
     );
 
     return (
         <nav className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 ml-4 uppercase tracking-wider mb-2">
+            <p className="ml-2.5 mb-2 text-[10px] font-medium uppercase tracking-[0.13em] text-gray-500/90">
                 Main
             </p>
             {(userType === "Admin" || userType === "Management") && (
@@ -79,8 +96,8 @@ export default function SideMenu() {
 
             {(userType === "Admin" || userType === "Management") && (
                 <>
-                    <div className="pt-3 border-t border-gray-700/60 mt-3"></div>
-                    <p className="text-xs font-semibold text-gray-500 ml-4 uppercase tracking-wider mb-2 mt-4">
+                    <div className="mx-1 mt-2.5 border-t border-gray-700/60 pt-2.5" />
+                    <p className="ml-2.5 mb-2 mt-1 text-[10px] font-medium uppercase tracking-[0.13em] text-gray-500/90">
                         Admin
                     </p>
                     <MenuItem to="/managements" icon={AdminPanelSettingsTwoTone} label="Management" />

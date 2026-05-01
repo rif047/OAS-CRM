@@ -41,6 +41,8 @@ export default function View({ open, onClose, viewData }) {
                                         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-300">
                                             <InfoRow label="👤 Client Name" value={viewData.client?.name} />
                                             <InfoRow label="📞 Phone" value={viewData.client?.phone || "N/A"} />
+                                            <InfoRow label="🏢 Client Company" value={viewData.client?.company || viewData.company || "N/A"} />
+                                            <InfoRow label="✉️ Email" value={viewData.client?.email || "N/A"} />
                                             <InfoRow label="When To Start" value={viewData.when_to_start} />
                                             <InfoRow label="Budget" value={formatCurrencyGBP(viewData.budget)} />
                                         </div>
@@ -126,6 +128,9 @@ function InfoCard({ title, children }) {
 
 function InfoRow({ label, value }) {
     const isElement = typeof value === "object";
+    const isCopyField = label?.includes("Phone") || label?.includes("Email");
+    const textValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const canCopy = !isElement && isCopyField && textValue && textValue !== "N/A" && textValue !== "Not provided";
 
     return (
         <div>
@@ -135,6 +140,15 @@ function InfoRow({ label, value }) {
                 <div className="font-medium text-gray-800">
                     {value}
                 </div>
+            ) : canCopy ? (
+                <button
+                    type="button"
+                    className="font-medium text-gray-800 cursor-copy hover:text-blue-700"
+                    title={`Click to copy: ${textValue}`}
+                    onClick={() => navigator.clipboard?.writeText(textValue)}
+                >
+                    {textValue}
+                </button>
             ) : (
                 <p className="font-medium text-gray-800">
                     {value || <span className="text-gray-400">Not provided</span>}
@@ -165,4 +179,3 @@ function LinkRow({ label, url, linkText = "Go to link" }) {
         </div>
     );
 }
-
