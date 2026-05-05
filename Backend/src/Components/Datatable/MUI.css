@@ -65,6 +65,20 @@
     background: linear-gradient(180deg, #f8fbff 0%, #f1f6fd 100%) !important;
 }
 
+@keyframes crmRowFadeHighlightBg {
+    0% {
+        background-color: rgba(253, 224, 71, 0.44);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableRow-root.crmRowHighlight td {
+    animation: crmRowFadeHighlightBg 5s ease-out forwards;
+}
+
 .crmDataTablePaper .MuiTableCell-root:first-child > div,
 .crmDataTablePaper .MuiTableCell-root:last-child > div {
     display: flex !important;
@@ -187,6 +201,84 @@
     box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
 }
 
+.crmPaymentCellWrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+}
+
+.crmPaymentMeta {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    white-space: nowrap;
+}
+
+.crmPaymentMeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 0.61rem;
+    font-weight: 500;
+    color: #334155;
+    border: 0;
+    background: transparent;
+    line-height: 1.05;
+}
+
+.crmPaymentMeta span b {
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.crmPaymentBtn {
+    min-height: 30px;
+    min-width: 78px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 11px;
+    border: 1px solid #38bdf8;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+    color: #0c4a6e;
+    font-size: 0.69rem;
+    font-weight: 700;
+    letter-spacing: 0.28px;
+    text-transform: uppercase;
+    line-height: 1.1;
+    cursor: pointer;
+    box-shadow:
+        0 1px 1px rgb(15 23 42 / 0.06),
+        inset 0 1px 0 rgb(255 255 255 / 0.86);
+    transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.crmPaymentBtn:hover {
+    border-color: #0ea5e9;
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 12px rgb(14 165 233 / 22%),
+        inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.crmPaymentBtn:focus-visible {
+    outline: 2px solid #7dd3fc;
+    outline-offset: 1px;
+}
+
+.crmPaymentBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
 .actionBtn {
     width: 32px;
     height: 28px;
@@ -282,19 +374,23 @@
 
 .leadPageShell {
     overflow: hidden;
-    border: 1px solid #d9e1ec;
-    border-radius: 0.95rem;
-    background: #fff;
-    box-shadow: 0 10px 30px rgb(15 23 42 / 7%);
+    border: 1px solid #d7e2ef;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    box-shadow:
+        0 16px 36px rgb(15 23 42 / 8%),
+        0 2px 8px rgb(15 23 42 / 4%);
 }
 
 .leadPageHeader {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 11px 14px;
-    border-bottom: 1px solid #d6deea;
-    background: linear-gradient(180deg, #556077 0%, #48536a 100%);
+    padding: 13px 14px;
+    border-bottom: 1px solid #d8e2ef;
+    background:
+        radial-gradient(circle at top right, rgb(148 163 184 / 20%) 0%, transparent 56%),
+        linear-gradient(135deg, #334155 0%, #475569 52%, #3a4a5d 100%);
 }
 
 .leadPageHeaderLeft {
@@ -313,12 +409,12 @@
 
 .leadPageCount {
     border-radius: 999px;
-    border: 1px solid rgb(255 255 255 / 26%);
+    border: 1px solid rgb(255 255 255 / 30%);
     padding: 4px 10px;
     font-size: 0.74rem;
     font-weight: 700;
-    color: #e3ebfa;
-    background: rgb(255 255 255 / 8%);
+    color: #f1f5f9;
+    background: rgb(255 255 255 / 12%);
 }
 
 .leadPageHeaderActions {
@@ -330,13 +426,13 @@
 .leadPageFilterSelect {
     height: 38px;
     min-width: 172px;
-    border-radius: 0.55rem;
-    border: 1px solid #7f8aa3;
-    background: linear-gradient(180deg, #3f4b63 0%, #344055 100%);
+    border-radius: 0.62rem;
+    border: 1px solid #94a3b8;
+    background: linear-gradient(180deg, #3f4d66 0%, #37465f 100%);
     padding: 0 12px;
     font-size: 0.86rem;
     font-weight: 600;
-    color: #f5f8ff;
+    color: #f8fafc;
     outline: none;
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.2s ease;
@@ -347,11 +443,16 @@
     box-shadow: 0 0 0 2px rgb(191 219 254 / 35%);
 }
 
+.leadPageFilterSelect option {
+    background: #ffffff;
+    color: #0f172a;
+}
+
 .leadPagePrimaryBtn {
     height: 38px;
     min-width: 118px;
     border: 1px solid #d6deea;
-    border-radius: 0.58rem;
+    border-radius: 0.62rem;
     background: linear-gradient(180deg, #ffffff 0%, #f2f6fd 100%);
     color: #1f3353;
     padding: 0 16px;
@@ -364,11 +465,12 @@
 .leadPagePrimaryBtn:hover {
     transform: translateY(-1px);
     border-color: #b9c8dd;
-    box-shadow: 0 5px 14px rgb(15 23 42 / 14%);
+    box-shadow: 0 8px 16px rgb(15 23 42 / 16%);
 }
 
 .leadPageTableWrap {
     padding: 12px;
+    background: linear-gradient(180deg, #f8fbff 0%, #f3f7fd 100%);
 }
 
 @media (min-width: 768px) {

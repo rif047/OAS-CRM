@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import AddEditClient from "../Client/Add_Edit";
 import RichTextEditor from "../../Components/RichTextEditor";
+import { markEditedRowForHighlight } from '../../utils/datatableState';
 
 const modalStyle = {
     position: "absolute",
@@ -194,6 +195,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
             const method = data?._id ? "patch" : "post";
 
             await axios[method](url, formData, { headers: { "Content-Type": "application/json" }, });
+            if (data?._id) markEditedRowForHighlight(data._id);
 
             toast.success(data?._id ? "Updated successfully." : "Created successfully.");
             refreshData();

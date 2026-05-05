@@ -192,6 +192,43 @@ const UploadDescriptionImages = async (req, res) => {
 
 
 const ALLOWED_STATUSES = new Set(['Pending', 'In_Quote', 'In_Survey', 'In_Design', 'In_Review', 'Closed', 'Lost_Lead']);
+const STATUS_DEFAULT_STAGE = {
+    Pending: 'Pending',
+    In_Quote: 'Quote Sent',
+    In_Survey: 'Under Survey',
+    In_Design: 'Drawing',
+    In_Review: 'Reviewing',
+    Closed: 'Closed',
+    Lost_Lead: 'Lost',
+};
+
+const parseMoney = (value) => {
+    const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const toFixedMoney = (value) => Math.max(0, Number((value || 0).toFixed(2)));
+
+const buildPaymentSummary = (lead) => {
+    const quoted = parseMoney(lead.quote_price);
+    const received = toFixedMoney((lead.payment_history || []).reduce((sum, item) => sum + parseMoney(item.paid_amount), 0));
+    const discount = toFixedMoney((lead.payment_history || []).reduce((sum, item) => sum + parseMoney(item.discount_given), 0));
+    const due = toFixedMoney(Math.max(quoted - (received + discount), 0));
+    return { quoted, received, discount, due };
+};
+
+const applyPaymentSummary = (lead) => {
+    const summary = buildPaymentSummary(lead);
+    lead.payment_received_total = summary.received;
+    lead.payment_discount_total = summary.discount;
+    lead.payment_due_amount = summary.due;
+    return summary;
+};
+
+const buildStageRemark = (stage, note = '') => {
+    const safeStage = String(stage || '').trim() || 'Updated';
+    return `<p><b>Stage - ${safeStage}</b></p>${note || ''}`;
+};
 
 let Leads = async (req, res) => {
     const { status, company } = req.query;
@@ -314,8 +351,20 @@ let Update = async (req, res) => {
         updateData.surveyor = surveyor;
         updateData.designer = designer;
         updateData.design_deadline = design_deadline;
-        updateData.stage = stage;
-        if (description !== undefined && description.trim() !== '') {
+        const nextStage = typeof stage === 'string' ? stage.trim() : stage;
+        const stageChanged = nextStage !== undefined && nextStage !== updateData.stage;
+
+        if (nextStage !== undefined) {
+            updateData.stage = nextStage;
+        }
+
+        if (stageChanged) {
+            updateData.description = processDescription(
+                updateData.description,
+                buildStageRemark(nextStage, description || ''),
+                agent || updateData.agent
+            );
+        } else if (description !== undefined && description.trim() !== '') {
             updateData.description = processDescription(updateData.description, description, agent);
         }
 
@@ -354,6 +403,12 @@ let Pending = async (req, res) => {
             return res.status(404).send('Lead not found');
         }
         updateData.status = 'Pending';
+        updateData.stage = STATUS_DEFAULT_STAGE.Pending;
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage),
+            updateData.agent || "System"
+        );
 
         await updateData.save();
         console.log('Canceled Successfully');
@@ -372,7 +427,7 @@ let Pending = async (req, res) => {
 
 let In_Quote = async (req, res) => {
     try {
-        const { agent, quote_price, quote_file, description } = req.body;
+        const { agent, quote_price, quote_file, description, initial_payment, discount_given, payment_note } = req.body;
 
         if (!quote_price) { return res.status(400).send('Quoted price is required!'); }
         if (!quote_file) { return res.status(400).send('Quote file link is required!'); }
@@ -383,10 +438,37 @@ let In_Quote = async (req, res) => {
         updateData.agent = agent || updateData.agent;
         updateData.quote_price = quote_price;
         updateData.quote_file = quote_file;
-        updateData.stage = "Quote Sent";
+        updateData.stage = STATUS_DEFAULT_STAGE.In_Quote;
         updateData.status = 'In_Quote';
         updateData.in_quote_date = getLondonDateOnly();
-        updateData.description = processDescription(updateData.description, description, agent);
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage, description || ''),
+            agent
+        );
+
+        const initialPayment = parseMoney(initial_payment);
+        const initialDiscount = parseMoney(discount_given);
+        const quoted = parseMoney(quote_price);
+
+        if (initialPayment < 0 || initialDiscount < 0) {
+            return res.status(400).send('Payment and discount must be positive.');
+        }
+        if ((initialPayment + initialDiscount) > quoted) {
+            return res.status(400).send('Initial payment + discount cannot exceed quoted price.');
+        }
+        if (initialPayment > 0 || initialDiscount > 0 || String(payment_note || '').trim()) {
+            updateData.payment_history = updateData.payment_history || [];
+            updateData.payment_history.push({
+                paid_amount: initialPayment,
+                discount_given: initialDiscount,
+                note: String(payment_note || '').trim(),
+                paid_at: new Date(),
+                agent: agent || updateData.agent || "System",
+                stage: updateData.status,
+            });
+        }
+        applyPaymentSummary(updateData);
 
 
         await updateData.save();
@@ -450,9 +532,14 @@ let In_Survey = async (req, res) => {
         updateData.surveyor = surveyor;
         updateData.survey_date = survey_date;
         updateData.status = 'In_Survey';
+        updateData.stage = STATUS_DEFAULT_STAGE.In_Survey;
         updateData.survey_done = 'No';
         updateData.in_survey_date = getLondonDateOnly();
-        updateData.description = processDescription(updateData.description, description, agent);
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage, description || ''),
+            agent
+        );
 
 
         await updateData.save();
@@ -489,8 +576,13 @@ let In_Design = async (req, res) => {
         updateData.design_deadline = design_deadline;
         updateData.designer = designer;
         updateData.status = 'In_Design';
+        updateData.stage = STATUS_DEFAULT_STAGE.In_Design;
         updateData.in_design_date = getLondonDateOnly();
-        updateData.description = processDescription(updateData.description, description, agent);
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage, description || ''),
+            agent
+        );
 
 
         await updateData.save();
@@ -522,9 +614,14 @@ let In_Review = async (req, res) => {
 
         updateData.agent = agent;
         updateData.status = 'In_Review';
+        updateData.stage = STATUS_DEFAULT_STAGE.In_Review;
         updateData.design_file = design_file;
         updateData.in_review_date = getLondonDateOnly();
-        updateData.description = processDescription(updateData.description, description, agent);
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage, description || ''),
+            agent
+        );
 
 
         await updateData.save();
@@ -558,8 +655,13 @@ let Closed = async (req, res) => {
         updateData.agent = agent;
         updateData.final_price = final_price;
         updateData.status = 'Closed';
+        updateData.stage = STATUS_DEFAULT_STAGE.Closed;
         updateData.close_date = getLondonDateOnly();
-        updateData.description = processDescription(updateData.description, description, agent);
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage, description || ''),
+            agent
+        );
 
 
         await updateData.save();
@@ -586,7 +688,12 @@ let Lost_Lead = async (req, res) => {
         updateData.agent = agent;
         updateData.lost_date = getLondonDateOnly();
         updateData.status = 'Lost_Lead';
-        updateData.description = processDescription(updateData.description, description, agent);
+        updateData.stage = STATUS_DEFAULT_STAGE.Lost_Lead;
+        updateData.description = processDescription(
+            updateData.description,
+            buildStageRemark(updateData.stage, description || ''),
+            agent
+        );
 
 
         await updateData.save();
@@ -629,5 +736,116 @@ let Delete = async (req, res) => {
     res.send('Deleted')
 }
 
+let AddPayment = async (req, res) => {
+    const { amount, discount_given, note, paid_at, agent } = req.body;
+    const updateData = await Lead.findById(req.params.id);
+    if (!updateData) return res.status(404).send('Lead not found');
 
-module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review };
+    const paidAmount = parseMoney(amount);
+    const discount = parseMoney(discount_given);
+    const quoted = parseMoney(updateData.quote_price);
+
+    if (quoted <= 0) return res.status(400).send('Quoted price must be set first.');
+    if (paidAmount < 0 || discount < 0) return res.status(400).send('Invalid payment amount.');
+
+    const received = toFixedMoney((updateData.payment_history || []).reduce((sum, item) => sum + parseMoney(item.paid_amount), 0));
+    const discountTotal = toFixedMoney((updateData.payment_history || []).reduce((sum, item) => sum + parseMoney(item.discount_given), 0));
+    if ((received + discountTotal + paidAmount + discount) > quoted) {
+        return res.status(400).send('Payment exceeds quoted price.');
+    }
+
+    updateData.payment_history = updateData.payment_history || [];
+    updateData.payment_history.push({
+        paid_amount: paidAmount,
+        discount_given: discount,
+        note: String(note || '').trim(),
+        paid_at: paid_at ? new Date(paid_at) : new Date(),
+        agent: agent || req.username || updateData.agent || "System",
+        stage: updateData.status,
+    });
+    applyPaymentSummary(updateData);
+    await updateData.save();
+    res.status(200).json(updateData);
+};
+
+let EditPayment = async (req, res) => {
+    const { amount, discount_given, note, paid_at, agent } = req.body;
+    const updateData = await Lead.findById(req.params.id);
+    if (!updateData) return res.status(404).send('Lead not found');
+
+    const item = (updateData.payment_history || []).id(req.params.paymentId);
+    if (!item) return res.status(404).send('Payment history not found');
+
+    const nextAmount = parseMoney(amount);
+    const nextDiscount = parseMoney(discount_given);
+    if (nextAmount < 0 || nextDiscount < 0) return res.status(400).send('Invalid payment amount.');
+
+    item.paid_amount = nextAmount;
+    item.discount_given = nextDiscount;
+    item.note = String(note || '').trim();
+    item.paid_at = paid_at ? new Date(paid_at) : item.paid_at;
+    item.agent = agent || item.agent;
+
+    const summary = buildPaymentSummary(updateData);
+    if ((summary.received + summary.discount) > summary.quoted) {
+        return res.status(400).send('Payment exceeds quoted price.');
+    }
+    applyPaymentSummary(updateData);
+    await updateData.save();
+    res.status(200).json(updateData);
+};
+
+let IncomeReport = async (req, res) => {
+    if (!['Admin', 'Management'].includes(req.userType)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { from, to } = req.query;
+    if (!from || !to) return res.status(400).send('From and To date are required.');
+
+    const fromDate = new Date(`${from}T00:00:00.000Z`);
+    const toDate = new Date(`${to}T23:59:59.999Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+        return res.status(400).send('Invalid date range.');
+    }
+
+    const leads = await Lead.find({
+        payment_history: {
+            $elemMatch: {
+                paid_at: { $gte: fromDate, $lte: toDate },
+                paid_amount: { $gt: 0 },
+            }
+        }
+    }).populate({ path: 'client', select: 'name phone email company', options: { lean: true } }).lean();
+
+    const rows = [];
+    let total = 0;
+    for (const lead of leads) {
+        for (const item of (lead.payment_history || [])) {
+            const paidAt = new Date(item.paid_at);
+            if (Number.isNaN(paidAt.getTime())) continue;
+            if (paidAt < fromDate || paidAt > toDate) continue;
+            const amount = parseMoney(item.paid_amount);
+            if (amount <= 0) continue;
+            total += amount;
+            rows.push({
+                lead_id: lead._id,
+                code: lead.leadCode,
+                client: lead.client || null,
+                company: lead.company || '',
+                project_address: lead.address || '',
+                project_type: lead.project_type || '',
+                quoted_amount: toFixedMoney(parseMoney(lead.quote_price)),
+                amount: toFixedMoney(amount),
+                discount: toFixedMoney(parseMoney(item.discount_given)),
+                due: toFixedMoney(parseMoney(lead.payment_due_amount)),
+                paid_at: item.paid_at,
+                agent: item.agent || '',
+            });
+        }
+    }
+
+    rows.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
+    res.status(200).json({ rows, total: toFixedMoney(total), from, to });
+};
+
+module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport };

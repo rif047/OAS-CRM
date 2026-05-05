@@ -2,6 +2,8 @@ import { NavLink } from "react-router-dom";
 import SideMenuItem from "./SideMenuItem";
 
 export default function SideMenu() {
+    const currentYear = new Date().getFullYear();
+
     return (
         <aside className="asideMenu flex h-auto w-full flex-col border-r border-white/10 bg-[#0f172a]/90 shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_8px_18px_rgba(2,6,23,0.2)] backdrop-blur-xl md:h-screen md:w-[250px]">
             <div className="flex h-14 items-center justify-between border-b border-white/10 bg-[#192032] px-4 backdrop-blur-sm md:h-16 md:px-7">
@@ -22,7 +24,7 @@ export default function SideMenu() {
 
             <div className="relative hidden h-[55px] items-center justify-center overflow-hidden border-t border-white/10 bg-[#111827] text-[13px] font-medium text-gray-500 group md:flex">
                 <span className="transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-2">
-                    © 2025 KPCL Group
+                    © {currentYear} KPCL Group
                 </span>
                 <span className="absolute transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 text-[#88bb99] font-semibold">
                     Cube In Cloud

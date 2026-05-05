@@ -13,12 +13,16 @@ import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../../Components/RichTextEditor";
 import 'react-toastify/dist/ReactToastify.css';
-import { formatCurrencyGBP } from '../../../utils/formatters';
+import { markEditedRowForHighlight } from '../../../utils/datatableState';
+import LeadPaymentModal from '../../../Components/LeadPaymentModal';
+import PaymentCell from '../../../Components/Datatable/PaymentCell';
 
 export default function In_Quote() {
     document.title = 'In Quote';
 
     const EndPoint = 'leads';
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const isAdminOrManagement = currentUser?.userType === "Admin" || currentUser?.userType === "Management";
 
     const userPermissions = {
         canEdit: true,
@@ -34,14 +38,18 @@ export default function In_Quote() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentLead, setPaymentLead] = useState(null);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [drawingModalOpen, setDrawingModalOpen] = useState(false);
+    const [lostModalOpen, setLostModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
     const [form, setForm] = useState({ agent: "", surveyor: "", survey_date: "", design_deadline: "", designer: "", description: "" });
+    const [lostForm, setLostForm] = useState({ agent: "", description: "" });
     const [projectRemark, setProjectRemark] = useState("");
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
@@ -86,22 +94,12 @@ export default function In_Quote() {
     const handleStageSubmit = async () => {
         const errors = {};
         if (!stageForm.stage) errors.stage = "Stage required";
-        if (!stageForm.description) errors.description = "Description required";
+        if (isRichTextEmpty(stageForm.description)) errors.description = "Description required";
 
         setStageErrors(errors);
         if (Object.keys(errors).length) return;
 
         const user = JSON.parse(localStorage.getItem("user"));
-
-        const previousDescription = selectedRow.description || "";
-
-        const finalDescription = `
-                        ${previousDescription}
-                        <hr />
-                        <p><b>Stage -  ${stageForm.stage}</b></p>
-                        ${stageForm.description} 
-                    `;
-
 
         try {
             await axios.patch(
@@ -112,11 +110,12 @@ export default function In_Quote() {
                     source: selectedRow.source,
 
                     stage: stageForm.stage,
-                    description: finalDescription,
+                    description: stageForm.description,
                     agent: user?.name
                 }
             );
 
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Stage updated");
             fetchData();
             setStageModalOpen(false);
@@ -221,17 +220,30 @@ export default function In_Quote() {
         }
     };
 
-    const handleToPending = async (row) => {
-        if (window.confirm(`Move back to leads - ${row.leadCode.toUpperCase()}?`)) {
-            try {
-                const loggedUser = JSON.parse(localStorage.getItem('user'));
-                await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/pending/${row._id}`, { agent: loggedUser?.name || "" });
+    const handleLostClick = (row) => {
+        document.activeElement?.blur?.();
+        const user = JSON.parse(localStorage.getItem("user"));
+        setSelectedRow(row);
+        setLostForm({ agent: user?.name || "", description: "" });
+        setLostModalOpen(true);
+    };
 
-                toast.success("Project moved to leads");
-                fetchData();
-            } catch {
-                toast.error("Failed to mark as Cancelled.");
-            }
+    const handleLostSubmit = async () => {
+        if (isRichTextEmpty(lostForm.description)) {
+            toast.error("Description is required.");
+            return;
+        }
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`,
+                { ...lostForm, status: "Lost_Lead" }
+            );
+            toast.success("Lead moved to Lost Lead.");
+            fetchData();
+            setLostModalOpen(false);
+        } catch {
+            toast.error("Failed to mark as Lost.");
         }
     };
 
@@ -256,6 +268,10 @@ export default function In_Quote() {
         setViewData(row);
         setViewModalOpen(true);
     };
+    const handlePaymentClick = (row) => {
+        setPaymentLead(row);
+        setPaymentModalOpen(true);
+    };
 
     const handleCommentClick = (row) => {
         document.activeElement?.blur?.();
@@ -276,6 +292,7 @@ export default function In_Quote() {
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
                 commentForm
             );
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Comment added successfully.");
             fetchData();
             setCommentModalOpen(false);
@@ -321,7 +338,7 @@ export default function In_Quote() {
         const address = row.address?.trim() || "N/A";
         return (
             <p
-                className="max-w-[260px] text-xs leading-4 text-slate-600"
+                className="block text-xs leading-4 text-slate-600"
                 title={address}
                 style={{
                     display: "-webkit-box",
@@ -329,6 +346,9 @@ export default function In_Quote() {
                     WebkitBoxOrient: "vertical",
                     overflow: "hidden",
                     wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
                 }}
             >
                 {address}
@@ -337,15 +357,26 @@ export default function In_Quote() {
     };
 
     const columns = [
-        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 60 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
-        { key: "address", header: 'Project Address', minSize: 220, maxSize: 300, Cell: ({ row }) => renderAddressCell(row.original) },
-        { key: "quote_price", header: "Quoted P.", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 80 },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
+        {
+            key: "payment",
+            header: "Payment",
+            maxSize: 130,
+            Cell: ({ row }) => (
+                <PaymentCell
+                    lead={row.original}
+                    onClick={handlePaymentClick}
+                    showSummary={isAdminOrManagement}
+                />
+            )
+        },
         {
             key: "stage",
             header: "Stage",
-            maxSize: 120,
+            maxSize: 80,
             Cell: ({ row }) => (
                 <button
                     onClick={(e) => {
@@ -388,11 +419,11 @@ export default function In_Quote() {
                     </button>
 
                     <button
-                        onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
+                        onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
                         className="text-red-400 font-bold flex items-center cursor-pointer ml-2"
-                        title="Move to Cancelled"
+                        title="Mark as Lost"
                     >
-                        <span className="text-xs mr-1 text-center">Cancel</span>
+                        <span className="text-xs mr-1 text-center">Lost</span>
                         <HighlightOffIcon fontSize="small" />
                     </button>
 
@@ -646,6 +677,45 @@ export default function In_Quote() {
             </Dialog>
 
             <Dialog
+                open={lostModalOpen}
+                onClose={() => setLostModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Mark as Lost</b>
+                </DialogTitle>
+                <DialogContent>
+                    <RichTextEditor
+                        value={lostForm.description}
+                        onChange={(html) =>
+                            setLostForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+
+                    <div className='bg-gray-50 p-3 rounded-md border border-gray-300 mt-4'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleLostSubmit}
+                        className="bg-red-500! hover:bg-red-600! font-bold!"
+                    >
+                        Mark as Lost
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
                 open={stageModalOpen}
                 onClose={() => setStageModalOpen(false)}
                 fullWidth
@@ -734,6 +804,7 @@ export default function In_Quote() {
                     </Button>
                 </DialogActions>
             </Dialog>
+            <LeadPaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} lead={paymentLead} onUpdated={() => fetchData()} />
         </Layout>
     );
 }

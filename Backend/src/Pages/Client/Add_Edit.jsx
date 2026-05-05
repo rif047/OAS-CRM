@@ -3,6 +3,7 @@ import { Box, Button, Typography, Modal, IconButton, TextField, Autocomplete, Me
 import { Close as CloseIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { markEditedRowForHighlight } from '../../utils/datatableState';
 
 const modalStyle = {
     position: 'absolute',
@@ -69,6 +70,7 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
             const url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}${data?._id ? `/${data._id}` : ''}`;
             const method = data?._id ? 'patch' : 'post';
             await axios[method](url, formData);
+            if (data?._id) markEditedRowForHighlight(data._id);
             toast.success(data?._id ? 'Updated successfully.' : 'Created successfully.');
             refreshData();
             onClose();

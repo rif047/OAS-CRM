@@ -12,7 +12,9 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../Components/RichTextEditor";
+import LeadPaymentModal from '../../Components/LeadPaymentModal';
 import { formatLondonDate } from "../../utils/formatters";
+import { markEditedRowForHighlight } from '../../utils/datatableState';
 
 export default function Leads() {
     document.title = 'Leads';
@@ -38,7 +40,9 @@ export default function Leads() {
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState("");
     const [selectedRow, setSelectedRow] = useState(null);
-    const [form, setForm] = useState({ agent: "", quote_price: "", quote_file: "", description: "" });
+    const [form, setForm] = useState({ agent: "", quote_price: "", quote_file: "", description: "", initial_payment: "", discount_given: "", payment_note: "" });
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentLead, setPaymentLead] = useState(null);
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
 
@@ -69,22 +73,12 @@ export default function Leads() {
     const handleStageSubmit = async () => {
         const errors = {};
         if (!stageForm.stage) errors.stage = "Stage required";
-        if (!stageForm.description) errors.description = "Description required";
+        if (isRichTextEmpty(stageForm.description)) errors.description = "Description required";
 
         setStageErrors(errors);
         if (Object.keys(errors).length) return;
 
         const user = JSON.parse(localStorage.getItem("user"));
-
-        const previousDescription = selectedRow.description || "";
-
-        const finalDescription = `
-                    ${previousDescription}
-                    <hr />
-                    <p><b>Stage -  ${stageForm.stage}</b></p>
-                    ${stageForm.description} 
-                `;
-
 
         try {
             await axios.patch(
@@ -95,11 +89,12 @@ export default function Leads() {
                     source: selectedRow.source,
 
                     stage: stageForm.stage,
-                    description: finalDescription,
+                    description: stageForm.description,
                     agent: user?.name
                 }
             );
 
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Stage updated");
             fetchData();
             setStageModalOpen(false);
@@ -145,7 +140,7 @@ export default function Leads() {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
         setSelectedRow(row);
-        setForm({ agent: user?.name || "", quote_price: "", quote_file: "", description: "" });
+        setForm({ agent: user?.name || "", quote_price: "", quote_file: "", description: "", initial_payment: "", discount_given: "", payment_note: "" });
         setSelectedStatus("In_Quote");
         setStatusModalOpen(true);
     };
@@ -162,6 +157,15 @@ export default function Leads() {
 
     const handleStatusSubmit = async () => {
         try {
+            if (selectedStatus !== "Lost_Lead") {
+                const quoted = Number(form.quote_price || 0);
+                const paid = Number(form.initial_payment || 0);
+                const discount = Number(form.discount_given || 0);
+                if ((paid + discount) > quoted) {
+                    toast.error("Initial payment + discount cannot exceed the quoted price.");
+                    return;
+                }
+            }
             let url = "";
             if (selectedStatus === "Lost_Lead") {
                 url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`;
@@ -179,6 +183,10 @@ export default function Leads() {
             toast.error("Please complete all fields.");
         }
     };
+    const q = Number(form.quote_price || 0);
+    const p = Number(form.initial_payment || 0);
+    const d = Number(form.discount_given || 0);
+    const due = Math.max(q - (p + d), 0);
 
     const handleDelete = async (row) => {
         if (window.confirm(`Delete ${row.leadCode.toUpperCase()}?`)) {
@@ -214,6 +222,7 @@ export default function Leads() {
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
                 commentForm
             );
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Comment added successfully.");
             fetchData();
             setCommentModalOpen(false);
@@ -228,7 +237,7 @@ export default function Leads() {
         const displayText = companyName ? `${clientName} (${companyName})` : clientName;
 
         return (
-            <div className="max-w-[240px] min-w-0">
+            <div className="max-w-60 min-w-0">
                 <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
                 {(row.client?.phone || row.client?.email) && (
                     <p
@@ -254,7 +263,7 @@ export default function Leads() {
         const address = row.address?.trim() || "N/A";
         return (
             <p
-                className="max-w-[260px] text-xs leading-4 text-slate-600"
+                className="block text-xs leading-4 text-slate-600"
                 title={address}
                 style={{
                     display: "-webkit-box",
@@ -262,6 +271,9 @@ export default function Leads() {
                     WebkitBoxOrient: "vertical",
                     overflow: "hidden",
                     wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
                 }}
             >
                 {address}
@@ -270,15 +282,15 @@ export default function Leads() {
     };
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 70 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 70 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "address", header: 'Project Address', minSize: 220, maxSize: 300, Cell: ({ row }) => renderAddressCell(row.original) },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         {
             key: "stage",
             header: "Stage",
-            maxSize: 120,
+            maxSize: 80,
             Cell: ({ row }) => (
                 <button
                     onClick={(e) => {
@@ -413,16 +425,28 @@ export default function Leads() {
 
             <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle>
-                    <b>{selectedStatus === "Lost_Lead" ? "Write Reason" : "Sent Quote"}</b>
+                    <b>{selectedStatus === "Lost_Lead" ? "Mark as Lost" : "Sent Quote"}</b>
                 </DialogTitle>
                 <DialogContent>
                     {selectedStatus === "Lost_Lead" ? (
-                        <RichTextEditor
-                            value={form.description}
-                            onChange={(html) =>
-                                setForm(prev => ({ ...prev, description: html }))
-                            }
-                        />
+                        <>
+                            <RichTextEditor
+                                value={form.description}
+                                onChange={(html) =>
+                                    setForm(prev => ({ ...prev, description: html }))
+                                }
+                            />
+
+                            <div className='bg-gray-50 p-3 rounded-md border border-gray-300 mt-4'>
+                                <h1 className='font-bold mb-2'>Previous Description</h1>
+                                <div
+                                    className="text-gray-500 description-view"
+                                    dangerouslySetInnerHTML={{
+                                        __html: selectedRow?.description || "No description provided"
+                                    }}
+                                />
+                            </div>
+                        </>
                     ) : (
                         <>
                             <TextField
@@ -442,6 +466,14 @@ export default function Leads() {
                                 value={form.quote_file}
                                 onChange={e => setForm({ ...form, quote_file: e.target.value })}
                             />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <TextField fullWidth label="Initial Payment" size="small" margin="normal" type='number' value={form.initial_payment} onChange={e => setForm({ ...form, initial_payment: e.target.value })} />
+                                <TextField fullWidth label="Discount Given" size="small" margin="normal" type='number' value={form.discount_given} onChange={e => setForm({ ...form, discount_given: e.target.value })} />
+                            </div>
+                            <TextField fullWidth label="Payment Note" size="small" margin="normal" value={form.payment_note} onChange={e => setForm({ ...form, payment_note: e.target.value })} />
+                            <div className="rounded-md border border-slate-300 bg-slate-50 p-2 text-sm text-slate-700 mb-2">
+                                Due Amount: <b>{Number.isFinite(due) ? due : 0}</b>
+                            </div>
 
                             <RichTextEditor
                                 value={form.description}
@@ -453,11 +485,22 @@ export default function Leads() {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button fullWidth variant="contained" onClick={handleStatusSubmit} className="bg-[#272e3f]! hover:bg-gray-700! font-bold!">
-                        Submit
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleStatusSubmit}
+                        className={selectedStatus === "Lost_Lead" ? "bg-red-500! hover:bg-red-600! font-bold!" : "bg-[#272e3f]! hover:bg-gray-700! font-bold!"}
+                    >
+                        {selectedStatus === "Lost_Lead" ? "Mark as Lost" : "Submit"}
                     </Button>
                 </DialogActions>
             </Dialog>
+            <LeadPaymentModal
+                open={paymentModalOpen}
+                onClose={() => setPaymentModalOpen(false)}
+                lead={paymentLead}
+                onUpdated={() => fetchData()}
+            />
 
             <Dialog
                 open={commentModalOpen}

@@ -3,6 +3,7 @@ import { Box, Button, Typography, Modal, TextField, MenuItem, IconButton, InputA
 import { Visibility, VisibilityOff, Close as CloseIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { markEditedRowForHighlight } from '../../utils/datatableState';
 
 const modalStyle = {
     position: 'absolute',
@@ -87,6 +88,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
             }
 
             await axios[method](url, submissionData);
+            if (data?._id) markEditedRowForHighlight(data._id);
             toast.success(data?._id ? 'Updated successfully.' : 'Created successfully.');
             refreshData();
             onClose();

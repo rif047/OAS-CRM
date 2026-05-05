@@ -4,7 +4,7 @@ const multer = require('multer');
 const asyncHandler = require('../../Middlewares/Async_Handler');
 const validateObjectId = require('../../Middlewares/Validate_ObjectId');
 const authorize = require('../../Middlewares/Authorize');
-const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review } = require('./Lead_Controller')
+const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport } = require('./Lead_Controller')
 
 const leadDescriptionUpload = multer({
     storage: multer.memoryStorage(),
@@ -51,6 +51,9 @@ Route.patch('/In_review/:id', asyncHandler(In_Review))
 Route.patch('/closed/:id', asyncHandler(Closed))
 Route.patch('/lost_lead/:id', asyncHandler(Lost_Lead))
 Route.patch('/comment/:id', asyncHandler(Comment))
+Route.post('/payments/:id', authorize('Admin', 'Management', 'Agent'), asyncHandler(AddPayment))
+Route.patch('/payments/:id/:paymentId', authorize('Admin', 'Management', 'Agent'), asyncHandler(EditPayment))
+Route.get('/income/report', authorize('Admin', 'Management'), asyncHandler(IncomeReport))
 
 
 

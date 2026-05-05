@@ -13,6 +13,9 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../../Components/RichTextEditor";
+import { markEditedRowForHighlight } from '../../../utils/datatableState';
+import LeadPaymentModal from '../../../Components/LeadPaymentModal';
+import PaymentCell from '../../../Components/Datatable/PaymentCell';
 
 export default function In_Survey() {
     document.title = 'In Survey';
@@ -38,6 +41,8 @@ export default function In_Survey() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentLead, setPaymentLead] = useState(null);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
@@ -46,11 +51,19 @@ export default function In_Survey() {
     const [surveyForm, setSurveyForm] = useState({ agent: "", survey_note: "", survey_file: "", survey_done: "" });
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
+    const [lostModalOpen, setLostModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
     const [form, setForm] = useState({ agent: "", designer: "", design_deadline: "", description: "" });
+    const [lostForm, setLostForm] = useState({ agent: "", description: "" });
     const [designers, setDesigners] = useState([]);
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
+    const [stageModalOpen, setStageModalOpen] = useState(false);
+    const [stageForm, setStageForm] = useState({
+        stage: "",
+        description: ""
+    });
+    const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
 
     const fetchUsers = async () => {
@@ -165,18 +178,30 @@ export default function In_Survey() {
 
 
 
-    const handleToPending = async (row) => {
-        if (window.confirm(`Move back to leads - ${row.leadCode.toUpperCase()}?`)) {
-            try {
-                await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/pending/${row._id}`, {
-                    agent: form.agent,
-                });
+    const handleLostClick = (row) => {
+        document.activeElement?.blur?.();
+        const user = JSON.parse(localStorage.getItem("user"));
+        setSelectedRow(row);
+        setLostForm({ agent: user?.name || "", description: "" });
+        setLostModalOpen(true);
+    };
 
-                toast.success("Project marked as Cancelled!");
-                fetchData();
-            } catch {
-                toast.error("Failed to mark as Cancelled.");
-            }
+    const handleLostSubmit = async () => {
+        if (isRichTextEmpty(lostForm.description)) {
+            toast.error("Description is required.");
+            return;
+        }
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`,
+                { ...lostForm, status: "Lost_Lead" }
+            );
+            toast.success("Lead moved to Lost Lead.");
+            fetchData();
+            setLostModalOpen(false);
+        } catch {
+            toast.error("Failed to mark as Lost.");
         }
     };
 
@@ -201,6 +226,10 @@ export default function In_Survey() {
         setViewData(row);
         setViewModalOpen(true);
     };
+    const handlePaymentClick = (row) => {
+        setPaymentLead(row);
+        setPaymentModalOpen(true);
+    };
 
     const handleCommentClick = (row) => {
         document.activeElement?.blur?.();
@@ -208,6 +237,48 @@ export default function In_Survey() {
         setSelectedRow(row);
         setCommentForm({ agent: user?.name || "", description: "" });
         setCommentModalOpen(true);
+    };
+
+    const handleStageClick = (row) => {
+        document.activeElement?.blur?.();
+        setSelectedRow(row);
+        setStageForm({
+            stage: row.stage || "",
+            description: ""
+        });
+        setStageErrors({});
+        setStageModalOpen(true);
+    };
+
+    const handleStageSubmit = async () => {
+        const errors = {};
+        if (!stageForm.stage) errors.stage = "Stage required";
+        if (isRichTextEmpty(stageForm.description)) errors.description = "Description required";
+
+        setStageErrors(errors);
+        if (Object.keys(errors).length) return;
+
+        const user = JSON.parse(localStorage.getItem("user"));
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${selectedRow._id}`,
+                {
+                    company: selectedRow.company,
+                    client: selectedRow.client?._id || selectedRow.client,
+                    source: selectedRow.source,
+                    stage: stageForm.stage,
+                    description: stageForm.description,
+                    agent: user?.name
+                }
+            );
+
+            markEditedRowForHighlight(selectedRow._id);
+            toast.success("Stage updated");
+            fetchData();
+            setStageModalOpen(false);
+        } catch {
+            toast.error("Failed to update stage");
+        }
     };
 
     const handleCommentSubmit = async () => {
@@ -221,6 +292,7 @@ export default function In_Survey() {
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
                 commentForm
             );
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Comment added successfully.");
             fetchData();
             setCommentModalOpen(false);
@@ -268,7 +340,7 @@ export default function In_Survey() {
         const address = row.address?.trim() || "N/A";
         return (
             <p
-                className="max-w-[260px] text-xs leading-4 text-slate-600"
+                className="block text-xs leading-4 text-slate-600"
                 title={address}
                 style={{
                     display: "-webkit-box",
@@ -276,6 +348,9 @@ export default function In_Survey() {
                     WebkitBoxOrient: "vertical",
                     overflow: "hidden",
                     wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
                 }}
             >
                 {address}
@@ -284,12 +359,40 @@ export default function In_Survey() {
     };
 
     const columns = [
-        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 60 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
-        { key: "address", header: 'Project Address', minSize: 220, maxSize: 300, Cell: ({ row }) => renderAddressCell(row.original) },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         { key: "survey_date", accessorKey: 'survey_date', header: 'Survey Date' },
         { key: "survey_done", accessorKey: 'survey_done', header: 'Done', maxSize: 50 },
+        {
+            key: "payment",
+            header: "Payment",
+            maxSize: 130,
+            Cell: ({ row }) => (
+                <PaymentCell
+                    lead={row.original}
+                    onClick={handlePaymentClick}
+                    showSummary={isAdminOrManagement}
+                />
+            )
+        },
+        {
+            key: "stage",
+            header: "Stage",
+            maxSize: 120,
+            Cell: ({ row }) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleStageClick(row.original);
+                    }}
+                    className="crmStageBtn cursor-pointer"
+                >
+                    {row.original.stage}
+                </button>
+            )
+        },
         {
             id: "setStatus",
             key: "actions",
@@ -321,9 +424,9 @@ export default function In_Survey() {
                                 </button>
 
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
+                                    onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
                                     className="text-red-400 font-bold flex items-center cursor-pointer ml-2">
-                                    <span className="text-xs mr-1 text-center ">Cancel</span>
+                                    <span className="text-xs mr-1 text-center ">Lost</span>
                                     <HighlightOffIcon fontSize="small" />
                                 </button>
                             </>
@@ -551,6 +654,99 @@ export default function In_Survey() {
             </Dialog>
 
             <Dialog
+                open={lostModalOpen}
+                onClose={() => setLostModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle><b>Mark as Lost</b></DialogTitle>
+                <DialogContent>
+                    <RichTextEditor
+                        value={lostForm.description}
+                        onChange={(html) =>
+                            setLostForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+
+                    <div className='bg-gray-50 p-3 rounded-md border border-gray-300 mt-4'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleLostSubmit}
+                        className="bg-red-500! hover:bg-red-600! font-bold!"
+                    >
+                        Mark as Lost
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={stageModalOpen}
+                onClose={() => setStageModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Change Stage</b>
+                </DialogTitle>
+                <DialogContent>
+                    <TextField
+                        select
+                        fullWidth
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={stageForm.stage}
+                        onChange={(e) =>
+                            setStageForm(prev => ({ ...prev, stage: e.target.value }))
+                        }
+                        error={!!stageErrors.stage}
+                        helperText={stageErrors.stage}
+                    >
+                        <option value="">Stage*</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Survey Scheduled">Survey Scheduled</option>
+                        <option value="Survey Completed">Survey Completed</option>
+                        <option value="Survey Report Sent">Survey Report Sent</option>
+                        <option value="Drawing Paid">Drawing Paid</option>
+                        <option value="Hold">Hold</option>
+                        <option value="Other">Other</option>
+                    </TextField>
+
+                    <RichTextEditor
+                        value={stageForm.description}
+                        onChange={(html) =>
+                            setStageForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+                    {stageErrors.description && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {stageErrors.description}
+                        </p>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleStageSubmit}
+                        className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
+                    >
+                        Submit
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
                 open={commentModalOpen}
                 onClose={() => setCommentModalOpen(false)}
                 fullWidth
@@ -580,6 +776,7 @@ export default function In_Survey() {
                     </Button>
                 </DialogActions>
             </Dialog>
+            <LeadPaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} lead={paymentLead} onUpdated={() => fetchData()} />
 
         </Layout>
     );

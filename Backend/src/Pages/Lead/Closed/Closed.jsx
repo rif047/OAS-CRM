@@ -48,7 +48,13 @@ export default function Closed() {
                 ? filteredData
                 : filteredData.filter(item => item.company === selectedCompany);
 
-            setData(filteredByCompany);
+            const sortedByLatestClose = [...filteredByCompany].sort((a, b) => {
+                const aDate = new Date(a?.close_date || a?.updatedAt || a?.createdAt || 0).getTime();
+                const bDate = new Date(b?.close_date || b?.updatedAt || b?.createdAt || 0).getTime();
+                return bDate - aDate;
+            });
+
+            setData(sortedByLatestClose);
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
@@ -100,7 +106,7 @@ export default function Closed() {
         const displayText = companyName ? `${clientName} (${companyName})` : clientName;
 
         return (
-            <div className="max-w-[240px] min-w-0">
+            <div className="max-w-60 min-w-0">
                 <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
                 {(row.client?.phone || row.client?.email) && (
                     <p
@@ -126,7 +132,7 @@ export default function Closed() {
         const address = row.address?.trim() || "N/A";
         return (
             <p
-                className="max-w-[260px] text-xs leading-4 text-slate-600"
+                className="block text-xs leading-4 text-slate-600"
                 title={address}
                 style={{
                     display: "-webkit-box",
@@ -134,6 +140,9 @@ export default function Closed() {
                     WebkitBoxOrient: "vertical",
                     overflow: "hidden",
                     wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
                 }}
             >
                 {address}
@@ -142,13 +151,35 @@ export default function Closed() {
     };
 
     const columns = [
-        { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 60 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "address", header: 'Project Address', minSize: 220, maxSize: 300, Cell: ({ row }) => renderAddressCell(row.original) },
-        { key: "quote_price", header: "Quote Price", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 50 },
-        { key: "final_price", header: "Final Price", accessorFn: row => formatCurrencyGBP(row.final_price), maxSize: 50 },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
+        {
+            key: "quote_price",
+            header: "Quote",
+            accessorFn: row => formatCurrencyGBP(row.quote_price),
+            maxSize: 50,
+            muiTableHeadCellProps: { align: "center" },
+            muiTableBodyCellProps: { align: "center" }
+        },
+        {
+            key: "payment_received_total",
+            header: "Received",
+            accessorFn: row => formatCurrencyGBP(row.payment_received_total || 0),
+            maxSize: 50,
+            muiTableHeadCellProps: { align: "center" },
+            muiTableBodyCellProps: { align: "center" }
+        },
+        {
+            key: "payment_discount_total",
+            header: "Discount",
+            accessorFn: row => formatCurrencyGBP(row.payment_discount_total || 0),
+            maxSize: 50,
+            muiTableHeadCellProps: { align: "center" },
+            muiTableBodyCellProps: { align: "center" }
+        },
         ...(userType === "Admin"
             ? [
                 {

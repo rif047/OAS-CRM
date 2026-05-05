@@ -126,7 +126,7 @@ export default function Lost_Lead() {
         const address = row.address?.trim() || "N/A";
         return (
             <p
-                className="max-w-[260px] text-xs leading-4 text-slate-600"
+                className="block text-xs leading-4 text-slate-600"
                 title={address}
                 style={{
                     display: "-webkit-box",
@@ -134,6 +134,9 @@ export default function Lost_Lead() {
                     WebkitBoxOrient: "vertical",
                     overflow: "hidden",
                     wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
                 }}
             >
                 {address}
@@ -144,10 +147,10 @@ export default function Lost_Lead() {
     const columns = [
         { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Created', maxSize: 80 },
         { key: "lost_date", accessorKey: 'lost_date', header: 'Lost', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "address", header: 'Project Address', minSize: 220, maxSize: 300, Cell: ({ row }) => renderAddressCell(row.original) },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         ...(userType === "Admin"
             ? [
                 {

@@ -123,6 +123,26 @@ const LeadSchema = Mongoose.Schema({
     description: {
         type: String
     },
+    payment_received_total: {
+        type: Number,
+        default: 0
+    },
+    payment_discount_total: {
+        type: Number,
+        default: 0
+    },
+    payment_due_amount: {
+        type: Number,
+        default: 0
+    },
+    payment_history: [{
+        paid_amount: { type: Number, default: 0 },
+        discount_given: { type: Number, default: 0 },
+        note: { type: String, default: '' },
+        paid_at: { type: Date, default: Date.now },
+        agent: { type: String, default: '' },
+        stage: { type: String, default: '' },
+    }],
 }, { timestamps: true })
 
 LeadSchema.index({ status: 1, company: 1, createdAt: -1 });

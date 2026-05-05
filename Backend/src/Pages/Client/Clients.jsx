@@ -91,9 +91,11 @@ export default function Clients() {
 
 
     const columns = [
-        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 80 },
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 60 },
         { accessorKey: 'name', header: 'Client Name' },
         { accessorKey: 'phone', header: 'Phone', enableClickToCopy: true, },
+        { accessorKey: 'email', header: 'Email', enableClickToCopy: true, },
+        { accessorKey: 'company', header: 'Company' },
         { accessorKey: 'agent', header: 'Agent', maxSize: 60 },
     ];
 
