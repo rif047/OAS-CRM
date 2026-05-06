@@ -103,6 +103,13 @@ const processDescription = (oldDesc, newDesc, agent, mode = "append") => {
     return formatRemark(oldDesc, sanitized, safeAgent);
 };
 
+const normalizeComparableHtml = (html = '') =>
+    String(html)
+        .replace(/<b><b>/g, '<b>')
+        .replace(/<strong><strong>/g, '<strong>')
+        .replace(/\s+/g, ' ')
+        .trim();
+
 const hasMeaningfulText = (html = '') => {
     return String(html).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
 };
@@ -201,6 +208,15 @@ const STATUS_DEFAULT_STAGE = {
     Closed: 'Closed',
     Lost_Lead: 'Lost',
 };
+const STATUS_SORT_FIELD = {
+    Pending: 'createdAt',
+    In_Quote: 'in_quote_date',
+    In_Survey: 'in_survey_date',
+    In_Design: 'in_design_date',
+    In_Review: 'in_review_date',
+    Closed: 'close_date',
+    Lost_Lead: 'lost_date',
+};
 
 const parseMoney = (value) => {
     const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
@@ -241,8 +257,13 @@ let Leads = async (req, res) => {
         filter.company = String(company).trim();
     }
 
+    const statusSortField = STATUS_SORT_FIELD[filter.status] || 'createdAt';
+    const sortConfig = statusSortField === 'createdAt'
+        ? { createdAt: -1, _id: -1 }
+        : { [statusSortField]: -1, updatedAt: -1, createdAt: -1, _id: -1 };
+
     let Data = await Lead.find(filter)
-        .sort({ createdAt: -1 })
+        .sort(sortConfig)
         .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
         .lean();
 
@@ -365,7 +386,13 @@ let Update = async (req, res) => {
                 agent || updateData.agent
             );
         } else if (description !== undefined && description.trim() !== '') {
-            updateData.description = processDescription(updateData.description, description, agent);
+            const incomingDescription = sanitizeDescription(description);
+            const currentDescription = sanitizeDescription(updateData.description || '');
+
+            // Standard edit flow should update description content directly, not append timeline again.
+            if (normalizeComparableHtml(incomingDescription) !== normalizeComparableHtml(currentDescription)) {
+                updateData.description = processDescription(updateData.description, description, agent, "replace");
+            }
         }
 
 
@@ -848,4 +875,202 @@ let IncomeReport = async (req, res) => {
     res.status(200).json({ rows, total: toFixedMoney(total), from, to });
 };
 
-module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport };
+let MonthlyReport = async (req, res) => {
+    if (!['Admin', 'Management'].includes(req.userType)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { from, to, company, stage } = req.query;
+    if (!from || !to) return res.status(400).send('From and To date are required.');
+
+    const fromDate = new Date(`${from}T00:00:00.000Z`);
+    const toDate = new Date(`${to}T23:59:59.999Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+        return res.status(400).send('Invalid date range.');
+    }
+    if (fromDate > toDate) {
+        return res.status(400).send('From date cannot be after To date.');
+    }
+
+    const baseMatch = {};
+
+    if (company && String(company).trim() && String(company) !== 'All') {
+        baseMatch.company = String(company).trim();
+    }
+    if (stage && String(stage).trim() && String(stage) !== 'All') {
+        const normalizedStage = String(stage).trim();
+        if (!ALLOWED_STATUSES.has(normalizedStage)) {
+            return res.status(400).send('Invalid stage selected.');
+        }
+        baseMatch.status = normalizedStage;
+    }
+
+    const leads = await Lead.aggregate([
+        { $match: baseMatch },
+        {
+            $addFields: {
+                _status_date_raw: {
+                    $switch: {
+                        branches: [
+                            { case: { $eq: ['$status', 'In_Quote'] }, then: '$in_quote_date' },
+                            { case: { $eq: ['$status', 'In_Survey'] }, then: '$in_survey_date' },
+                            { case: { $eq: ['$status', 'In_Design'] }, then: '$in_design_date' },
+                            { case: { $eq: ['$status', 'In_Review'] }, then: '$in_review_date' },
+                            { case: { $eq: ['$status', 'Closed'] }, then: '$close_date' },
+                            { case: { $eq: ['$status', 'Lost_Lead'] }, then: '$lost_date' },
+                        ],
+                        default: null
+                    }
+                }
+            }
+        },
+        {
+            $match: {
+                $expr: {
+                    $and: [
+                        {
+                            $gte: [
+                                {
+                                    $ifNull: [
+                                        {
+                                            $dateFromString: {
+                                                dateString: '$_status_date_raw',
+                                                format: '%Y-%m-%d',
+                                                onError: null,
+                                                onNull: null
+                                            }
+                                        },
+                                        '$createdAt'
+                                    ]
+                                },
+                                fromDate
+                            ]
+                        },
+                        {
+                            $lte: [
+                                {
+                                    $ifNull: [
+                                        {
+                                            $dateFromString: {
+                                                dateString: '$_status_date_raw',
+                                                format: '%Y-%m-%d',
+                                                onError: null,
+                                                onNull: null
+                                            }
+                                        },
+                                        '$createdAt'
+                                    ]
+                                },
+                                toDate
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            $addFields: {
+                report_date_obj: {
+                    $ifNull: [
+                        {
+                            $dateFromString: {
+                                dateString: '$_status_date_raw',
+                                format: '%Y-%m-%d',
+                                onError: null,
+                                onNull: null
+                            }
+                        },
+                        '$createdAt'
+                    ]
+                }
+            }
+        },
+        { $sort: { createdAt: -1 } },
+        {
+            $lookup: {
+                from: 'clients',
+                localField: 'client',
+                foreignField: '_id',
+                as: 'client'
+            }
+        },
+        {
+            $unwind: {
+                path: '$client',
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                leadCode: 1,
+                address: 1,
+                company: 1,
+                project_type: 1,
+                source: 1,
+                status: 1,
+                stage: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                agent: 1,
+                report_date: {
+                    $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$report_date_obj',
+                        timezone: LONDON_TIME_ZONE
+                    }
+                },
+                in_quote_date: 1,
+                in_survey_date: 1,
+                in_design_date: 1,
+                in_review_date: 1,
+                close_date: 1,
+                lost_date: 1,
+                client: {
+                    _id: '$client._id',
+                    name: '$client.name',
+                    phone: '$client.phone',
+                    email: '$client.email',
+                    company: '$client.company',
+                }
+            }
+        }
+    ]);
+
+    const counts = {
+        all: leads.length,
+        pending: 0,
+        in_quote: 0,
+        in_survey: 0,
+        in_design: 0,
+        in_review: 0,
+        closed: 0,
+        lost_lead: 0,
+    };
+
+    for (const lead of leads) {
+        if (lead.status === 'Pending') counts.pending += 1;
+        else if (lead.status === 'In_Quote') counts.in_quote += 1;
+        else if (lead.status === 'In_Survey') counts.in_survey += 1;
+        else if (lead.status === 'In_Design') counts.in_design += 1;
+        else if (lead.status === 'In_Review') counts.in_review += 1;
+        else if (lead.status === 'Closed') counts.closed += 1;
+        else if (lead.status === 'Lost_Lead') counts.lost_lead += 1;
+    }
+
+    const companies = await Lead.distinct('company', { company: { $exists: true, $ne: '' } });
+    companies.sort((a, b) => String(a).localeCompare(String(b)));
+
+    res.status(200).json({
+        rows: leads,
+        counts,
+        companies,
+        filters: {
+            from,
+            to,
+            company: company || 'All',
+            stage: stage || 'All',
+        },
+    });
+};
+
+module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport, MonthlyReport };

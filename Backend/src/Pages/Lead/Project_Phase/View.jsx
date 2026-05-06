@@ -114,7 +114,7 @@ export default function View({ open, onClose, viewData }) {
                                         <InfoCard title="💬 Survey Note">
                                             <div className="bg-slate-50 p-3.5 rounded-lg">
                                                 <div
-                                                    className="text-slate-700 text-[14px] leading-[1.5] description-view"
+                                                    className="text-slate-700 text-[14px] leading-normal description-view"
                                                     dangerouslySetInnerHTML={{
                                                         __html: viewData.survey_note || 'No description provided',
                                                     }}
@@ -129,14 +129,14 @@ export default function View({ open, onClose, viewData }) {
                                 <div className="mt-4">
                                     <InfoCard title="💬 Description">
                                         <div className="bg-slate-50 p-3.5 rounded-lg">
-                                            <div
-                                                className="text-slate-700 text-[14px] leading-[1.5] description-view"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: viewData.description || 'No description provided',
-                                                }}
-                                            />
-                                        </div>
-                                    </InfoCard>
+                                                <div
+                                                    className="text-slate-700 text-[14px] leading-normal description-view"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: viewData.description || 'No description provided',
+                                                    }}
+                                                />
+                                            </div>
+                                        </InfoCard>
                                 </div>
                             </div>
                         )}

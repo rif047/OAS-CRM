@@ -28,7 +28,7 @@ export default function Project_Phase() {
     const isAdminOrManagement = loggedUser?.userType === "Admin" || loggedUser?.userType === "Management";
 
     const userPermissions = {
-        canEdit: isAdminOrManagement,
+        canEdit: false,
         canView: true,
         canDelete: false,
     };
@@ -52,6 +52,7 @@ export default function Project_Phase() {
     const [lostForm, setLostForm] = useState({ agent: "", description: "" });
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
+    const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
     const [stageModalOpen, setStageModalOpen] = useState(false);
     const [stageForm, setStageForm] = useState({
         stage: "",
@@ -221,11 +222,14 @@ export default function Project_Phase() {
     };
 
     const handleCommentSubmit = async () => {
+        if (isCommentSubmitting) return;
+
         if (isRichTextEmpty(commentForm.description)) {
             toast.error("Description is required.");
             return;
         }
 
+        setIsCommentSubmitting(true);
         try {
             await axios.patch(
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
@@ -237,6 +241,8 @@ export default function Project_Phase() {
             setCommentModalOpen(false);
         } catch {
             toast.error("Failed to add comment.");
+        } finally {
+            setIsCommentSubmitting(false);
         }
     };
 
@@ -595,9 +601,10 @@ export default function Project_Phase() {
                         fullWidth
                         variant="contained"
                         onClick={handleCommentSubmit}
+                        disabled={isCommentSubmitting}
                         className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
                     >
-                        Submit Comment
+                        {isCommentSubmitting ? "Submitting..." : "Submit Comment"}
                     </Button>
                 </DialogActions>
             </Dialog>

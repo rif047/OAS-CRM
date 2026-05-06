@@ -237,16 +237,16 @@ export default function Income() {
             </select>
             <button
               onClick={load}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 cursor-pointer"
             >
-              <SummarizeRoundedIcon sx={{ fontSize: 18 }} />
-              View Report
+              <SummarizeRoundedIcon sx={{ fontSize: 18, color: '#bfdbfe' }} />
+              Generate Report
             </button>
             <button
               onClick={downloadReportPdf}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-[#e2e8f0] px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-[#dbe3ee]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 cursor-pointer"
             >
-              <FileDownloadRoundedIcon sx={{ fontSize: 18 }} />
+              <FileDownloadRoundedIcon sx={{ fontSize: 18, color: '#059669' }} />
               Download Report
             </button>
             </div>

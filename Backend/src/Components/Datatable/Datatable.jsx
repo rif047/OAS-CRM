@@ -10,7 +10,7 @@ import { useLocation } from 'react-router-dom';
 import { DATATABLE_EDIT_HIGHLIGHT_KEY, DATATABLE_HIGHLIGHT_EVENT } from '../../utils/datatableState';
 import './MUI.css';
 
-export default function Datatable({ columns, data, onEdit, onView, onDelete, permissions }) {
+export default function Datatable({ columns, data, onEdit, onView, onDelete, permissions, defaultPageSize = 10, forceDefaultPageSize = false }) {
     const location = useLocation();
     const routeKey = location.pathname || 'default';
     const paginationStorageKey = `crm_datatable_pagination_${routeKey}`;
@@ -19,14 +19,14 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
     const getStoredPagination = () => {
         try {
             const raw = localStorage.getItem(paginationStorageKey);
-            if (!raw) return { pageIndex: 0, pageSize: 10 };
+            if (!raw) return { pageIndex: 0, pageSize: defaultPageSize };
             const parsed = JSON.parse(raw);
             return {
                 pageIndex: Number.isInteger(parsed?.pageIndex) && parsed.pageIndex >= 0 ? parsed.pageIndex : 0,
-                pageSize: Number.isInteger(parsed?.pageSize) && parsed.pageSize > 0 ? parsed.pageSize : 10,
+                pageSize: Number.isInteger(parsed?.pageSize) && parsed.pageSize > 0 ? parsed.pageSize : defaultPageSize,
             };
         } catch {
-            return { pageIndex: 0, pageSize: 10 };
+            return { pageIndex: 0, pageSize: defaultPageSize };
         }
     };
 
@@ -39,10 +39,19 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
     const zeroHorizontalPaddingColumns = new Set(['date', 'code', 'payment', 'stage', 'set_status', 'setstatus', 'actions']);
 
     const userType = localStorage.getItem("userType");
+    const hasActionPermissions = Boolean(permissions?.canView || permissions?.canEdit || permissions?.canDelete);
 
     useEffect(() => {
         localStorage.setItem(paginationStorageKey, JSON.stringify(pagination));
     }, [pagination, paginationStorageKey]);
+
+    useEffect(() => {
+        if (!forceDefaultPageSize) return;
+        setPagination((prev) => {
+            if (prev.pageSize === defaultPageSize && prev.pageIndex === 0) return prev;
+            return { pageIndex: 0, pageSize: defaultPageSize };
+        });
+    }, [defaultPageSize, forceDefaultPageSize, routeKey]);
 
     useEffect(() => {
         const totalPages = Math.max(1, Math.ceil(data.length / pagination.pageSize));
@@ -223,7 +232,7 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         },
 
         ...normalizedColumns,
-        {
+        ...(hasActionPermissions ? [{
             id: 'actions',
             header: 'Actions',
             size: 1,
@@ -288,7 +297,7 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
                 </div>
 
             ),
-        },
+        }] : []),
     ];
 
     return (

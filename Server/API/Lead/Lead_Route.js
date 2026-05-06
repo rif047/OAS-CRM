@@ -4,7 +4,7 @@ const multer = require('multer');
 const asyncHandler = require('../../Middlewares/Async_Handler');
 const validateObjectId = require('../../Middlewares/Validate_ObjectId');
 const authorize = require('../../Middlewares/Authorize');
-const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport } = require('./Lead_Controller')
+const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport, MonthlyReport } = require('./Lead_Controller')
 
 const leadDescriptionUpload = multer({
     storage: multer.memoryStorage(),
@@ -39,9 +39,8 @@ Route.param('id', validateObjectId('id'));
 Route.get('/', asyncHandler(Leads))
 Route.post('/', asyncHandler(Create))
 Route.post('/description-images', handleLeadDescriptionUpload, asyncHandler(UploadDescriptionImages))
-Route.get('/:id', asyncHandler(View))
-Route.patch('/:id', asyncHandler(Update))
-Route.delete('/:id', authorize('Admin'), asyncHandler(Delete))
+Route.get('/income/report', authorize('Admin', 'Management'), asyncHandler(IncomeReport))
+Route.get('/monthly/report', authorize('Admin', 'Management'), asyncHandler(MonthlyReport))
 Route.patch('/pending/:id', asyncHandler(Pending))
 Route.patch('/in_quote/:id', asyncHandler(In_Quote))
 Route.patch('/in_survey/:id', asyncHandler(In_Survey))
@@ -53,7 +52,9 @@ Route.patch('/lost_lead/:id', asyncHandler(Lost_Lead))
 Route.patch('/comment/:id', asyncHandler(Comment))
 Route.post('/payments/:id', authorize('Admin', 'Management', 'Agent'), asyncHandler(AddPayment))
 Route.patch('/payments/:id/:paymentId', authorize('Admin', 'Management', 'Agent'), asyncHandler(EditPayment))
-Route.get('/income/report', authorize('Admin', 'Management'), asyncHandler(IncomeReport))
+Route.get('/:id', asyncHandler(View))
+Route.patch('/:id', asyncHandler(Update))
+Route.delete('/:id', authorize('Admin'), asyncHandler(Delete))
 
 
 

@@ -145,8 +145,8 @@ export default function Lost_Lead() {
     };
 
     const columns = [
+        { key: "lost_date", accessorKey: 'lost_date', header: 'Date', maxSize: 80 },
         { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Created', maxSize: 80 },
-        { key: "lost_date", accessorKey: 'lost_date', header: 'Lost', maxSize: 80 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },

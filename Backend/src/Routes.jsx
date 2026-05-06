@@ -128,6 +128,7 @@ export default function MainRoutes() {
                         <Route path="/managements" element={loggedIn ? <Managements handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/designers" element={loggedIn ? <Designers handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/surveyors" element={loggedIn ? <Surveyors handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                        <Route path="/users" element={loggedIn ? <Users handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/income" element={loggedIn ? <Income handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/reports/due-history" element={loggedIn ? <DueHistory handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/reports/project-history" element={loggedIn ? <ProjectHistory handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
@@ -137,7 +138,6 @@ export default function MainRoutes() {
 
                 {(userType === "Admin") && (
                     <>
-                        <Route path="/users" element={loggedIn ? <Users handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/settings" element={loggedIn ? <Settings handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     </>
                 )}

@@ -12,6 +12,10 @@ const parseMoney = (value) => {
 
 export default function LeadPaymentModal({ open, onClose, lead, onUpdated }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userType = localStorage.getItem('userType') || user?.userType || '';
+  const isAdmin = userType === 'Admin';
+  const isManagement = userType === 'Management';
+  const showEditButton = isAdmin || isManagement;
   const [form, setForm] = useState({ amount: '', discount_given: '', note: '', paid_at: '' });
   const [editingId, setEditingId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -194,7 +198,17 @@ export default function LeadPaymentModal({ open, onClose, lead, onUpdated }) {
                     <td className="p-2.5 whitespace-nowrap text-amber-700">{formatCurrencyGBP(localLead?.payment_due_amount || 0)}</td>
                     <td className="p-2.5 wrap-break-word">{item.note || '-'}</td>
                     <td className="p-2.5">
-                      <button type="button" className="text-blue-700 text-xs font-semibold cursor-pointer whitespace-nowrap hover:text-blue-900" onClick={() => startEdit(item)}>Edit</button>
+                      {showEditButton && (
+                        <button
+                          type="button"
+                          className={`text-xs font-semibold whitespace-nowrap ${isAdmin ? 'text-blue-700 cursor-pointer hover:text-blue-900' : 'text-slate-400 cursor-not-allowed'}`}
+                          onClick={() => isAdmin && startEdit(item)}
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Only admin can edit payment history.' : 'Edit'}
+                        >
+                          Edit
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -217,7 +231,17 @@ export default function LeadPaymentModal({ open, onClose, lead, onUpdated }) {
                 </div>
                 <p className="text-xs text-slate-500 mt-2">Note</p>
                 <p className="text-sm text-slate-700 wrap-break-word">{item.note || '-'}</p>
-                <button type="button" className="mt-2 text-blue-700 text-xs font-semibold cursor-pointer" onClick={() => startEdit(item)}>Edit</button>
+                {showEditButton && (
+                  <button
+                    type="button"
+                    className={`mt-2 text-xs font-semibold ${isAdmin ? 'text-blue-700 cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
+                    onClick={() => isAdmin && startEdit(item)}
+                    disabled={!isAdmin}
+                    title={!isAdmin ? 'Only admin can edit payment history.' : 'Edit'}
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
             ))}
             {!history.length && <div className="rounded-md border border-slate-200 p-3 text-sm text-slate-500">No payment history.</div>}

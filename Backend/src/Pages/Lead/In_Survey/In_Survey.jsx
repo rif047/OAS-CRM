@@ -27,7 +27,7 @@ export default function In_Survey() {
     const isAdminOrManagement = loggedUser?.userType === "Admin" || loggedUser?.userType === "Management";
 
     const userPermissions = {
-        canEdit: isAdminOrManagement,
+        canEdit: false,
         canView: true,
         canDelete: false,
     };
@@ -359,7 +359,7 @@ export default function In_Survey() {
     };
 
     const columns = [
-        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 60 },
+        { key: "in_survey_date", accessorKey: 'in_survey_date', header: 'Date', maxSize: 60 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },

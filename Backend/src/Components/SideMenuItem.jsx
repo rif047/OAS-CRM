@@ -165,9 +165,14 @@ export default function SideMenu() {
             )}
 
 
-            {(userType === "Admin") && (
+            {(userType === "Admin" || userType === "Management") && (
                 <>
                     <MenuItem to="/users" icon={ManageAccountsTwoTone} label="Users" />
+                </>
+            )}
+
+            {(userType === "Admin") && (
+                <>
                     <MenuItem to="/settings" icon={SettingsOutlined} label="Settings" />
                 </>
             )}

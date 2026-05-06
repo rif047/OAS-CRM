@@ -103,10 +103,10 @@ export default function Clients() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">Client List</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">Client List</h1>
 
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
@@ -120,21 +120,21 @@ export default function Clients() {
                             </button>
                         )}
 
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
+                        <span className="leadPageCount">
                             Total: {data.length}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions'>
                         <button
                             onClick={handleAdd}
-                            className="rounded-lg bg-white px-6 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                            className="leadPagePrimaryBtn">
                             Create +
                         </button>
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
+                <div className="leadPageTableWrap">
                     {loading ? (
                         <div className="flex justify-center py-10">
                             <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
