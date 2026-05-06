@@ -151,6 +151,15 @@ const LeadSchema = Mongoose.Schema({
 }, { timestamps: true })
 
 LeadSchema.index({ status: 1, company: 1, createdAt: -1 });
+LeadSchema.index({ company: 1 });
+LeadSchema.index({ status: 1 });
+LeadSchema.index({ createdAt: -1 });
+LeadSchema.index({ status: 1, in_quote_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, in_survey_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, in_design_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, in_review_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, close_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, lost_date: -1, updatedAt: -1, createdAt: -1 });
 LeadSchema.index({ client: 1 });
 LeadSchema.index({ stage: 1 });
 

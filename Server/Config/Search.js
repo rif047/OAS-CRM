@@ -1,109 +1,66 @@
 const express = require("express");
 const router = express.Router();
-const mongoose = require("mongoose");
+const Lead = require("../API/Lead/Lead_Model");
+const Client = require("../API/Client/Client_Model");
+
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 router.get("/", async (req, res) => {
     const q = req.query.query?.trim();
     if (!q) return res.json([]);
     if (q.length > 80) return res.status(400).json({ error: "Query too long" });
+    if (q.length < 2) return res.json([]);
 
-    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const startsWithRegex = new RegExp(`^${escapeRegex(q)}`, "i");
 
     try {
-        const collections = await mongoose.connection.db.listCollections().toArray();
-        let allResults = [];
+        const [clientRows, leadRows] = await Promise.all([
+            Client.find({
+                $or: [
+                    { name: startsWithRegex },
+                    { phone: startsWithRegex },
+                    { email: startsWithRegex },
+                    { company: startsWithRegex },
+                ],
+            })
+                .select("name phone email company createdAt")
+                .sort({ createdAt: -1, _id: -1 })
+                .limit(10)
+                .lean(),
+            Lead.find({
+                $or: [
+                    { leadCode: startsWithRegex },
+                    { company: startsWithRegex },
+                    { status: startsWithRegex },
+                    { stage: startsWithRegex },
+                ],
+            })
+                .select("leadCode company status stage source address quote_price createdAt updatedAt client")
+                .sort({ createdAt: -1, _id: -1 })
+                .limit(10)
+                .populate({ path: "client", select: "name phone email company", options: { lean: true } })
+                .lean(),
+        ]);
 
-        for (const coll of collections) {
-            const collectionName = coll.name.toLowerCase();
-            if (collectionName.includes("user")) continue;
-
-            try {
-                const collection = mongoose.connection.db.collection(coll.name);
-                const sampleDocs = await collection.find({}).limit(1).toArray();
-                if (sampleDocs.length === 0) continue;
-
-                const sampleKeys = Object.keys(flattenObject(sampleDocs[0]))
-                    .filter(key => !key.endsWith("_id"));
-
-                const orConditions = sampleKeys.map((key) => ({
-                    $expr: {
-                        $regexMatch: {
-                            input: { $toString: `$${key}` },
-                            regex: escapedQuery,
-                            options: "i",
-                        },
-                    },
-                }));
-
-                let docs = await collection
-                    .find({ $or: orConditions })
-                    .limit(10)
-                    .toArray();
-
-                if (docs.length > 0) {
-                    const clientIds = docs
-                        .map(doc => doc.client)
-                        .filter(id => id && mongoose.Types.ObjectId.isValid(id))
-                        .map(id => new mongoose.Types.ObjectId(id));
-
-                    let clientMap = {};
-                    if (clientIds.length > 0) {
-                        try {
-                            const clients = await mongoose.connection.db
-                                .collection("clients")
-                                .find({ _id: { $in: clientIds } })
-                                .toArray();
-
-                            clientMap = clients.reduce((map, client) => {
-                                const { _id, __v, createdAt, updatedAt, ...cleanClient } = client;
-                                map[_id.toString()] = cleanClient;
-                                return map;
-                            }, {});
-                        } catch (clientError) {
-                            console.error(`Client fetch error for ${coll.name}:`, clientError);
-                        }
-                    }
-
-                    docs = docs.map(doc => {
-                        const { _id, updatedAt, __v, ...rest } = doc;
-
-                        if (rest.client && mongoose.Types.ObjectId.isValid(rest.client)) {
-                            const clientId = rest.client.toString();
-                            rest.client = clientMap[clientId] || rest.client;
-                        }
-
-                        return rest;
-                    });
-
-                    allResults.push({
-                        collection: coll.name,
-                        results: docs,
-                    });
-                }
-            } catch (collError) {
-                console.error(`Error processing collection ${coll.name}:`, collError);
-                continue;
-            }
+        const allResults = [];
+        if (leadRows.length) {
+            allResults.push({
+                collection: "leads",
+                results: leadRows,
+            });
+        }
+        if (clientRows.length) {
+            allResults.push({
+                collection: "clients",
+                results: clientRows,
+            });
         }
 
-        res.status(200).json(allResults);
+        return res.status(200).json(allResults);
     } catch (err) {
         console.error("Dynamic Search Error:", err);
         res.status(500).json({ error: "Internal server error", message: err.message });
     }
 });
-
-function flattenObject(obj, parent = "", res = {}) {
-    for (let key in obj) {
-        if (obj.hasOwnProperty(key)) {
-            if (typeof obj[key] === "object" && obj[key] !== null && !Array.isArray(obj[key])) {
-                flattenObject(obj[key], `${parent}${key}.`, res);
-            } else {
-                res[parent + key] = obj[key];
-            }
-        }
-    }
-    return res;
-}
 
 module.exports = router;

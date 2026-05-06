@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
@@ -15,6 +15,7 @@ import RichTextEditor from "../../../Components/RichTextEditor";
 import { markEditedRowForHighlight } from '../../../utils/datatableState';
 import LeadPaymentModal from '../../../Components/LeadPaymentModal';
 import PaymentCell from '../../../Components/Datatable/PaymentCell';
+import { ensureLeadDetail } from '../../../utils/leadDetails';
 
 
 export default function Project_Phase() {
@@ -39,11 +40,13 @@ export default function Project_Phase() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [paymentLead, setPaymentLead] = useState(null);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [lostModalOpen, setLostModalOpen] = useState(false);
@@ -60,33 +63,70 @@ export default function Project_Phase() {
     });
     const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
+    const loadLeadDetail = useCallback(async (row) => {
+        try {
+            return await ensureLeadDetail(row);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return null;
+        }
+    }, []);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "In_Design" }
+                params: {
+                    status: "In_Design",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            setData(filteredByCompany);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
     const handleStatusClick = async (row) => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
 
         setForm({
             agent: loggedUser?.name || "",
@@ -118,10 +158,12 @@ export default function Project_Phase() {
         }
     };
 
-    const handleLostClick = (row) => {
+    const handleLostClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setLostForm({ agent: user?.name || "", description: "" });
         setLostModalOpen(true);
     };
@@ -157,33 +199,43 @@ export default function Project_Phase() {
         }
     };
 
-    const handleEdit = (row) => {
-        setEditData(row);
+    const handleEdit = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setEditData(fullRow);
         setModalOpen(true);
     };
 
-    const handleView = (row) => {
-        setViewData(row);
+    const handleView = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setViewData(fullRow);
         setViewModalOpen(true);
     };
-    const handlePaymentClick = (row) => {
-        setPaymentLead(row);
+    const handlePaymentClick = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setPaymentLead(fullRow);
         setPaymentModalOpen(true);
     };
 
-    const handleCommentClick = (row) => {
+    const handleCommentClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setCommentForm({ agent: user?.name || "", description: "" });
         setCommentModalOpen(true);
     };
 
-    const handleStageClick = (row) => {
+    const handleStageClick = async (row) => {
         document.activeElement?.blur?.();
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setStageForm({
-            stage: row.stage || "",
+            stage: fullRow.stage || "",
             description: ""
         });
         setStageErrors({});
@@ -246,7 +298,7 @@ export default function Project_Phase() {
         }
     };
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const renderAddressCell = (row) => {
         const address = row.address?.trim() || "N/A";
@@ -371,7 +423,7 @@ export default function Project_Phase() {
                         )}
 
                         <span className="leadPageCount">
-                            Total: {data.length}
+                            Total: {totalRows}
                         </span>
                     </div>
 
@@ -379,7 +431,11 @@ export default function Project_Phase() {
                         <select
                             className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -404,6 +460,10 @@ export default function Project_Phase() {
                             onView={handleView}
                             onDelete={handleDelete}
                             permissions={userPermissions}
+                            serverMode={true}
+                            totalRows={totalRows}
+                            isLoading={loading}
+                            onServerQueryChange={handleServerQueryChange}
                         />
                     )}
                 </div>

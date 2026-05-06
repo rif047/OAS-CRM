@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MaterialReactTable } from 'material-react-table';
 import { Button } from '@mui/material';
 import { mkConfig, generateCsv, download } from 'export-to-csv';
@@ -10,7 +10,25 @@ import { useLocation } from 'react-router-dom';
 import { DATATABLE_EDIT_HIGHLIGHT_KEY, DATATABLE_HIGHLIGHT_EVENT } from '../../utils/datatableState';
 import './MUI.css';
 
-export default function Datatable({ columns, data, onEdit, onView, onDelete, permissions, defaultPageSize = 10, forceDefaultPageSize = false }) {
+const EXCLUDED_FIELDS = ['_id', 'secret_code', 'password', '__v', 'images'];
+const CENTERED_COLUMNS = new Set(['stage', 'setstatus', 'set_status', 'actions', 'payment']);
+const ZERO_HORIZONTAL_PADDING_COLUMNS = new Set(['date', 'code', 'payment', 'stage', 'set_status', 'setstatus', 'actions']);
+
+function Datatable({
+    columns,
+    data,
+    onEdit,
+    onView,
+    onDelete,
+    permissions,
+    defaultPageSize = 10,
+    forceDefaultPageSize = false,
+    serverMode = false,
+    totalRows = 0,
+    isLoading = false,
+    onServerQueryChange,
+    serverSearchDebounceMs = 350,
+}) {
     const location = useLocation();
     const routeKey = location.pathname || 'default';
     const paginationStorageKey = `crm_datatable_pagination_${routeKey}`;
@@ -33,10 +51,10 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
     const [pagination, setPagination] = useState(getStoredPagination);
     const [highlightedRowId, setHighlightedRowId] = useState(null);
     const [copiedCodeKey, setCopiedCodeKey] = useState('');
-
-    const excludedFields = ['_id', 'secret_code', 'password', '__v', 'images'];
-    const centeredColumns = new Set(['stage', 'setstatus', 'set_status', 'actions', 'payment']);
-    const zeroHorizontalPaddingColumns = new Set(['date', 'code', 'payment', 'stage', 'set_status', 'setstatus', 'actions']);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [debouncedGlobalFilter, setDebouncedGlobalFilter] = useState('');
+    const [sorting, setSorting] = useState([]);
+    const previousSearchRef = useRef('');
 
     const userType = localStorage.getItem("userType");
     const hasActionPermissions = Boolean(permissions?.canView || permissions?.canEdit || permissions?.canDelete);
@@ -57,10 +75,26 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         const totalPages = Math.max(1, Math.ceil(data.length / pagination.pageSize));
         const maxPageIndex = totalPages - 1;
 
-        if (pagination.pageIndex > maxPageIndex) {
+        if (!serverMode && pagination.pageIndex > maxPageIndex) {
             setPagination((prev) => ({ ...prev, pageIndex: maxPageIndex }));
         }
-    }, [data.length, pagination.pageIndex, pagination.pageSize]);
+    }, [data.length, pagination.pageIndex, pagination.pageSize, serverMode]);
+
+    useEffect(() => {
+        if (!serverMode) return;
+        const timeoutId = setTimeout(() => {
+            setDebouncedGlobalFilter(globalFilter.trim());
+        }, serverSearchDebounceMs);
+
+        return () => clearTimeout(timeoutId);
+    }, [globalFilter, serverMode, serverSearchDebounceMs]);
+
+    useEffect(() => {
+        if (!serverMode) return;
+        if (previousSearchRef.current === debouncedGlobalFilter) return;
+        previousSearchRef.current = debouncedGlobalFilter;
+        setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+    }, [debouncedGlobalFilter, serverMode]);
 
     useEffect(() => {
         const raw = sessionStorage.getItem(editedRowStorageKey);
@@ -106,11 +140,23 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         };
     }, [routeKey]);
 
+    useEffect(() => {
+        if (!serverMode || typeof onServerQueryChange !== 'function') return;
+        const primarySort = Array.isArray(sorting) && sorting.length ? sorting[0] : null;
+        onServerQueryChange({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            search: debouncedGlobalFilter,
+            sortBy: primarySort?.id || '',
+            sortDir: primarySort?.desc ? 'desc' : 'asc',
+        });
+    }, [debouncedGlobalFilter, onServerQueryChange, pagination.pageIndex, pagination.pageSize, serverMode, sorting]);
 
-    const handleExportCsv = () => {
+
+    const handleExportCsv = useCallback(() => {
         const filteredData = data.map(row => {
             const filteredRow = { ...row };
-            excludedFields.forEach(field => delete filteredRow[field]);
+            EXCLUDED_FIELDS.forEach(field => delete filteredRow[field]);
 
             for (const key in filteredRow) {
                 const item = filteredRow[key];
@@ -130,9 +176,9 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
 
         const csv = generateCsv(csvConfig)(filteredData);
         download(csvConfig)(csv);
-    };
+    }, [data]);
 
-    const handleCopyText = async (event, value) => {
+    const handleCopyText = useCallback(async (event, value) => {
         event.stopPropagation();
         const text = String(value || '').trim();
         if (!text) return;
@@ -143,10 +189,10 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         } catch {
             // no-op: copy not supported
         }
-    };
+    }, []);
 
 
-    const normalizedColumns = columns.map((column) => {
+    const normalizedColumns = useMemo(() => columns.map((column) => {
         const normalizedId = String(
             column.id || column.key || column.accessorKey || column.header || ''
         ).toLowerCase().replace(/\s+/g, '_');
@@ -161,11 +207,11 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             normalizedId.endsWith('_date') ||
             plainId.endsWith('date');
         const shouldCenter =
-            centeredColumns.has(normalizedId) ||
-            centeredColumns.has(plainId) ||
+            CENTERED_COLUMNS.has(normalizedId) ||
+            CENTERED_COLUMNS.has(plainId) ||
             isCodeColumn ||
             isDateColumn;
-        const shouldZeroHorizontalPadding = zeroHorizontalPaddingColumns.has(normalizedId) || zeroHorizontalPaddingColumns.has(plainId);
+        const shouldZeroHorizontalPadding = ZERO_HORIZONTAL_PADDING_COLUMNS.has(normalizedId) || ZERO_HORIZONTAL_PADDING_COLUMNS.has(plainId);
 
         if (!shouldCenter && !isPriceColumn && !shouldZeroHorizontalPadding && !isCodeColumn) return column;
 
@@ -211,9 +257,9 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
                 },
             },
         };
-    });
+    }), [columns, copiedCodeKey, handleCopyText]);
 
-    const dynamicColumns = [
+    const dynamicColumns = useMemo(() => ([
         {
             id: 'serial',
             header: 'SL',
@@ -298,12 +344,15 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
 
             ),
         }] : []),
-    ];
+    ]), [data.length, normalizedColumns, hasActionPermissions, permissions, onView, onEdit, onDelete]);
 
     return (
         <MaterialReactTable
             data={data}
             columns={dynamicColumns}
+            manualPagination={serverMode}
+            manualFiltering={serverMode}
+            manualSorting={serverMode}
             muiTableBodyRowProps={({ row }) => ({
                 className: highlightedRowId && row.original?._id === highlightedRowId ? 'crmRowHighlight' : '',
                 sx: {
@@ -314,10 +363,16 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
             enableFullScreenToggle={false}
             enableDensityToggle={false}
             autoResetPageIndex={false}
-            initialState={{ density: 'compact' }}
+            initialState={{ density: 'compact', ...(serverMode ? { showGlobalFilter: true } : {}) }}
             onPaginationChange={setPagination}
-            state={{ pagination }}
+            onGlobalFilterChange={serverMode ? setGlobalFilter : undefined}
+            onSortingChange={serverMode ? setSorting : undefined}
+            state={{
+                pagination,
+                ...(serverMode ? { globalFilter, sorting, isLoading } : {}),
+            }}
             muiPaginationProps={{ rowsPerPageOptions: [10, 50, 100] }}
+            rowCount={serverMode ? totalRows : undefined}
             enableColumnActions={false}
             enableCellActions={true}
             muiTablePaperProps={{
@@ -345,3 +400,5 @@ export default function Datatable({ columns, data, onEdit, onView, onDelete, per
         />
     );
 }
+
+export default memo(Datatable);

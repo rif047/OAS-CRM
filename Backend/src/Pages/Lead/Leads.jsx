@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Layout from '../../Layout';
@@ -15,6 +15,7 @@ import RichTextEditor from "../../Components/RichTextEditor";
 import LeadPaymentModal from '../../Components/LeadPaymentModal';
 import { formatLondonDate } from "../../utils/formatters";
 import { markEditedRowForHighlight } from '../../utils/datatableState';
+import { ensureLeadDetail } from '../../utils/leadDetails';
 
 export default function Leads() {
     document.title = 'Leads';
@@ -33,9 +34,11 @@ export default function Leads() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState("");
@@ -58,11 +61,22 @@ export default function Leads() {
     });
     const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
-    const handleStageClick = (row) => {
+    const loadLeadDetail = useCallback(async (row) => {
+        try {
+            return await ensureLeadDetail(row);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return null;
+        }
+    }, []);
+
+    const handleStageClick = async (row) => {
         document.activeElement?.blur?.();
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setStageForm({
-            stage: row.stage || "",
+            stage: fullRow.stage || "",
             description: ""
         });
         setStageErrors({});
@@ -111,45 +125,75 @@ export default function Leads() {
 
 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "Pending" }
+                params: {
+                    status: "Pending",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            setData(filteredByCompany);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handleStatusClick = (row) => {
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
+
+    const handleStatusClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setForm({ agent: user?.name || "", quote_price: "", quote_file: "", description: "", initial_payment: "", discount_given: "", payment_note: "" });
         setSelectedStatus("In_Quote");
         setStatusModalOpen(true);
     };
 
-    const handleCancelled = (row) => {
+    const handleCancelled = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setForm({ agent: user?.name || "", description: "" });
         setSelectedStatus("Lost_Lead");
         setStatusModalOpen(true);
@@ -201,12 +245,26 @@ export default function Leads() {
     };
 
     const handleAdd = () => { document.activeElement?.blur?.(); setEditData(null); setModalOpen(true); };
-    const handleEdit = (row) => { document.activeElement?.blur?.(); setEditData(row); setModalOpen(true); };
-    const handleView = (row) => { document.activeElement?.blur?.(); setViewData(row); setViewModalOpen(true); };
-    const handleCommentClick = (row) => {
+    const handleEdit = async (row) => {
+        document.activeElement?.blur?.();
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setEditData(fullRow);
+        setModalOpen(true);
+    };
+    const handleView = async (row) => {
+        document.activeElement?.blur?.();
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setViewData(fullRow);
+        setViewModalOpen(true);
+    };
+    const handleCommentClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setCommentForm({ agent: user?.name || "", description: "" });
         setCommentModalOpen(true);
     };
@@ -361,7 +419,7 @@ export default function Leads() {
                             </button>
                         )}
                         <span className="leadPageCount">
-                            Total: {data.length}
+                            Total: {totalRows}
                         </span>
                     </div>
 
@@ -369,7 +427,11 @@ export default function Leads() {
                         <select
                             className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -400,6 +462,10 @@ export default function Leads() {
                             onView={handleView}
                             onDelete={handleDelete}
                             permissions={userPermissions}
+                            serverMode={true}
+                            totalRows={totalRows}
+                            isLoading={loading}
+                            onServerQueryChange={handleServerQueryChange}
                         />
                     )}
                 </div>

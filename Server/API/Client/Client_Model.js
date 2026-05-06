@@ -35,6 +35,8 @@ const ClientSchema = Mongoose.Schema({
 }, { timestamps: true })
 
 ClientSchema.index({ createdAt: -1 });
+ClientSchema.index({ name: 1 });
+ClientSchema.index({ company: 1 });
 
 ClientSchema.index(
     { phone: 1 },

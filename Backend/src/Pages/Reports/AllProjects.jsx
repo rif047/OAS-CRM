@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Layout from '../../Layout';
 import Datatable from '../../Components/Datatable/Datatable';
 import View from '../Lead/View';
@@ -13,6 +13,7 @@ import { formatCurrencyGBP, formatLondonDate, formatLondonDateTime } from '../..
 import { markEditedRowForHighlight } from '../../utils/datatableState';
 import PaymentCell from '../../Components/Datatable/PaymentCell';
 import LeadPaymentModal from '../../Components/LeadPaymentModal';
+import { ensureLeadDetail } from '../../utils/leadDetails';
 
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'PENDING' },
@@ -152,8 +153,10 @@ export default function AllProjects() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [totalRows, setTotalRows] = useState(0);
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState('All');
+  const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: '', sortBy: '', sortDir: 'desc' });
 
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
@@ -178,6 +181,14 @@ export default function AllProjects() {
     const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ''));
     return Number.isFinite(numeric) ? numeric : 0;
   };
+  const loadLeadDetail = useCallback(async (row) => {
+    try {
+      return await ensureLeadDetail(row);
+    } catch {
+      toast.error('Failed to load lead details.');
+      return null;
+    }
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -189,43 +200,83 @@ export default function AllProjects() {
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/leads`);
-      const rows = Array.isArray(res.data) ? res.data : [];
+      const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/leads`, {
+        params: {
+          company: selectedCompany === 'All' ? '' : selectedCompany,
+          page: tableQuery.page,
+          limit: tableQuery.limit,
+          search: tableQuery.search,
+          sortBy: tableQuery.sortBy,
+          sortDir: tableQuery.sortDir,
+        },
+      });
+      const payload = res.data;
+      const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
       setData(rows);
-      setCompanies([...new Set(rows.map((item) => item.company).filter(Boolean))]);
+      setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+      if (Array.isArray(payload?.companies)) {
+        setCompanies(payload.companies);
+      } else {
+        setCompanies([...new Set(rows.map((item) => item.company).filter(Boolean))]);
+      }
     } catch {
       toast.error('Failed to fetch all projects');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
     fetchUsers();
   }, []);
 
-  const filteredData = useMemo(() => (
-    selectedCompany === 'All' ? data : data.filter((item) => item.company === selectedCompany)
-  ), [data, selectedCompany]);
+  const handleServerQueryChange = useCallback((nextQuery) => {
+    setTableQuery((prev) => {
+      const next = {
+        ...prev,
+        ...nextQuery,
+        page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+        limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+      };
+      if (
+        prev.page === next.page &&
+        prev.limit === next.limit &&
+        prev.search === next.search &&
+        prev.sortBy === next.sortBy &&
+        prev.sortDir === next.sortDir
+      ) return prev;
+      return next;
+    });
+  }, []);
 
-  const openChooser = (row) => {
-    setSelectedRow(row);
+  const openChooser = useCallback(async (row) => {
+    const fullRow = await loadLeadDetail(row);
+    if (!fullRow) return;
+    setSelectedRow(fullRow);
     setChooserOpen(true);
-  };
+  }, [loadLeadDetail]);
 
-  const handlePaymentClick = (row) => {
-    setPaymentLead(row);
+  const handlePaymentClick = useCallback(async (row) => {
+    const fullRow = await loadLeadDetail(row);
+    if (!fullRow) return;
+    setPaymentLead(fullRow);
     setPaymentModalOpen(true);
-  };
-  const openStageModal = (row) => {
-    setSelectedRow(row);
-    setStageForm({ stage: row?.stage || '', description: '' });
+  }, [loadLeadDetail]);
+
+  const openStageModal = useCallback(async (row) => {
+    const fullRow = await loadLeadDetail(row);
+    if (!fullRow) return;
+    setSelectedRow(fullRow);
+    setStageForm({ stage: fullRow?.stage || '', description: '' });
     setStageModalOpen(true);
-  };
+  }, [loadLeadDetail]);
 
   const availableActions = useMemo(() => {
     return ACTIONS_BY_STATUS[selectedRow?.status] || [];
@@ -397,7 +448,7 @@ export default function AllProjects() {
     }
   };
 
-  const renderClientCell = (row) => {
+  const renderClientCell = useCallback((row) => {
     const clientName = row.client?.name || 'N/A';
     const companyName = row.client?.company?.trim() ? row.client.company : null;
     const displayText = companyName ? `${clientName} (${companyName})` : clientName;
@@ -407,18 +458,25 @@ export default function AllProjects() {
         <p className="truncate text-xs text-slate-500" title={`${row.client?.phone || ''} ${row.client?.email || ''}`}>{row.client?.phone || 'N/A'} {row.client?.email ? `(${row.client.email})` : ''}</p>
       </div>
     );
-  };
+  }, []);
 
-  const renderAddress = (row) => {
+  const renderAddress = useCallback((row) => {
     const address = row.address?.trim() || 'N/A';
     return (
       <p className="block text-xs leading-4 text-slate-600" title={address} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word', width: '230px', minWidth: '230px', maxWidth: '230px' }}>
         {address}
       </p>
     );
-  };
+  }, []);
 
-  const columns = [
+  const handleViewRow = useCallback(async (row) => {
+    const fullRow = await loadLeadDetail(row);
+    if (!fullRow) return;
+    setViewData(fullRow);
+    setViewOpen(true);
+  }, [loadLeadDetail]);
+
+  const columns = useMemo(() => ([
     { key: 'date', header: 'Date', maxSize: 80, Cell: ({ row }) => formatLondonDate(getStatusDate(row.original)) },
     { key: 'leadCode', accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
     { key: 'client', header: 'Client', minSize: 220, maxSize: 280, Cell: ({ row }) => renderClientCell(row.original) },
@@ -495,7 +553,7 @@ export default function AllProjects() {
         </button>
       ),
     },
-  ];
+  ]), [handlePaymentClick, openChooser, openStageModal, renderAddress, renderClientCell]);
   const paymentHistory = Array.isArray(selectedRow?.payment_history) ? selectedRow.payment_history : [];
   const dueAmount = parseMoney(selectedRow?.payment_due_amount);
   const receivedAmount = parseMoney(selectedRow?.payment_received_total);
@@ -522,10 +580,18 @@ export default function AllProjects() {
                 <CachedIcon />
               </button>
             )}
-            <span className="leadPageCount">Total: {filteredData.length}</span>
+            <span className="leadPageCount">Total: {totalRows}</span>
           </div>
           <div className="leadPageHeaderActions">
-            <select className="leadPageFilterSelect" value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
+            <select
+              className="leadPageFilterSelect"
+              value={selectedCompany}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedCompany(value);
+                setTableQuery((prev) => ({ ...prev, page: 1 }));
+              }}
+            >
               <option value="All">All Companies</option>
               {companies.map((company) => <option key={company} value={company}>{company}</option>)}
             </select>
@@ -535,11 +601,15 @@ export default function AllProjects() {
         <div className="leadPageTableWrap">
           <Datatable
             columns={columns}
-            data={filteredData}
-            onView={(row) => { setViewData(row); setViewOpen(true); }}
+            data={data}
+            onView={handleViewRow}
             onEdit={() => { }}
             onDelete={() => { }}
             permissions={{ canView: true, canEdit: false, canDelete: false }}
+            serverMode={true}
+            totalRows={totalRows}
+            isLoading={loading}
+            onServerQueryChange={handleServerQueryChange}
           />
         </div>
       </section>

@@ -1,4 +1,5 @@
 const Lead = require('./Lead_Model');
+const Client = require('../Client/Client_Model');
 const sanitizeHtml = require('sanitize-html');
 const fs = require('fs');
 const path = require('path');
@@ -218,6 +219,28 @@ const STATUS_SORT_FIELD = {
     Lost_Lead: 'lost_date',
 };
 
+const LEAD_LIST_LIGHT_PROJECTION = '-description -survey_note -project_details -payment_history';
+const LEAD_LIST_SORT_FIELDS = new Set([
+    'createdAt',
+    'updatedAt',
+    'leadCode',
+    'company',
+    'status',
+    'stage',
+    'in_quote_date',
+    'in_survey_date',
+    'in_design_date',
+    'in_review_date',
+    'close_date',
+    'lost_date',
+]);
+
+const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const parsePositiveInt = (value, fallback) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 const parseMoney = (value) => {
     const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
     return Number.isFinite(numeric) ? numeric : 0;
@@ -249,7 +272,7 @@ const buildStageRemark = (stage, note = '') => {
 };
 
 let Leads = async (req, res) => {
-    const { status, company } = req.query;
+    const { status, company, page: rawPage, limit: rawLimit, sortBy: rawSortBy, sortDir: rawSortDir, search: rawSearch } = req.query;
     const filter = {};
 
     if (status && ALLOWED_STATUSES.has(status)) {
@@ -259,17 +282,82 @@ let Leads = async (req, res) => {
         filter.company = String(company).trim();
     }
 
-    const statusSortField = STATUS_SORT_FIELD[filter.status] || 'createdAt';
-    const sortConfig = statusSortField === 'createdAt'
-        ? { createdAt: -1, _id: -1 }
-        : { [statusSortField]: -1, updatedAt: -1, createdAt: -1, _id: -1 };
+    const search = String(rawSearch || '').trim();
+    if (search) {
+        const startsWithRegex = new RegExp(`^${escapeRegex(search)}`, 'i');
 
-    let Data = await Lead.find(filter)
-        .sort(sortConfig)
-        .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
-        .lean();
+        const clientMatches = await Client.find({
+            $or: [
+                { name: startsWithRegex },
+                { phone: startsWithRegex },
+                { email: startsWithRegex },
+                { company: startsWithRegex },
+            ],
+        }).select('_id').limit(5000).lean();
 
-    res.status(200).json(Data);
+        const clientIds = clientMatches.map((item) => item._id);
+        filter.$or = [
+            { leadCode: startsWithRegex },
+            { company: startsWithRegex },
+            { address: startsWithRegex },
+            { project_type: startsWithRegex },
+            { source: startsWithRegex },
+            { stage: startsWithRegex },
+            { status: startsWithRegex },
+            ...(clientIds.length ? [{ client: { $in: clientIds } }] : []),
+        ];
+    }
+
+    const requestedSortBy = String(rawSortBy || '').trim();
+    const resolvedSortField = LEAD_LIST_SORT_FIELDS.has(requestedSortBy)
+        ? requestedSortBy
+        : (STATUS_SORT_FIELD[filter.status] || 'createdAt');
+    const requestedSortDir = String(rawSortDir || '').toLowerCase() === 'asc' ? 1 : -1;
+    const sortConfig = resolvedSortField === 'createdAt'
+        ? { createdAt: requestedSortDir, _id: requestedSortDir }
+        : { [resolvedSortField]: requestedSortDir, updatedAt: -1, createdAt: -1, _id: -1 };
+
+    const hasPagination = rawPage !== undefined || rawLimit !== undefined;
+    if (!hasPagination) {
+        const Data = await Lead.find(filter)
+            .sort(sortConfig)
+            .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+            .lean();
+        return res.status(200).json(Data);
+    }
+
+    const page = parsePositiveInt(rawPage, 1);
+    const limit = Math.min(200, parsePositiveInt(rawLimit, 10));
+    const skip = (page - 1) * limit;
+    const companyFilterForDistinct = {};
+    if (filter.status) companyFilterForDistinct.status = filter.status;
+
+    const [rows, total, companies] = await Promise.all([
+        Lead.find(filter)
+            .select(LEAD_LIST_LIGHT_PROJECTION)
+            .sort(sortConfig)
+            .skip(skip)
+            .limit(limit)
+            .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+            .lean(),
+        Lead.countDocuments(filter),
+        Lead.distinct('company', companyFilterForDistinct),
+    ]);
+
+    const safeCompanies = companies.filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return res.status(200).json({
+        rows,
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        companies: safeCompanies,
+        sortBy: resolvedSortField,
+        sortDir: requestedSortDir === 1 ? 'asc' : 'desc',
+        search,
+    });
 };
 
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
@@ -8,6 +8,7 @@ import CachedIcon from '@mui/icons-material/Cached';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
 import 'react-toastify/dist/ReactToastify.css';
 import { formatCurrencyGBP } from '../../../utils/formatters';
+import { ensureLeadDetail } from '../../../utils/leadDetails';
 
 export default function Closed() {
     document.title = 'Closed Projects';
@@ -27,40 +28,63 @@ export default function Closed() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
 
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "Closed" }
+                params: {
+                    status: "Closed",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            const sortedByLatestClose = [...filteredByCompany].sort((a, b) => {
-                const aDate = new Date(a?.close_date || a?.updatedAt || a?.createdAt || 0).getTime();
-                const bDate = new Date(b?.close_date || b?.updatedAt || b?.createdAt || 0).getTime();
-                return bDate - aDate;
-            });
-
-            setData(sortedByLatestClose);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
 
     const handleDelete = async (row) => {
@@ -93,12 +117,18 @@ export default function Closed() {
     };
 
 
-    const handleView = (row) => {
-        setViewData(row);
+    const handleView = async (row) => {
+        try {
+            const fullRow = await ensureLeadDetail(row);
+            setViewData(fullRow);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return;
+        }
         setViewModalOpen(true);
     };
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const renderClientWithCompany = (row) => {
         const clientName = row.client?.name || "N/A";
@@ -231,7 +261,7 @@ export default function Closed() {
                         )}
 
                         <span className="leadPageCount">
-                            Total: {data.length}
+                            Total: {totalRows}
                         </span>
                     </div>
 
@@ -239,7 +269,11 @@ export default function Closed() {
                         <select
                             className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -264,6 +298,10 @@ export default function Closed() {
                             onView={handleView}
                             onDelete={handleDelete}
                             permissions={userPermissions}
+                            serverMode={true}
+                            totalRows={totalRows}
+                            isLoading={loading}
+                            onServerQueryChange={handleServerQueryChange}
                         />
                     )}
                 </div>
