@@ -83,7 +83,7 @@ export default function SideMenu() {
             {(userType === "Admin" || userType === "Management") && (
                 <>
                     <MenuItem to="/clients" icon={PeopleTwoTone} label="Clients" />
-                    <MenuItem to="/leads" icon={WorkHistoryTwoTone} label="Leads" />
+                    <MenuItem to="/leads" icon={WorkHistoryTwoTone} label="Pending Leads" />
                     <MenuItem to="/in_quote" icon={RequestQuoteTwoTone} label="In Quotation" />
                 </>
             )}
@@ -122,6 +122,7 @@ export default function SideMenu() {
                     {/* <MenuItem to="/managements" icon={AdminPanelSettingsTwoTone} label="Management" />
                     <MenuItem to="/surveyors" icon={AdminPanelSettingsTwoTone} label="Surveyors" />
                     <MenuItem to="/designers" icon={ContactsTwoTone} label="Architect" /> */}
+                    <MenuItem to="/all-projects" icon={WorkHistoryTwoTone} label="All Projects" />
 
                     <button
                         type="button"
@@ -173,7 +174,7 @@ export default function SideMenu() {
 
             {(userType === "Admin") && (
                 <>
-                    <MenuItem to="/settings" icon={SettingsOutlined} label="Settings" />
+                    <MenuItem to="/settings" icon={SettingsOutlined} label="Database" />
                 </>
             )}
         </nav>

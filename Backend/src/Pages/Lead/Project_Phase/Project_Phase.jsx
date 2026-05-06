@@ -319,7 +319,7 @@ export default function Project_Phase() {
                 <div className='crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
+                        className="text-amber-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
                         <span className="text-xs mr-1 text-center ">Submit</span>
                         <CheckCircleOutlineIcon fontSize="small" />
                     </button>
@@ -328,7 +328,7 @@ export default function Project_Phase() {
                         isAdminOrManagement && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
-                                className="text-red-400 font-bold flex items-center cursor-pointer ml-3">
+                                className="text-rose-600 font-bold flex items-center cursor-pointer ml-3">
                                 <span className="text-xs mr-1 text-center ">Lost</span>
                                 <HighlightOffIcon fontSize="small" />
                             </button>
@@ -431,6 +431,20 @@ export default function Project_Phase() {
                 <DialogTitle><b>Move To Review</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
 
                     <TextField
                         fullWidth
@@ -491,6 +505,20 @@ export default function Project_Phase() {
                     <b>Mark as Lost</b>
                 </DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setLostModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <RichTextEditor
                         value={lostForm.description}
                         onChange={(html) =>
@@ -530,6 +558,20 @@ export default function Project_Phase() {
                     <b>Change Stage</b>
                 </DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <TextField
                         select
                         fullWidth

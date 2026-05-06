@@ -135,6 +135,10 @@ const LeadSchema = Mongoose.Schema({
         type: Number,
         default: 0
     },
+    payment_cycle: {
+        type: Number,
+        default: 1
+    },
     payment_history: [{
         paid_amount: { type: Number, default: 0 },
         discount_given: { type: Number, default: 0 },
@@ -142,6 +146,7 @@ const LeadSchema = Mongoose.Schema({
         paid_at: { type: Date, default: Date.now },
         agent: { type: String, default: '' },
         stage: { type: String, default: '' },
+        cycle: { type: Number, default: 1 },
     }],
 }, { timestamps: true })
 

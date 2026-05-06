@@ -20,6 +20,7 @@ const Income = lazy(() => import('./Pages/Income/Income'));
 const DueHistory = lazy(() => import('./Pages/Reports/DueHistory'));
 const ProjectHistory = lazy(() => import('./Pages/Reports/ProjectHistory'));
 const MonthlyReport = lazy(() => import('./Pages/Reports/MonthlyReport'));
+const AllProjects = lazy(() => import('./Pages/Reports/AllProjects'));
 
 export default function MainRoutes() {
     const [loggedIn, setLoggedIn] = useState(false);
@@ -130,6 +131,7 @@ export default function MainRoutes() {
                         <Route path="/surveyors" element={loggedIn ? <Surveyors handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/users" element={loggedIn ? <Users handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/income" element={loggedIn ? <Income handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                        <Route path="/all-projects" element={loggedIn ? <AllProjects handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/reports/due-history" element={loggedIn ? <DueHistory handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/reports/project-history" element={loggedIn ? <ProjectHistory handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/reports/monthly-report" element={loggedIn ? <MonthlyReport handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />

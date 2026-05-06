@@ -16,6 +16,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { markEditedRowForHighlight } from '../../../utils/datatableState';
 import LeadPaymentModal from '../../../Components/LeadPaymentModal';
 import PaymentCell from '../../../Components/Datatable/PaymentCell';
+import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 
 export default function In_Quote() {
     document.title = 'In Quote';
@@ -53,9 +54,16 @@ export default function In_Quote() {
     const [projectRemark, setProjectRemark] = useState("");
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
+    const [closeModalOpen, setCloseModalOpen] = useState(false);
+    const [closeForm, setCloseForm] = useState({ survey_date: "", surveyor: "", design_deadline: "", designer: "", description: "" });
+    const [closePaymentForm, setClosePaymentForm] = useState({ paid_at: "", amount: "", discount_given: "0", note: "Final due amount received while closing project." });
 
     const [surveyors, setSurveyors] = useState([]);
     const [designers, setDesigners] = useState([]);
+    const parseMoney = (value) => {
+        const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
+        return Number.isFinite(numeric) ? numeric : 0;
+    };
 
     const fetchUsers = async () => {
         try {
@@ -226,6 +234,71 @@ export default function In_Quote() {
         setSelectedRow(row);
         setLostForm({ agent: user?.name || "", description: "" });
         setLostModalOpen(true);
+    };
+
+    const handleCloseClick = (row) => {
+        document.activeElement?.blur?.();
+        const due = parseMoney(row?.payment_due_amount);
+        setSelectedRow(row);
+        setCloseForm({
+            survey_date: row?.survey_date || "",
+            surveyor: row?.surveyor || "",
+            design_deadline: row?.design_deadline || "",
+            designer: row?.designer || "",
+            description: "",
+        });
+        setClosePaymentForm({
+            paid_at: "",
+            amount: due > 0 ? String(due) : "",
+            discount_given: "0",
+            note: "Final due amount received while closing project.",
+        });
+        setCloseModalOpen(true);
+    };
+
+    const handleCloseSubmit = async () => {
+        if (!selectedRow?._id) return;
+        const agent = currentUser?.name || selectedRow?.agent || "System";
+        const dueAmount = parseMoney(selectedRow?.payment_due_amount);
+        const collectAmount = parseMoney(closePaymentForm.amount);
+        const collectDiscount = parseMoney(closePaymentForm.discount_given);
+
+        if (dueAmount > 0 && (collectAmount + collectDiscount !== dueAmount)) {
+            toast.error(`Please settle full due amount (${formatCurrencyGBP(dueAmount)}) using receive amount and/or discount before closing.`);
+            return;
+        }
+
+        try {
+            if (dueAmount > 0) {
+                await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/leads/payments/${selectedRow._id}`, {
+                    amount: collectAmount,
+                    discount_given: collectDiscount,
+                    note: closePaymentForm.note,
+                    paid_at: closePaymentForm.paid_at || undefined,
+                    agent,
+                });
+            }
+
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/leads/closed/${selectedRow._id}`,
+                {
+                    agent,
+                    description: closeForm.description,
+                    survey_date: closeForm.survey_date,
+                    surveyor: closeForm.surveyor,
+                    design_deadline: closeForm.design_deadline,
+                    designer: closeForm.designer,
+                    close_source: "In_Quote",
+                }
+            );
+
+            markEditedRowForHighlight(selectedRow._id);
+            toast.success("Project closed successfully from In Quote.");
+            setCloseModalOpen(false);
+            fetchData();
+        } catch (error) {
+            toast.error(error?.response?.data || "Failed to close project.");
+        }
     };
 
     const handleLostSubmit = async () => {
@@ -402,7 +475,7 @@ export default function In_Quote() {
                 <div className='crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-emerald-600 font-bold flex items-center cursor-pointer border-r-2 pr-2"
+                        className="text-cyan-600 font-bold flex items-center cursor-pointer border-r-2 pr-2"
                         title="Move to Survey"
                     >
                         <span className="text-xs mr-1 text-center">Survey</span>
@@ -411,16 +484,25 @@ export default function In_Quote() {
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDrawingClick(row.original); }}
-                        className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
+                        className="text-violet-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
                         title="Move to Drawing Phase"
                     >
-                        <span className="text-xs mr-1 text-center">Drawing Phase</span>
+                        <span className="text-xs mr-1 text-center">Drawing</span>
                         <DesignServicesIcon fontSize="small" />
                     </button>
 
                     <button
+                        onClick={(e) => { e.stopPropagation(); handleCloseClick(row.original); }}
+                        className="text-emerald-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
+                        title="Close Project"
+                    >
+                        <span className="text-xs mr-1 text-center">Close</span>
+                        <HighlightOffIcon fontSize="small" />
+                    </button>
+
+                    <button
                         onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
-                        className="text-red-400 font-bold flex items-center cursor-pointer ml-2"
+                        className="text-rose-600 font-bold flex items-center cursor-pointer ml-2"
                         title="Mark as Lost"
                     >
                         <span className="text-xs mr-1 text-center">Lost</span>
@@ -522,6 +604,20 @@ export default function In_Quote() {
                 <DialogTitle><b>Send Site Survey</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <div onClick={() => startRef.current.showPicker()}>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                             Survey Date*
@@ -598,6 +694,20 @@ export default function In_Quote() {
 
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setDrawingModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <div onClick={() => startRef.current.showPicker()}>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                             Deadline*
@@ -677,6 +787,153 @@ export default function In_Quote() {
             </Dialog>
 
             <Dialog
+                open={closeModalOpen}
+                onClose={() => setCloseModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Close Project - {selectedRow?.leadCode?.toUpperCase()}</b>
+                </DialogTitle>
+                <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setCloseModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
+                    <TextField
+                        fullWidth
+                        type="date"
+                        size="small"
+                        margin="normal"
+                        InputLabelProps={{ shrink: true }}
+                        label="Survey Date"
+                        value={closeForm.survey_date}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, survey_date: e.target.value }))}
+                    />
+
+                    <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={closeForm.surveyor}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, surveyor: e.target.value }))}
+                    >
+                        <option value="">Select Surveyor</option>
+                        {surveyors.map((s, index) => (
+                            <option key={index} value={s.name}>
+                                {s.name} - {s.phone}
+                            </option>
+                        ))}
+                    </TextField>
+
+                    <TextField
+                        fullWidth
+                        type="date"
+                        size="small"
+                        margin="normal"
+                        InputLabelProps={{ shrink: true }}
+                        label="Design Deadline"
+                        value={closeForm.design_deadline}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, design_deadline: e.target.value }))}
+                    />
+
+                    <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={closeForm.designer}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, designer: e.target.value }))}
+                    >
+                        <option value="">Select Architect/Designer</option>
+                        {designers.map((d, index) => (
+                            <option key={index} value={d.name}>
+                                {d.name} - {d.phone}
+                            </option>
+                        ))}
+                    </TextField>
+
+                    <div className='grid grid-cols-3 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 my-3'>
+                        <div><p className='text-xs text-slate-500'>Quoted</p><p className='font-semibold text-slate-800'>{formatCurrencyGBP(selectedRow?.quote_price || 0)}</p></div>
+                        <div><p className='text-xs text-slate-500'>Received</p><p className='font-semibold text-emerald-700'>{formatCurrencyGBP(selectedRow?.payment_received_total || 0)}</p></div>
+                        <div><p className='text-xs text-slate-500'>Due</p><p className='font-semibold text-red-600'>{formatCurrencyGBP(selectedRow?.payment_due_amount || 0)}</p></div>
+                    </div>
+
+                    <div className='rounded-lg border border-slate-200 mb-3'>
+                        <div className='px-3 py-2 bg-slate-100 border-b border-slate-200'>
+                            <p className='text-sm font-semibold text-slate-700'>Payment History</p>
+                        </div>
+                        <div className='max-h-44 overflow-y-auto'>
+                            <table className='w-full text-sm'>
+                                <thead className='bg-slate-50'>
+                                    <tr>
+                                        <th className='text-left px-3 py-2'>Date</th>
+                                        <th className='text-left px-3 py-2'>Agent</th>
+                                        <th className='text-left px-3 py-2'>Amount</th>
+                                        <th className='text-left px-3 py-2'>Discount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(selectedRow?.payment_history || []).map((item) => (
+                                        <tr key={item._id} className='border-t border-slate-200'>
+                                            <td className='px-3 py-2'>{formatLondonDateTime(item?.paid_at)}</td>
+                                            <td className='px-3 py-2'>{item?.agent || '-'}</td>
+                                            <td className='px-3 py-2'>{formatCurrencyGBP(item?.paid_amount || 0)}</td>
+                                            <td className='px-3 py-2'>{formatCurrencyGBP(item?.discount_given || 0)}</td>
+                                        </tr>
+                                    ))}
+                                    {!(selectedRow?.payment_history || []).length && (
+                                        <tr><td className='px-3 py-3 text-slate-500' colSpan={4}>No payment history found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {parseMoney(selectedRow?.payment_due_amount) > 0 && (
+                        <>
+                            <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
+                                <TextField fullWidth type="date" size="small" margin="normal" label="Payment Date" InputLabelProps={{ shrink: true }} value={closePaymentForm.paid_at} onChange={e => setClosePaymentForm(prev => ({ ...prev, paid_at: e.target.value }))} />
+                                <TextField fullWidth type="number" size="small" margin="normal" label={`Receive Amount (${formatCurrencyGBP(selectedRow?.payment_due_amount || 0)})*`} value={closePaymentForm.amount} onChange={e => setClosePaymentForm(prev => ({ ...prev, amount: e.target.value }))} />
+                                <TextField fullWidth type="number" size="small" margin="normal" label="Discount Given" value={closePaymentForm.discount_given} onChange={e => setClosePaymentForm(prev => ({ ...prev, discount_given: e.target.value }))} />
+                            </div>
+                            <TextField fullWidth size="small" margin="normal" label="Payment Note" multiline minRows={2} value={closePaymentForm.note} onChange={e => setClosePaymentForm(prev => ({ ...prev, note: e.target.value }))} />
+                        </>
+                    )}
+
+                    <div className="mt-3">
+                        <RichTextEditor
+                            value={closeForm.description}
+                            onChange={(value) => setCloseForm((prev) => ({ ...prev, description: value }))}
+                        />
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleCloseSubmit}
+                        className="bg-emerald-600! hover:bg-emerald-700! font-bold!"
+                    >
+                        Collect Due & Close Project
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
                 open={lostModalOpen}
                 onClose={() => setLostModalOpen(false)}
                 fullWidth
@@ -686,6 +943,20 @@ export default function In_Quote() {
                     <b>Mark as Lost</b>
                 </DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setLostModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <RichTextEditor
                         value={lostForm.description}
                         onChange={(html) =>
@@ -726,6 +997,20 @@ export default function In_Quote() {
                 </DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <TextField
                         select
                         fullWidth

@@ -358,7 +358,7 @@ export default function In_Review() {
                 <div className='crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
+                        className="text-emerald-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
                         <span className="text-xs mr-1 text-center ">Close</span>
                         <CheckCircleOutlineIcon fontSize="small" />
                     </button>
@@ -366,7 +366,7 @@ export default function In_Review() {
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleBackToDrawingPhase(row.original); }}
-                        className="text-blue-500 font-bold flex items-center cursor-pointer ml-3">
+                        className="text-violet-600 font-bold flex items-center cursor-pointer ml-3">
                         <span className="text-xs mr-1 text-center ">Back to Drawing</span>
                         <DesignServicesIcon fontSize="small" />
                     </button>
@@ -472,6 +472,20 @@ export default function In_Review() {
                 <DialogTitle><b>Close Project</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <div className='grid grid-cols-3 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 mb-3 mt-2'>
                         <div><p className='text-xs text-slate-500'>Quoted</p><p className='font-semibold text-slate-800'>{formatCurrencyGBP(selectedRow?.quote_price || 0)}</p></div>
                         <div><p className='text-xs text-slate-500'>Received</p><p className='font-semibold text-emerald-700'>{formatCurrencyGBP(receivedAmount)}</p></div>
@@ -614,6 +628,20 @@ export default function In_Review() {
                     <b>Change Stage</b>
                 </DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <TextField
                         select
                         fullWidth

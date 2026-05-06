@@ -227,8 +227,10 @@ const toFixedMoney = (value) => Math.max(0, Number((value || 0).toFixed(2)));
 
 const buildPaymentSummary = (lead) => {
     const quoted = parseMoney(lead.quote_price);
-    const received = toFixedMoney((lead.payment_history || []).reduce((sum, item) => sum + parseMoney(item.paid_amount), 0));
-    const discount = toFixedMoney((lead.payment_history || []).reduce((sum, item) => sum + parseMoney(item.discount_given), 0));
+    const activeCycle = Number(lead.payment_cycle || 1);
+    const cycleHistory = (lead.payment_history || []).filter((item) => Number(item?.cycle || 1) === activeCycle);
+    const received = toFixedMoney(cycleHistory.reduce((sum, item) => sum + parseMoney(item.paid_amount), 0));
+    const discount = toFixedMoney(cycleHistory.reduce((sum, item) => sum + parseMoney(item.discount_given), 0));
     const due = toFixedMoney(Math.max(quoted - (received + discount), 0));
     return { quoted, received, discount, due };
 };
@@ -429,11 +431,23 @@ let Pending = async (req, res) => {
         if (!updateData) {
             return res.status(404).send('Lead not found');
         }
+        const previousStatus = updateData.status;
         updateData.status = 'Pending';
         updateData.stage = STATUS_DEFAULT_STAGE.Pending;
+        let resetNote = '';
+        if (previousStatus === 'Closed' || previousStatus === 'Lost_Lead') {
+            updateData.payment_cycle = Number(updateData.payment_cycle || 1) + 1;
+            updateData.quote_price = '';
+            updateData.quote_file = '';
+            updateData.final_price = '';
+            updateData.payment_received_total = 0;
+            updateData.payment_discount_total = 0;
+            updateData.payment_due_amount = 0;
+            resetNote = `<p><b>Payment reset for re-quotation.</b> New quote cycle: ${updateData.payment_cycle}. Previous payment history kept for audit.</p>`;
+        }
         updateData.description = processDescription(
             updateData.description,
-            buildStageRemark(updateData.stage),
+            buildStageRemark(updateData.stage, resetNote),
             updateData.agent || "System"
         );
 
@@ -468,9 +482,11 @@ let In_Quote = async (req, res) => {
         updateData.stage = STATUS_DEFAULT_STAGE.In_Quote;
         updateData.status = 'In_Quote';
         updateData.in_quote_date = getLondonDateOnly();
+        const activeCycle = Number(updateData.payment_cycle || 1);
+        const reQuoteNote = activeCycle > 1 ? `<p><b>Re-quotation Cycle ${activeCycle}</b></p>` : '';
         updateData.description = processDescription(
             updateData.description,
-            buildStageRemark(updateData.stage, description || ''),
+            buildStageRemark(updateData.stage, `${reQuoteNote}${description || ''}`),
             agent
         );
 
@@ -493,6 +509,7 @@ let In_Quote = async (req, res) => {
                 paid_at: new Date(),
                 agent: agent || updateData.agent || "System",
                 stage: updateData.status,
+                cycle: Number(updateData.payment_cycle || 1),
             });
         }
         applyPaymentSummary(updateData);
@@ -668,7 +685,7 @@ let In_Review = async (req, res) => {
 
 let Closed = async (req, res) => {
     try {
-        const { agent, final_price, description } = req.body;
+        const { agent, final_price, description, survey_date, surveyor, design_deadline, designer, close_source } = req.body;
 
         const requiredFields = {
             agent: 'Agent',
@@ -681,12 +698,23 @@ let Closed = async (req, res) => {
 
         updateData.agent = agent;
         updateData.final_price = final_price;
+        if (survey_date !== undefined) updateData.survey_date = survey_date;
+        if (surveyor !== undefined) updateData.surveyor = surveyor;
+        if (design_deadline !== undefined) updateData.design_deadline = design_deadline;
+        if (designer !== undefined) updateData.designer = designer;
         updateData.status = 'Closed';
         updateData.stage = STATUS_DEFAULT_STAGE.Closed;
         updateData.close_date = getLondonDateOnly();
+        const closeMeta = [];
+        if (close_source === 'In_Quote') closeMeta.push('<p><b>Directly closed from In Quote.</b></p>');
+        if (survey_date || surveyor || design_deadline || designer) {
+            closeMeta.push(
+                `<p>Survey Date: ${survey_date || '-'} | Surveyor: ${surveyor || '-'} | Design Deadline: ${design_deadline || '-'} | Architect/Designer: ${designer || '-'}</p>`
+            );
+        }
         updateData.description = processDescription(
             updateData.description,
-            buildStageRemark(updateData.stage, description || ''),
+            buildStageRemark(updateData.stage, `${closeMeta.join('')}${description || ''}`),
             agent
         );
 
@@ -775,8 +803,10 @@ let AddPayment = async (req, res) => {
     if (quoted <= 0) return res.status(400).send('Quoted price must be set first.');
     if (paidAmount < 0 || discount < 0) return res.status(400).send('Invalid payment amount.');
 
-    const received = toFixedMoney((updateData.payment_history || []).reduce((sum, item) => sum + parseMoney(item.paid_amount), 0));
-    const discountTotal = toFixedMoney((updateData.payment_history || []).reduce((sum, item) => sum + parseMoney(item.discount_given), 0));
+    const activeCycle = Number(updateData.payment_cycle || 1);
+    const cycleHistory = (updateData.payment_history || []).filter((item) => Number(item?.cycle || 1) === activeCycle);
+    const received = toFixedMoney(cycleHistory.reduce((sum, item) => sum + parseMoney(item.paid_amount), 0));
+    const discountTotal = toFixedMoney(cycleHistory.reduce((sum, item) => sum + parseMoney(item.discount_given), 0));
     if ((received + discountTotal + paidAmount + discount) > quoted) {
         return res.status(400).send('Payment exceeds quoted price.');
     }
@@ -789,6 +819,7 @@ let AddPayment = async (req, res) => {
         paid_at: paid_at ? new Date(paid_at) : new Date(),
         agent: agent || req.username || updateData.agent || "System",
         stage: updateData.status,
+        cycle: Number(updateData.payment_cycle || 1),
     });
     applyPaymentSummary(updateData);
     await updateData.save();

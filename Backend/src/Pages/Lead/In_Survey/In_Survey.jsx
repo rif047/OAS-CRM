@@ -408,7 +408,7 @@ export default function In_Survey() {
                             e.stopPropagation();
                             handleSurveyClick(row.original);
                         }}
-                        className="text-indigo-500 font-bold flex items-center cursor-pointer border-r-2 pr-2">
+                        className="text-cyan-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
                         <span className="text-xs mr-1 text-center ">Survey Data</span>
                         <EventNoteIcon fontSize="small" />
                     </button>
@@ -418,14 +418,14 @@ export default function In_Survey() {
                             <>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                                    className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2">
-                                    <span className="text-xs mr-1 text-center ">Drawing Phase</span>
+                                    className="text-violet-600 font-bold flex items-center cursor-pointer border-r-2 px-2">
+                                    <span className="text-xs mr-1 text-center ">Drawing</span>
                                     <DesignServicesIcon fontSize="small" />
                                 </button>
 
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
-                                    className="text-red-400 font-bold flex items-center cursor-pointer ml-2">
+                                    className="text-rose-600 font-bold flex items-center cursor-pointer ml-2">
                                     <span className="text-xs mr-1 text-center ">Lost</span>
                                     <HighlightOffIcon fontSize="small" />
                                 </button>
@@ -530,6 +530,20 @@ export default function In_Survey() {
                 <DialogTitle><b>Sent To Drawing Phase</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <div onClick={() => startRef.current.showPicker()}>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                             Deadline*
@@ -604,6 +618,20 @@ export default function In_Survey() {
                 <DialogTitle><b>Survey Data Update</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setSurveyModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Survey Done *</label>
                     <select
                         value={surveyForm.survey_done}
@@ -661,6 +689,20 @@ export default function In_Survey() {
             >
                 <DialogTitle><b>Mark as Lost</b></DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setLostModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <RichTextEditor
                         value={lostForm.description}
                         onChange={(html) =>
@@ -700,6 +742,20 @@ export default function In_Survey() {
                     <b>Change Stage</b>
                 </DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <TextField
                         select
                         fullWidth

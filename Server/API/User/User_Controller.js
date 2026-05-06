@@ -1,6 +1,7 @@
 let User = require('./User_Model');
 let bcrypt = require("bcrypt");
-const { isReservedUsername } = require("../../Config/Builtin_Admin");
+const { isReservedUsername, BUILTIN_ADMIN_USER } = require("../../Config/Builtin_Admin");
+const BUILTIN_ADMIN_ID = BUILTIN_ADMIN_USER._id;
 
 const PUBLIC_USER_FIELDS = '-password -secret_code';
 
@@ -69,6 +70,9 @@ let Create = async (req, res) => {
 
 
 let View = async (req, res) => {
+    if (req.params.id === BUILTIN_ADMIN_ID) {
+        return res.status(200).json(BUILTIN_ADMIN_USER);
+    }
     let viewOne = await User.findById(req.params.id).select(PUBLIC_USER_FIELDS).lean();
     if (!viewOne) return res.status(404).send('User not found');
     res.send(viewOne)
@@ -98,6 +102,10 @@ let Update = async (req, res) => {
 
         let checkEmail = await User.findOne({ email: email.toLowerCase(), _id: { $ne: req.params.id } });
         if (checkEmail) { return res.status(400).send('Email already exists. Use different one.'); }
+
+        if (req.params.id === BUILTIN_ADMIN_ID) {
+            return res.status(403).send('System Administrator cannot be updated through this route.');
+        }
 
         let updateData = await User.findById(req.params.id);
         if (!updateData) { return res.status(404).send('User not found'); }
@@ -132,6 +140,9 @@ let Update = async (req, res) => {
 
 
 let Delete = async (req, res) => {
+    if (req.params.id === BUILTIN_ADMIN_ID) {
+        return res.status(403).send('System Administrator cannot be deleted.');
+    }
     const deleted = await User.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).send('User not found');
     res.status(200).send('Deleted')
