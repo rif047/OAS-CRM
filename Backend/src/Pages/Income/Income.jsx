@@ -3,6 +3,7 @@ import Layout from '../../Layout';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import SummarizeRoundedIcon from '@mui/icons-material/SummarizeRounded';
+import SummarizeIcon from '@mui/icons-material/Summarize';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -27,7 +28,7 @@ const DateField = ({ value, onChange, placeholder }) => {
 
   return (
     <div
-      className="leadPageFilterSelect cursor-pointer"
+      className="h-9 min-w-[150px] cursor-pointer rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm"
       onClick={openPicker}
       role="button"
       tabIndex={0}
@@ -42,7 +43,7 @@ const DateField = ({ value, onChange, placeholder }) => {
       <input
         ref={inputRef}
         type="date"
-        className="h-full w-full cursor-pointer bg-transparent outline-none"
+        className="h-full w-full cursor-pointer bg-transparent text-sm text-slate-700 outline-none"
         value={value}
         onChange={onChange}
       />
@@ -56,6 +57,8 @@ export default function Income() {
   const [to, setTo] = useState('');
   const [rows, setRows] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState('All Company');
+  const [canDownloadReport, setCanDownloadReport] = useState(false);
+  const [isCompanyEnabled, setIsCompanyEnabled] = useState(false);
 
   const companies = useMemo(() => {
     const unique = new Set();
@@ -117,7 +120,11 @@ export default function Income() {
       const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/leads/income/report`, { params: { from, to } });
       setRows(res.data.rows || []);
       setSelectedCompany('All Company');
+      setIsCompanyEnabled(true);
+      setCanDownloadReport(true);
     } catch {
+      setIsCompanyEnabled(false);
+      setCanDownloadReport(false);
       toast.error('Report load failed.');
     }
   };
@@ -216,35 +223,49 @@ export default function Income() {
   return (
     <Layout>
       <ToastContainer position="bottom-right" autoClose={2000} />
-      <section className="leadPageShell">
+      <section className="leadPageShell bg-white">
         <div className="mb-2 rounded-xl border border-slate-200 bg-linear-to-r from-[#3a4259] to-[#475569] px-3 py-2 shadow-sm">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <div className='leadPageHeaderLeft'>
-              <h1 className="leadPageTitle text-white">Income &amp; Due</h1>
-              <p className="text-xs text-slate-200">Track quotation, received amount, and due from a single report view.</p>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="shrink-0 xl:min-w-[290px]">
+              <h1 className="flex items-center gap-2 text-xl font-bold text-white md:text-[26px]">
+                <SummarizeIcon fontSize="small" sx={{ color: '#bfdbfe' }} /> Income &amp; Due
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-200">Track quotation, received amount, and due from a single report view.</p>
             </div>
-            <div className='leadPageHeaderActions gap-2'>
+            <div
+              className="flex flex-wrap gap-2 xl:ml-auto xl:items-center xl:justify-end"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  load();
+                }
+              }}
+            >
             <DateField value={from} onChange={(e) => setFrom(e.target.value)} placeholder="From date" />
             <DateField value={to} onChange={(e) => setTo(e.target.value)} placeholder="To date" />
-            <select
-              className="leadPageFilterSelect cursor-pointer"
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-            >
-              {companies.map((company) => (
-                <option key={company} value={company}>{company}</option>
-              ))}
-            </select>
+            <div title={!isCompanyEnabled ? 'Generate report first' : ''}>
+              <select
+                className="h-9 min-w-[150px] cursor-pointer rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                disabled={!isCompanyEnabled}
+              >
+                {companies.map((company) => (
+                  <option key={company} value={company}>{company}</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={load}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 cursor-pointer"
+              className="inline-flex h-[38px] min-w-[170px] items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-semibold leading-none text-white shadow-sm transition hover:bg-slate-800 cursor-pointer"
             >
               <SummarizeRoundedIcon sx={{ fontSize: 18, color: '#bfdbfe' }} />
               Generate Report
             </button>
             <button
               onClick={downloadReportPdf}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 cursor-pointer"
+              disabled={!canDownloadReport}
+              className="inline-flex h-[36px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold leading-none text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             >
               <FileDownloadRoundedIcon sx={{ fontSize: 18, color: '#059669' }} />
               Download Report

@@ -32,7 +32,7 @@ const ClientSchema = Mongoose.Schema({
         type: String,
     },
 
-}, { timestamps: true })
+}, { timestamps: true, optimisticConcurrency: true })
 
 ClientSchema.index({ createdAt: -1 });
 ClientSchema.index({ name: 1 });

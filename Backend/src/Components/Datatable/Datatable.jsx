@@ -55,6 +55,11 @@ function Datatable({
     const [debouncedGlobalFilter, setDebouncedGlobalFilter] = useState('');
     const [sorting, setSorting] = useState([]);
     const previousSearchRef = useRef('');
+    const effectiveTotalRows = serverMode ? totalRows : data.length;
+    const totalPages = Math.max(1, Math.ceil(effectiveTotalRows / Math.max(1, pagination.pageSize)));
+    const currentPage = Math.min(totalPages, pagination.pageIndex + 1);
+    const pageStart = effectiveTotalRows === 0 ? 0 : (pagination.pageIndex * pagination.pageSize) + 1;
+    const pageEnd = Math.min(effectiveTotalRows, (pagination.pageIndex * pagination.pageSize) + pagination.pageSize);
 
     const userType = localStorage.getItem("userType");
     const hasActionPermissions = Boolean(permissions?.canView || permissions?.canEdit || permissions?.canDelete);
@@ -82,8 +87,18 @@ function Datatable({
 
     useEffect(() => {
         if (!serverMode) return;
+        const totalPages = Math.max(1, Math.ceil(Math.max(0, Number(totalRows) || 0) / Math.max(1, pagination.pageSize)));
+        const maxPageIndex = Math.max(totalPages - 1, 0);
+        if (pagination.pageIndex > maxPageIndex) {
+            setPagination((prev) => (prev.pageIndex === maxPageIndex ? prev : { ...prev, pageIndex: maxPageIndex }));
+        }
+    }, [pagination.pageIndex, pagination.pageSize, serverMode, totalRows]);
+
+    useEffect(() => {
+        if (!serverMode) return;
+        const normalizedGlobalFilter = typeof globalFilter === 'string' ? globalFilter : String(globalFilter ?? '');
         const timeoutId = setTimeout(() => {
-            setDebouncedGlobalFilter(globalFilter.trim());
+            setDebouncedGlobalFilter(normalizedGlobalFilter.trim());
         }, serverSearchDebounceMs);
 
         return () => clearTimeout(timeoutId);
@@ -151,6 +166,15 @@ function Datatable({
             sortDir: primarySort?.desc ? 'desc' : 'asc',
         });
     }, [debouncedGlobalFilter, onServerQueryChange, pagination.pageIndex, pagination.pageSize, serverMode, sorting]);
+
+    const handleGlobalFilterChange = useCallback((updater) => {
+        setGlobalFilter((prev) => {
+            const resolvedValue = typeof updater === 'function' ? updater(prev) : updater;
+            if (typeof resolvedValue === 'string') return resolvedValue;
+            if (resolvedValue == null) return '';
+            return String(resolvedValue);
+        });
+    }, []);
 
 
     const handleExportCsv = useCallback(() => {
@@ -272,8 +296,15 @@ function Datatable({
                 align: 'center',
                 sx: { px: 0 },
             },
-            Cell: ({ row }) => {
-                return data.length - row.index;
+            Cell: ({ row, table, staticRowIndex }) => {
+                const pageStartOffset = pagination.pageIndex * pagination.pageSize;
+                const rowIndexOnCurrentPage =
+                    Number.isInteger(staticRowIndex)
+                        ? staticRowIndex
+                        : Math.max(table.getRowModel().rows.findIndex((item) => item.id === row.id), 0);
+                const totalCount = serverMode ? totalRows : data.length;
+
+                return Math.max(totalCount - (pageStartOffset + rowIndexOnCurrentPage), 0);
             },
         },
 
@@ -344,7 +375,19 @@ function Datatable({
 
             ),
         }] : []),
-    ]), [data.length, normalizedColumns, hasActionPermissions, permissions, onView, onEdit, onDelete]);
+    ]), [
+        data.length,
+        normalizedColumns,
+        hasActionPermissions,
+        onDelete,
+        onEdit,
+        onView,
+        pagination.pageIndex,
+        pagination.pageSize,
+        permissions,
+        serverMode,
+        totalRows,
+    ]);
 
     return (
         <MaterialReactTable
@@ -365,13 +408,25 @@ function Datatable({
             autoResetPageIndex={false}
             initialState={{ density: 'compact', ...(serverMode ? { showGlobalFilter: true } : {}) }}
             onPaginationChange={setPagination}
-            onGlobalFilterChange={serverMode ? setGlobalFilter : undefined}
+            onGlobalFilterChange={serverMode ? handleGlobalFilterChange : undefined}
             onSortingChange={serverMode ? setSorting : undefined}
             state={{
                 pagination,
-                ...(serverMode ? { globalFilter, sorting, isLoading } : {}),
+                isLoading,
+                ...(serverMode ? { globalFilter, sorting } : {}),
             }}
-            muiPaginationProps={{ rowsPerPageOptions: [10, 50, 100] }}
+            paginationDisplayMode="pages"
+            muiPaginationProps={{
+                rowsPerPageOptions: [10, 50, 100],
+                showRowsPerPage: true,
+                variant: 'outlined',
+                shape: 'rounded',
+                showFirstButton: true,
+                showLastButton: true,
+                siblingCount: 0,
+                boundaryCount: 1,
+                size: 'small',
+            }}
             rowCount={serverMode ? totalRows : undefined}
             enableColumnActions={false}
             enableCellActions={true}
@@ -387,6 +442,12 @@ function Datatable({
             muiBottomToolbarProps={{
                 className: 'crmDataTableFooter',
             }}
+            renderBottomToolbarCustomActions={() => (
+                <section className="crmDataTablePaginationMeta" aria-live="polite">
+                    <span className="crmDataTablePageBadge">{`Page ${currentPage} of ${totalPages}`}</span>
+                    <span className="crmDataTableRowsBadge">{`${pageStart}-${pageEnd} of ${effectiveTotalRows}`}</span>
+                </section>
+            )}
             renderTopToolbarCustomActions={() =>
                 userType !== "Management" && (
                     <section className="crmDataTableExportWrap">

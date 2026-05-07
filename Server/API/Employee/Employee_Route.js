@@ -9,11 +9,11 @@ const { Employees, Create, BulkImport, View, Update, Delete } = require('./Emplo
 
 Route.param('id', validateObjectId('id'));
 
-Route.get('/', asyncHandler(Employees))
-Route.post('/', asyncHandler(Create))
-Route.post('/bulk', asyncHandler(BulkImport));
-Route.get('/:id', asyncHandler(View))
-Route.patch('/:id', asyncHandler(Update))
+Route.get('/', authorize('Admin', 'Management'), asyncHandler(Employees))
+Route.post('/', authorize('Admin', 'Management'), asyncHandler(Create))
+Route.post('/bulk', authorize('Admin', 'Management'), asyncHandler(BulkImport));
+Route.get('/:id', authorize('Admin', 'Management'), asyncHandler(View))
+Route.patch('/:id', authorize('Admin', 'Management'), asyncHandler(Update))
 Route.delete('/:id', authorize('Admin'), asyncHandler(Delete))
 
 

@@ -7,6 +7,16 @@ const BUILTIN_ADMIN_PHONE = Number(process.env.BUILTIN_ADMIN_PHONE || 1700000000
 const BUILTIN_ADMIN_EMAIL = (process.env.BUILTIN_ADMIN_EMAIL || "rif047@local.system").trim().toLowerCase();
 const BUILTIN_ADMIN_DESIGNATION = (process.env.BUILTIN_ADMIN_DESIGNATION || "System Administrator").trim();
 const BUILTIN_ADMIN_ID = (process.env.BUILTIN_ADMIN_ID || "builtin-admin").trim();
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+if (NODE_ENV === "production") {
+    if (!process.env.BUILTIN_ADMIN_PASSWORD_HASH) {
+        throw new Error("BUILTIN_ADMIN_PASSWORD_HASH is required in production.");
+    }
+    if (!process.env.BUILTIN_ADMIN_USERNAME) {
+        throw new Error("BUILTIN_ADMIN_USERNAME is required in production.");
+    }
+}
 
 const BUILTIN_ADMIN_USER = {
     _id: BUILTIN_ADMIN_ID,

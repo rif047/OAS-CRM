@@ -270,57 +270,64 @@ export default function ProjectHistory() {
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-84px)] bg-[linear-gradient(145deg,#f4f8ff_0%,#eef6ff_35%,#f8fbff_100%)] p-3 md:p-4">
+      <div>
         <ToastContainer position="top-right" autoClose={2500} />
 
         <div className="w-full space-y-3">
-          <div className="rounded-2xl border border-gray-100 bg-white p-3.5 shadow-[0_10px_30px_-18px_rgba(37,99,235,0.45)] md:p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900 md:text-[26px]">
-                  <HistoryEduIcon fontSize="small" /> Project History
+          <div className="mb-2 rounded-xl border border-slate-200 bg-linear-to-r from-[#3a4259] to-[#475569] px-3 py-2 shadow-sm">
+            <div
+              className="flex flex-col gap-2 xl:flex-row xl:items-center"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  fetchLeads();
+                }
+              }}
+            >
+              <div className="shrink-0 xl:min-w-[300px]">
+                <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-white md:text-[26px]">
+                  <HistoryEduIcon fontSize="small" sx={{ color: '#bfdbfe' }} /> Project History
                 </h1>
-                <p className="mt-0.5 text-[13px] text-slate-600 md:text-sm">
+                <p className="mt-0.5 text-[13px] text-slate-200 md:text-sm">
                   Search by project code and view full step-by-step history with date and details.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={downloadPdf}
-                disabled={!selectedLead}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-800 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
-              >
-                <FileDownloadRoundedIcon sx={{ fontSize: 18, color: '#059669' }} /> Download Report
-              </button>
-            </div>
-
-            <div className="mt-3 w-full lg:w-1/2 mx-auto grid gap-2 md:grid-cols-[1fr_auto]">
-              <div className="relative">
+              <div className="relative w-full xl:ml-auto xl:w-[300px]">
                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fontSize="small" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchLeads()}
                   placeholder="Enter project code, e.g. CIC-123ABC"
-                  className="w-full rounded-lg border border-slate-300/90 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+                  className="h-9 w-full rounded-lg border border-slate-300/90 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={fetchLeads}
-                disabled={loading}
-                className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-lg bg-slate-900 px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-              >
-                <SummarizeRoundedIcon sx={{ fontSize: 18, color: '#bfdbfe' }} />
-                {loading ? 'Loading...' : 'Generate Report'}
-              </button>
+              <div className="flex flex-wrap gap-2 xl:shrink-0">
+                <button
+                  type="button"
+                  onClick={fetchLeads}
+                  disabled={loading}
+                  className="inline-flex h-[38px] min-w-[170px] items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-semibold leading-none text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                >
+                  <SummarizeRoundedIcon sx={{ fontSize: 18, color: '#bfdbfe' }} />
+                  {loading ? 'Loading...' : 'Generate Report'}
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadPdf}
+                  disabled={!selectedLead}
+                  className="inline-flex h-[36px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold leading-none text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
+                >
+                  <FileDownloadRoundedIcon sx={{ fontSize: 18, color: '#059669' }} /> Download Report
+                </button>
+              </div>
             </div>
           </div>
 
           {hasFetched && !matchedLeads.length && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
               No project found for code: <b>{query}</b>
             </div>
           )}
@@ -353,7 +360,7 @@ export default function ProjectHistory() {
                   <MetricCard title="Status" value={STATUS_LABELS[selectedLead.status] || selectedLead.status || 'N/A'} />
                   <MetricCard title="Quote" value={formatCurrencyGBP(paymentSummary.quote)} />
                   <MetricCard title="Received" value={formatCurrencyGBP(paymentSummary.received)} />
-                  <MetricCard title="Due" value={formatCurrencyGBP(paymentSummary.due)} isDanger={paymentSummary.due > 0} />
+                  <MetricCard title="Due" value={formatCurrencyGBP(paymentSummary.due)} />
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm shadow-slate-200/70">
@@ -444,11 +451,11 @@ export default function ProjectHistory() {
   );
 }
 
-function MetricCard({ title, value, isDanger = false }) {
+function MetricCard({ title, value }) {
   return (
-    <div className={`rounded-lg border p-2.5 shadow-sm ${isDanger ? 'border-rose-200 bg-rose-50/80' : 'border-slate-200 bg-white'}`}>
+    <div className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-      <p className={`mt-1 text-sm font-bold md:text-base ${isDanger ? 'text-rose-700' : 'text-slate-900'}`}>{value}</p>
+      <p className="mt-1 text-sm font-bold text-slate-900 md:text-base">{value}</p>
     </div>
   );
 }

@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import './tailwind.css';
 import './style.css';
 import App from './App.jsx';
+import { setupApiClient } from './lib/setupApiClient';
+
+setupApiClient();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

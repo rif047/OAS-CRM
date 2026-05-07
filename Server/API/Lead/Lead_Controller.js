@@ -4,6 +4,7 @@ const sanitizeHtml = require('sanitize-html');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { handleControllerError } = require('../../Utils/ControllerError');
 
 const LONDON_TIME_ZONE = 'Europe/London';
 
@@ -19,6 +20,8 @@ const getLondonDateOnly = () => {
     return `${mapped.year}-${mapped.month}-${mapped.day}`;
 };
 
+const asStringOrEmpty = (value) => (typeof value === 'string' ? value : '');
+
 
 
 const formatRemark = (oldRemark, newRemark, agentName) => {
@@ -33,7 +36,8 @@ const formatRemark = (oldRemark, newRemark, agentName) => {
         hour12: false
     });
 
-    if (!newRemark || newRemark.trim() === "") return oldRemark;
+    const nextRemark = asStringOrEmpty(newRemark);
+    if (!nextRemark.trim()) return oldRemark;
 
     const normalizeLegacyHtml = (html = '') =>
         String(html)
@@ -41,7 +45,7 @@ const formatRemark = (oldRemark, newRemark, agentName) => {
             .replace(/<strong><strong>/g, '<strong>');
 
     const cleanOld = normalizeLegacyHtml(oldRemark || "").trim();
-    const cleanNew = normalizeLegacyHtml(newRemark);
+    const cleanNew = normalizeLegacyHtml(nextRemark);
     // const cleanNew = newRemark.trim();
 
     // const header = `${dateStr} - ${agentName}`;
@@ -66,8 +70,9 @@ const formatRemark = (oldRemark, newRemark, agentName) => {
 
 
 const sanitizeDescription = (desc) => {
-    if (!desc) return '';
-    return sanitizeHtml(desc, {
+    const safeDesc = asStringOrEmpty(desc);
+    if (!safeDesc) return '';
+    return sanitizeHtml(safeDesc, {
         allowedTags: [
             'p', 'b', 'i', 'u', 'strong', 'em',
             'a', 'ul', 'ol', 'li', 'br', 'span', 'img'
@@ -92,9 +97,10 @@ const sanitizeDescription = (desc) => {
 
 
 const processDescription = (oldDesc, newDesc, agent, mode = "append") => {
-    if (!newDesc || newDesc?.trim() === '') return oldDesc;
+    const nextDescription = asStringOrEmpty(newDesc);
+    if (!nextDescription.trim()) return oldDesc;
 
-    const sanitized = sanitizeDescription(newDesc);
+    const sanitized = sanitizeDescription(nextDescription);
 
     if (mode === "replace") {
         return sanitized;
@@ -112,6 +118,7 @@ const normalizeComparableHtml = (html = '') =>
         .trim();
 
 const hasMeaningfulText = (html = '') => {
+    if (typeof html !== 'string') return false;
     return String(html).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
 };
 
@@ -189,7 +196,7 @@ const UploadDescriptionImages = async (req, res) => {
         res.status(200).json({ urls });
     } catch (error) {
         console.error('Lead description image upload failed:', error);
-        res.status(500).send('Image upload failed.');
+        return handleControllerError(res, error, 'Image upload failed.');
     }
 };
 
@@ -417,7 +424,8 @@ const Create = async (req, res) => {
         res.status(200).json(newData);
 
     } catch (error) {
-        res.status(500).json('Creation Error!!!');
+        console.error(error);
+        return handleControllerError(res, error, 'Creation Error!!!');
     }
 };
 
@@ -493,7 +501,7 @@ let Update = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 };
 
@@ -545,7 +553,7 @@ let Pending = async (req, res) => {
 
     } catch (error) {
         console.error('Error canceling:', error);
-        res.status(500).send('Error canceling');
+        return handleControllerError(res, error, 'Error canceling');
     }
 }
 
@@ -608,7 +616,7 @@ let In_Quote = async (req, res) => {
         res.status(200).json(updateData);
     } catch (error) {
         console.error('Error updating In_Quote:', error);
-        res.status(500).send('Updating error!');
+        return handleControllerError(res, error, 'Updating error!');
     }
 };
 
@@ -635,7 +643,7 @@ let Survey_Data = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 
@@ -680,7 +688,7 @@ let In_Survey = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 
@@ -723,7 +731,7 @@ let In_Design = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 
@@ -762,7 +770,7 @@ let In_Review = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 
@@ -813,7 +821,7 @@ let Closed = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 
@@ -844,7 +852,7 @@ let Lost_Lead = async (req, res) => {
         res.status(200).json(updateData);
     } catch (error) {
         console.error('Error cancelling:', error);
-        res.status(500).send('Error cancelling');
+        return handleControllerError(res, error, 'Error cancelling');
     }
 };
 
@@ -867,7 +875,7 @@ let Comment = async (req, res) => {
         res.status(200).json(updateData);
     } catch (error) {
         console.error('Error adding comment:', error);
-        res.status(500).send('Error adding comment');
+        return handleControllerError(res, error, 'Error adding comment');
     }
 };
 

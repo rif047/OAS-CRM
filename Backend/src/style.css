@@ -335,3 +335,103 @@ td {
     border: none;
     border-top: 1px solid #e5e7eb;
 }
+
+.crm-top-header {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+    background: linear-gradient(95deg, rgba(248, 251, 255, 0.96) 0%, rgba(242, 246, 252, 0.94) 45%, rgba(248, 251, 255, 0.96) 100%);
+    box-shadow: 0 2px 14px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(8px);
+}
+
+.crm-header-path {
+    border: 1px solid #d4dbe5;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f3f7fb 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.crm-header-path-icon {
+    color: #1e3a5f;
+    background: linear-gradient(145deg, rgba(37, 99, 235, 0.16), rgba(30, 64, 175, 0.1));
+}
+
+.crm-header-path-title {
+    color: #1f2a3d;
+    letter-spacing: 0.03em;
+}
+
+.crm-top-search-box {
+    border: 1px solid #cfd8e3;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 1px 5px rgba(15, 23, 42, 0.08);
+}
+
+.crm-top-search-box:hover {
+    border-color: #aeb8c8;
+}
+
+.crm-top-search-box.is-focused {
+    border-color: #4f6480;
+    box-shadow: 0 0 0 3px rgba(79, 100, 128, 0.2);
+}
+
+.crm-top-search-icon {
+    color: #61748d;
+}
+
+.crm-top-search-input {
+    color: #27364b;
+    background: transparent;
+}
+
+.crm-top-search-input::placeholder {
+    color: #8b9aaf;
+}
+
+.crm-top-search-results {
+    border: 1px solid #d5dbe6;
+    background: #ffffff;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.16);
+}
+
+.crm-top-profile-btn {
+    border: 1px solid #ced6e1;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 100%);
+    box-shadow: 0 1px 5px rgba(15, 23, 42, 0.1);
+}
+
+.crm-top-profile-btn:hover {
+    border-color: #aeb8c8;
+    background: linear-gradient(180deg, #ffffff 0%, #eff5fc 100%);
+}
+
+.crm-top-profile-btn.is-open {
+    border-color: #7788a0;
+    background: linear-gradient(180deg, #fdfefe 0%, #e8eff7 100%);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+}
+
+.crm-top-profile-avatar {
+    background: linear-gradient(145deg, #24364c, #415d7a);
+}
+
+.crm-top-profile-arrow {
+    color: #596c84;
+}
+
+.crm-top-profile-dropdown {
+    border: 1px solid #ced6e1;
+    background: #ffffff;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+}
+
+.crm-top-mobile-btn {
+    border: 1px solid #c6d1df;
+    background: linear-gradient(180deg, #ffffff 0%, #eef3f9 100%);
+    color: #3b516d;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.crm-top-mobile-btn:hover {
+    background: linear-gradient(180deg, #ffffff 0%, #e7edf5 100%);
+}

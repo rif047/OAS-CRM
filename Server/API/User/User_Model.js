@@ -39,7 +39,7 @@ const UserSchema = new mongoose.Schema({
     },
     description: String
 
-}, { timestamps: true });
+}, { timestamps: true, optimisticConcurrency: true });
 
 const User = mongoose.model('User', UserSchema);
 

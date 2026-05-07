@@ -1,6 +1,7 @@
 let User = require('./User_Model');
 let bcrypt = require("bcrypt");
 const { isReservedUsername, BUILTIN_ADMIN_USER } = require("../../Config/Builtin_Admin");
+const { handleControllerError } = require('../../Utils/ControllerError');
 const BUILTIN_ADMIN_ID = BUILTIN_ADMIN_USER._id;
 
 const PUBLIC_USER_FIELDS = '-password -secret_code';
@@ -60,7 +61,7 @@ let Create = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Creation Error!!!');
+        return handleControllerError(res, error, 'Creation Error!!!');
     }
 }
 
@@ -131,7 +132,7 @@ let Update = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 

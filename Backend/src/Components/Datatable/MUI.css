@@ -5,6 +5,9 @@
     box-shadow: 0 10px 30px rgb(15 23 42 / 7%) !important;
     --Paper-shadow: 0 10px 30px rgb(15 23 42 / 7%) !important;
     background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+    --crm-pagination-accent: #5e7978;
+    --crm-pagination-accent-dark: #4d6463;
+    --crm-pagination-accent-soft: #edf4f1;
 }
 
 .crmDataTablePaper .MuiPaper-root {
@@ -102,7 +105,7 @@
 
 .crmDataTableExportWrap .MuiButton-root:hover {
     border-color: #becce0 !important;
-    background: linear-gradient(180deg, #ffffff 0%, #edf4ff 100%) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%) !important;
 }
 
 .tableActionGroup {
@@ -343,15 +346,106 @@
     color: #334155 !important;
 }
 
-.crmDataTablePaper .MuiTablePagination-toolbar {
-    min-height: 46px !important;
-    font-weight: 500 !important;
+.crmDataTableFooter {
+    padding: 8px 12px !important;
 }
 
-.crmDataTablePaper .MuiTablePagination-selectLabel,
-.crmDataTablePaper .MuiTablePagination-displayedRows {
-    font-size: 0.8rem !important;
-    font-weight: 400 !important;
+.crmDataTableFooter>div {
+    padding: 0 !important;
+}
+
+.crmDataTablePaginationMeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.crmDataTablePageBadge,
+.crmDataTableRowsBadge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d6e2f0;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff 0%, #f3f7fd 100%);
+    color: #1e3a5f;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.1px;
+    padding: 6px 11px;
+}
+
+.crmDataTableRowsBadge {
+    color: #334155;
+    font-weight: 600;
+}
+
+.crmDataTablePaper .MuiTablePagination-root {
+    gap: 10px !important;
+    padding: 6px 10px !important;
+    border: 1px solid #d9e4f2;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f6fd 100%);
+}
+
+.crmDataTablePaper .MuiTablePagination-root .MuiInputLabel-root {
+    margin: 0 !important;
+    color: #475569 !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+}
+
+.crmDataTablePaper .MuiTablePagination-root .MuiSelect-select {
+    border: 1px solid #c7d6e8 !important;
+    border-radius: 999px !important;
+    padding: 4px 26px 4px 12px !important;
+    background: #ffffff !important;
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+}
+
+.crmDataTablePaper .MuiTablePagination-root .MuiSvgIcon-root {
+    color: #475569 !important;
+}
+
+.crmDataTablePaper .MuiPagination-ul {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.crmDataTablePaper .MuiPaginationItem-root {
+    min-width: 32px;
+    height: 32px;
+    margin: 0 !important;
+    border: 1px solid #d1dceb;
+    border-radius: 10px;
+    color: #334155;
+    font-size: 0.79rem;
+    font-weight: 700;
+    background: #ffffff;
+    transition: all 0.16s ease;
+}
+
+.crmDataTablePaper .MuiPaginationItem-root:hover {
+    border-color: #b7c8de;
+    background: var(--crm-pagination-accent-soft);
+}
+
+.crmDataTablePaper .MuiPaginationItem-root.Mui-selected {
+    border-color: var(--crm-pagination-accent);
+    background: linear-gradient(180deg, var(--crm-pagination-accent) 0%, var(--crm-pagination-accent-dark) 100%);
+    color: #ffffff;
+    box-shadow: 0 6px 12px rgb(109 145 132 / 28%);
+}
+
+.crmDataTablePaper .MuiPaginationItem-root.Mui-selected:hover {
+    background: linear-gradient(180deg, var(--crm-pagination-accent-dark) 0%, #4e6a60 100%);
+}
+
+.crmDataTablePaper .MuiPaginationItem-root.Mui-disabled {
+    opacity: 0.45;
 }
 
 .crmDataTablePaper .MuiTableBody-root .MuiTableCell-root p {
@@ -494,6 +588,33 @@
     .crmDataTableToolbar,
     .crmDataTableFooter {
         padding: 0 !important;
+    }
+
+    .crmDataTableFooter>div {
+        gap: 8px;
+        justify-content: center !important;
+        padding: 8px 6px !important;
+    }
+
+    .crmDataTablePaginationMeta {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .crmDataTablePageBadge,
+    .crmDataTableRowsBadge {
+        justify-content: center;
+        flex: 1 1 auto;
+    }
+
+    .crmDataTablePaper .MuiTablePagination-root {
+        justify-content: center !important;
+    }
+
+    .crmDataTablePaper .MuiPaginationItem-root {
+        min-width: 30px;
+        height: 30px;
+        font-size: 0.74rem;
     }
 
     .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root,

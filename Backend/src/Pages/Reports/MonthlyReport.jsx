@@ -3,8 +3,6 @@ import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import BusinessIcon from '@mui/icons-material/Business';
 import RouteIcon from '@mui/icons-material/Route';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import SummarizeRoundedIcon from '@mui/icons-material/SummarizeRounded';
@@ -16,7 +14,7 @@ import { formatLondonDateTime } from '../../utils/formatters';
 import 'react-toastify/dist/ReactToastify.css';
 
 const STAGE_OPTIONS = [
-  { label: 'All', value: 'All' },
+  { label: 'All Status', value: 'All' },
   { label: 'Pending', value: 'Pending' },
   { label: 'In Quote', value: 'In_Quote' },
   { label: 'In Survey', value: 'In_Survey' },
@@ -36,6 +34,43 @@ const STATUS_LABEL = {
   Lost_Lead: 'Lost Lead',
 };
 
+const DateField = ({ inputRef, value, onChange, placeholder }) => {
+  const openPicker = () => {
+    const el = inputRef?.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') {
+      el.showPicker();
+      return;
+    }
+    el.focus();
+    el.click();
+  };
+
+  return (
+    <div
+      className="h-9 min-w-[150px] cursor-pointer rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm"
+      onClick={openPicker}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPicker();
+        }
+      }}
+      title={placeholder}
+    >
+      <input
+        ref={inputRef}
+        type="date"
+        className="h-full w-full cursor-pointer bg-transparent text-sm text-slate-700 outline-none"
+        value={value}
+        onChange={onChange}
+      />
+    </div>
+  );
+};
+
 export default function MonthlyReport() {
   document.title = 'Monthly Report';
 
@@ -43,6 +78,8 @@ export default function MonthlyReport() {
   const [toDate, setToDate] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('All');
   const [selectedStage, setSelectedStage] = useState('All');
+  const [isCompanyEnabled, setIsCompanyEnabled] = useState(false);
+  const [canDownloadReport, setCanDownloadReport] = useState(false);
 
   const [companies, setCompanies] = useState([]);
   const [rows, setRows] = useState([]);
@@ -94,11 +131,23 @@ export default function MonthlyReport() {
         header: 'Project Type',
         accessorFn: (row) => row.project_type || 'N/A',
       },
+      {
+        id: 'current_status',
+        header: 'Current Status',
+        accessorFn: (row) => STATUS_LABEL[row.status] || row.status || 'N/A',
+        muiTableHeadCellProps: { align: 'center' },
+        muiTableBodyCellProps: { align: 'center' },
+        size: 120,
+        maxSize: 130,
+      },
     ],
     []
   );
 
-  const fetchReport = async () => {
+  const fetchReport = async (overrideFilters = {}) => {
+    const companyFilter = overrideFilters.company ?? selectedCompany;
+    const stageFilter = overrideFilters.stage ?? selectedStage;
+
     if (!fromDate || !toDate) {
       toast.error('From date and To date are required.');
       return;
@@ -114,15 +163,19 @@ export default function MonthlyReport() {
         params: {
           from: fromDate,
           to: toDate,
-          company: selectedCompany,
-          stage: selectedStage,
+          company: companyFilter,
+          stage: stageFilter,
         },
       });
 
       setRows(Array.isArray(data?.rows) ? data.rows : []);
       setCounts(data?.counts || {});
       setCompanies(Array.isArray(data?.companies) ? data.companies : []);
+      setIsCompanyEnabled(true);
+      setCanDownloadReport(true);
     } catch (error) {
+      setIsCompanyEnabled(false);
+      setCanDownloadReport(false);
       toast.error(error?.response?.data || 'Failed to load monthly report.');
     } finally {
       setLoading(false);
@@ -131,6 +184,10 @@ export default function MonthlyReport() {
 
   useEffect(() => {
     // Keep initial page clean: no validation toast until user generates report.
+    setSelectedCompany('All');
+    setCompanies([]);
+    setIsCompanyEnabled(false);
+    setCanDownloadReport(false);
     setRows([]);
     setCounts({
       all: 0,
@@ -186,7 +243,7 @@ export default function MonthlyReport() {
 
     autoTable(doc, {
       startY: (doc.lastAutoTable?.finalY || 38) + 6,
-      head: [['Date', 'Code', 'Company', 'Client (Company)', 'Project Type']],
+      head: [['Date', 'Code', 'Company', 'Client (Company)', 'Project Type', 'Current Status']],
       body: rows.map((row) => {
         const clientName = row?.client?.name || 'N/A';
         const clientCompany = row?.client?.company ? ` (${row.client.company})` : '';
@@ -196,17 +253,19 @@ export default function MonthlyReport() {
           row.company || '',
           `${clientName}${clientCompany}`,
           row.project_type || '',
+          STATUS_LABEL[row.status] || row.status || 'N/A',
         ];
       }),
       theme: 'striped',
       styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak' },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
       columnStyles: {
-        0: { cellWidth: 22 },
-        1: { cellWidth: 24 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 63 },
-        4: { cellWidth: 40 },
+        0: { cellWidth: 20 },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 26 },
+        3: { cellWidth: 52 },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 27 },
       },
     });
 
@@ -226,88 +285,57 @@ export default function MonthlyReport() {
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-84px)] bg-[linear-gradient(145deg,#f8fbff_0%,#edf4ff_45%,#f5f8ff_100%)] p-3 md:p-4">
+      <div>
         <ToastContainer position="top-right" autoClose={2500} />
 
         <div className="w-full space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 md:text-[26px]">
-              <SummarizeIcon fontSize="small" /> Monthly Report
-            </h1>
-            <p className="mt-0.5 text-sm text-slate-600">
-              Filter by date range, company and stage to see accurate project report with full details.
-            </p>
+          <div className="mb-2 rounded-xl border border-slate-200 bg-linear-to-r from-[#3a4259] to-[#475569] px-3 py-2 shadow-sm">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="shrink-0 xl:min-w-[290px]">
+                <h1 className="flex items-center gap-2 text-xl font-bold text-white md:text-[26px]">
+                  <SummarizeIcon fontSize="small" sx={{ color: '#bfdbfe' }} /> Monthly Report
+                </h1>
+                <p className="mt-0.5 text-sm text-slate-200">
+                  Filter by date range, company and stage to see accurate project report with full details.
+                </p>
+              </div>
 
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-6">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-slate-600">From Date</span>
-                <div
-                  className="relative cursor-pointer"
-                  onClick={() => {
-                    fromDateRef.current?.showPicker?.();
-                    fromDateRef.current?.focus?.();
-                  }}
-                >
-                  <CalendarMonthIcon className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" fontSize="small" />
-                  <input
-                    ref={fromDateRef}
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    onClick={(e) => e.currentTarget.showPicker?.()}
-                    className="h-10 w-full rounded-lg border border-slate-300 pl-9 pr-2 text-sm outline-none focus:border-blue-500 cursor-pointer"
-                  />
-                </div>
-              </label>
+              <div
+                className="min-w-0 flex flex-col gap-2 xl:ml-auto xl:flex-row xl:flex-wrap xl:items-center xl:justify-end"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    fetchReport();
+                  }
+                }}
+              >
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-[150px_150px_150px_150px]">
+                <DateField
+                  inputRef={fromDateRef}
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  placeholder="From date"
+                />
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-slate-600">To Date</span>
-                <div
-                  className="relative cursor-pointer"
-                  onClick={() => {
-                    toDateRef.current?.showPicker?.();
-                    toDateRef.current?.focus?.();
-                  }}
-                >
-                  <CalendarMonthIcon className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" fontSize="small" />
-                  <input
-                    ref={toDateRef}
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    onClick={(e) => e.currentTarget.showPicker?.()}
-                    className="h-10 w-full rounded-lg border border-slate-300 pl-9 pr-2 text-sm outline-none focus:border-blue-500 cursor-pointer"
-                  />
-                </div>
-              </label>
+                <DateField
+                  inputRef={toDateRef}
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  placeholder="To date"
+                />
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-slate-600">Company</span>
-                <div className="relative">
-                  <BusinessIcon className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" fontSize="small" />
-                  <select
-                    value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                    className="h-10 w-full cursor-pointer rounded-lg border border-slate-300 bg-white pl-9 pr-2 text-sm outline-none focus:border-blue-500"
-                  >
-                    <option value="All">All Companies</option>
-                    {companies.map((company) => (
-                      <option key={company} value={company}>
-                        {company}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-slate-600">Stage</span>
                 <div className="relative">
                   <RouteIcon className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" fontSize="small" />
                   <select
                     value={selectedStage}
-                    onChange={(e) => setSelectedStage(e.target.value)}
-                    className="h-10 w-full cursor-pointer rounded-lg border border-slate-300 bg-white pl-9 pr-2 text-sm outline-none focus:border-blue-500"
+                    onChange={(e) => {
+                      const nextStage = e.target.value;
+                      setSelectedStage(nextStage);
+                      if (canDownloadReport) {
+                        fetchReport({ stage: nextStage });
+                      }
+                    }}
+                    className="h-9 w-full cursor-pointer rounded-lg border border-slate-300 bg-white pl-9 pr-2 text-sm outline-none focus:border-blue-500"
                   >
                     {STAGE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -316,25 +344,49 @@ export default function MonthlyReport() {
                     ))}
                   </select>
                 </div>
-              </label>
 
-              <div className="mt-[22px] grid grid-cols-1 gap-2 sm:grid-cols-2 xl:col-span-2">
-                <button
-                  type="button"
-                  onClick={fetchReport}
-                  disabled={loading}
-                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <SummarizeRoundedIcon sx={{ fontSize: 18, color: '#bfdbfe' }} />
-                  {loading ? 'Loading...' : 'Generate Report'}
-                </button>
-                <button
-                  type="button"
-                  onClick={downloadReportPdf}
-                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-100"
-                >
-                  <FileDownloadRoundedIcon sx={{ fontSize: 18, color: '#059669' }} /> Download Report
-                </button>
+                  <div title={!isCompanyEnabled ? 'Generate report first' : ''}>
+                    <select
+                      value={selectedCompany}
+                      onChange={(e) => {
+                        const nextCompany = e.target.value;
+                        setSelectedCompany(nextCompany);
+                        if (canDownloadReport) {
+                          fetchReport({ company: nextCompany });
+                        }
+                      }}
+                      disabled={!isCompanyEnabled}
+                      className="h-9 min-w-[150px] w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      <option value="All">All Companies</option>
+                      {companies.map((company) => (
+                        <option key={company} value={company}>
+                          {company}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 xl:justify-end">
+                  <button
+                    type="button"
+                    onClick={fetchReport}
+                    disabled={loading}
+                    className="inline-flex h-[38px] min-w-[170px] cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-semibold leading-none text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <SummarizeRoundedIcon sx={{ fontSize: 18, color: '#bfdbfe' }} />
+                    {loading ? 'Loading...' : 'Generate Report'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadReportPdf}
+                    disabled={!canDownloadReport}
+                    className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold leading-none text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <FileDownloadRoundedIcon sx={{ fontSize: 18, color: '#059669' }} /> Download Report
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -348,7 +400,7 @@ export default function MonthlyReport() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          <div className="p-0">
             <Datatable
               columns={columns}
               data={rows}

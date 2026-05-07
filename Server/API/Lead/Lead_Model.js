@@ -148,7 +148,7 @@ const LeadSchema = Mongoose.Schema({
         stage: { type: String, default: '' },
         cycle: { type: Number, default: 1 },
     }],
-}, { timestamps: true })
+}, { timestamps: true, optimisticConcurrency: true })
 
 LeadSchema.index({ status: 1, company: 1, createdAt: -1 });
 LeadSchema.index({ company: 1 });

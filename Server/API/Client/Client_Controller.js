@@ -1,4 +1,5 @@
 let Client = require('./Client_Model');
+const { handleControllerError } = require('../../Utils/ControllerError');
 
 const normalizeOptionalField = (value) => {
     if (value === undefined || value === null) return undefined;
@@ -83,11 +84,7 @@ let Create = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        if (error?.code === 11000) {
-            if (error?.keyPattern?.phone) return res.status(400).send('Phone number already exists. Use different one.');
-            if (error?.keyPattern?.email) return res.status(400).send('Email already exists. Use different one.');
-        }
-        res.status(500).send('Creation Error!!!');
+        return handleControllerError(res, error, 'Creation Error!!!');
     }
 }
 
@@ -154,11 +151,7 @@ let BulkImport = async (req, res) => {
         console.log(`✅ Imported ${validClients.length} clients.`);
     } catch (error) {
         console.error(error);
-        if (error?.code === 11000) {
-            if (error?.keyPattern?.phone) return res.status(400).send('Phone number already exists. Use different one.');
-            if (error?.keyPattern?.email) return res.status(400).send('Email already exists. Use different one.');
-        }
-        res.status(500).send('Bulk import failed.');
+        return handleControllerError(res, error, 'Bulk import failed.');
     }
 };
 
@@ -223,11 +216,7 @@ let Update = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        if (error?.code === 11000) {
-            if (error?.keyPattern?.phone) return res.status(400).send('Phone number already exists. Use different one.');
-            if (error?.keyPattern?.email) return res.status(400).send('Email already exists. Use different one.');
-        }
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 
