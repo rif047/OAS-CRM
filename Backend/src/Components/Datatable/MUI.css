@@ -60,6 +60,20 @@
     vertical-align: middle !important;
 }
 
+.crmDataTablePaper mark,
+.crmDataTablePaper .MuiTableBody-root mark,
+.crmDataTablePaper .MuiTableHead-root mark {
+    background: #ffcb7f !important;
+    color: #1f2937 !important;
+    padding: 0 2px !important;
+    border-radius: 3px !important;
+}
+
+.crmDataTablePaper mark.crmSearchMark {
+    background: #ffcb7f !important;
+    color: #1f2937 !important;
+}
+
 .crmDataTablePaper .MuiTableBody-root .MuiTableRow-root:nth-of-type(2n) {
     background-color: #fbfcff !important;
 }

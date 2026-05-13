@@ -78,6 +78,12 @@ export default function SideMenu() {
             {(userType === "Admin" || userType === "Management") && (
                 <MenuItem to="/" icon={DashboardOutlined} label="Dashboard" />
             )}
+            {(userType === "Surveyor") && (
+                <MenuItem to="/surveyor-dashboard" icon={DashboardOutlined} label="Dashboard" />
+            )}
+            {(userType === "Designer") && (
+                <MenuItem to="/designer-dashboard" icon={DashboardOutlined} label="Dashboard" />
+            )}
 
 
             {(userType === "Admin" || userType === "Management") && (
@@ -166,7 +172,7 @@ export default function SideMenu() {
             )}
 
 
-            {(userType === "Admin" || userType === "Management") && (
+            {(userType === "Admin") && (
                 <>
                     <MenuItem to="/users" icon={ManageAccountsTwoTone} label="Users" />
                 </>

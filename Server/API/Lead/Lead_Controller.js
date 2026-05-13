@@ -1,5 +1,7 @@
 const Lead = require('./Lead_Model');
 const Client = require('../Client/Client_Model');
+const User = require('../User/User_Model');
+const { resolveAssignedCompaniesForRequest, buildCompanyMatch, enforceCompanyInAllowedList } = require('../../Utils/CompanyAccess');
 const sanitizeHtml = require('sanitize-html');
 const fs = require('fs');
 const path = require('path');
@@ -21,6 +23,23 @@ const getLondonDateOnly = () => {
 };
 
 const asStringOrEmpty = (value) => (typeof value === 'string' ? value : '');
+const splitSurveyorNames = (value) =>
+    String(value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+const normalizeSurveyor = (value) => {
+    if (Array.isArray(value)) {
+        const unique = [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
+        return unique.join(', ');
+    }
+    if (typeof value === 'string') {
+        const unique = [...new Set(splitSurveyorNames(value))];
+        return unique.join(', ');
+    }
+    return '';
+};
 
 
 
@@ -227,6 +246,23 @@ const STATUS_SORT_FIELD = {
 };
 
 const LEAD_LIST_LIGHT_PROJECTION = '-description -survey_note -project_details -payment_history';
+const LEAD_DASHBOARD_PROJECTION = {
+    _id: 1,
+    leadCode: 1,
+    company: 1,
+    status: 1,
+    quote_price: 1,
+    payment_due_amount: 1,
+    in_quote_date: 1,
+    close_date: 1,
+    lost_date: 1,
+    survey_date: 1,
+    design_deadline: 1,
+    createdAt: 1,
+    updatedAt: 1,
+    'payment_history.paid_amount': 1,
+    'payment_history.paid_at': 1,
+};
 const LEAD_LIST_SORT_FIELDS = new Set([
     'createdAt',
     'updatedAt',
@@ -241,6 +277,7 @@ const LEAD_LIST_SORT_FIELDS = new Set([
     'close_date',
     'lost_date',
 ]);
+const DASHBOARD_STATUSES = ['Pending', 'In_Quote', 'In_Survey', 'In_Design', 'In_Review', 'Closed', 'Lost_Lead'];
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const parsePositiveInt = (value, fallback) => {
@@ -251,6 +288,28 @@ const parsePositiveInt = (value, fallback) => {
 const parseMoney = (value) => {
     const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
     return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const parseLeadDate = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getLondonMonthKey = (value) => {
+    const date = parseLeadDate(value);
+    if (!date) return '';
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: LONDON_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+    }).formatToParts(date);
+    const mapped = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${mapped.year}-${mapped.month}`;
 };
 
 const toFixedMoney = (value) => Math.max(0, Number((value || 0).toFixed(2)));
@@ -278,9 +337,22 @@ const buildStageRemark = (stage, note = '') => {
     return `<p><b>Stage - ${safeStage}</b></p>${note || ''}`;
 };
 
+const getLeadScope = async (req) => {
+    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+    const companyScope = req.userType === 'Admin' ? {} : buildCompanyMatch('company', allowedCompanies);
+    return { allowedCompanies, companyScope };
+};
+
+const findScopedLeadById = async (req, id) => {
+    const { companyScope } = await getLeadScope(req);
+    return Lead.findOne({ _id: id, ...companyScope });
+};
+
 let Leads = async (req, res) => {
     const { status, company, page: rawPage, limit: rawLimit, sortBy: rawSortBy, sortDir: rawSortDir, search: rawSearch } = req.query;
-    const filter = {};
+    const isDashboardRequest = String(req.query.dashboard || '').trim() === '1';
+    const { allowedCompanies, companyScope } = await getLeadScope(req);
+    const filter = { ...companyScope };
 
     if (status && ALLOWED_STATUSES.has(status)) {
         filter.status = status;
@@ -290,30 +362,7 @@ let Leads = async (req, res) => {
     }
 
     const search = String(rawSearch || '').trim();
-    if (search) {
-        const startsWithRegex = new RegExp(`^${escapeRegex(search)}`, 'i');
-
-        const clientMatches = await Client.find({
-            $or: [
-                { name: startsWithRegex },
-                { phone: startsWithRegex },
-                { email: startsWithRegex },
-                { company: startsWithRegex },
-            ],
-        }).select('_id').limit(5000).lean();
-
-        const clientIds = clientMatches.map((item) => item._id);
-        filter.$or = [
-            { leadCode: startsWithRegex },
-            { company: startsWithRegex },
-            { address: startsWithRegex },
-            { project_type: startsWithRegex },
-            { source: startsWithRegex },
-            { stage: startsWithRegex },
-            { status: startsWithRegex },
-            ...(clientIds.length ? [{ client: { $in: clientIds } }] : []),
-        ];
-    }
+    const containsRegex = search ? new RegExp(escapeRegex(search), 'i') : null;
 
     const requestedSortBy = String(rawSortBy || '').trim();
     const resolvedSortField = LEAD_LIST_SORT_FIELDS.has(requestedSortBy)
@@ -326,28 +375,234 @@ let Leads = async (req, res) => {
 
     const hasPagination = rawPage !== undefined || rawLimit !== undefined;
     if (!hasPagination) {
-        const Data = await Lead.find(filter)
-            .sort(sortConfig)
-            .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
-            .lean();
+        if (isDashboardRequest && !containsRegex) {
+            const Data = await Lead.find(filter)
+                .select(LEAD_DASHBOARD_PROJECTION)
+                .sort(sortConfig)
+                .populate({ path: 'client', select: 'name', options: { lean: true } })
+                .lean();
+            return res.status(200).json(Data);
+        }
+
+        if (!containsRegex) {
+            const Data = await Lead.find(filter)
+                .sort(sortConfig)
+                .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+                .lean();
+            return res.status(200).json(Data);
+        }
+
+        const nonSearchFilter = { ...filter };
+        delete nonSearchFilter.$or;
+        const Data = await Lead.aggregate([
+            { $match: nonSearchFilter },
+            {
+                $addFields: {
+                    _clientObjectId: {
+                        $convert: {
+                            input: '$client',
+                            to: 'objectId',
+                            onError: null,
+                            onNull: null,
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'clients',
+                    localField: '_clientObjectId',
+                    foreignField: '_id',
+                    as: 'client',
+                }
+            },
+            {
+                $unwind: {
+                    path: '$client',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+            {
+                $match: {
+                    $or: [
+                        { leadCode: containsRegex },
+                        { company: containsRegex },
+                        { address: containsRegex },
+                        { project_type: containsRegex },
+                        { source: containsRegex },
+                        { stage: containsRegex },
+                        { status: containsRegex },
+                        { 'client.name': containsRegex },
+                        { 'client.phone': containsRegex },
+                        { 'client.email': containsRegex },
+                        { 'client.company': containsRegex },
+                    ],
+                }
+            },
+            { $sort: sortConfig },
+        ]);
         return res.status(200).json(Data);
     }
 
     const page = parsePositiveInt(rawPage, 1);
     const limit = Math.min(200, parsePositiveInt(rawLimit, 10));
     const skip = (page - 1) * limit;
-    const companyFilterForDistinct = {};
+    const companyFilterForDistinct = { ...companyScope };
     if (filter.status) companyFilterForDistinct.status = filter.status;
 
-    const [rows, total, companies] = await Promise.all([
-        Lead.find(filter)
+    const queryWithoutSearch = { ...filter };
+    delete queryWithoutSearch.$or;
+
+    const rowsPromise = !containsRegex
+        ? Lead.find(filter)
             .select(LEAD_LIST_LIGHT_PROJECTION)
             .sort(sortConfig)
             .skip(skip)
             .limit(limit)
             .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
-            .lean(),
-        Lead.countDocuments(filter),
+            .lean()
+        : Lead.aggregate([
+            { $match: queryWithoutSearch },
+            {
+                $addFields: {
+                    _clientObjectId: {
+                        $convert: {
+                            input: '$client',
+                            to: 'objectId',
+                            onError: null,
+                            onNull: null,
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'clients',
+                    localField: '_clientObjectId',
+                    foreignField: '_id',
+                    as: 'client',
+                }
+            },
+            {
+                $unwind: {
+                    path: '$client',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+            {
+                $match: {
+                    $or: [
+                        { leadCode: containsRegex },
+                        { company: containsRegex },
+                        { address: containsRegex },
+                        { project_type: containsRegex },
+                        { source: containsRegex },
+                        { stage: containsRegex },
+                        { status: containsRegex },
+                        { 'client.name': containsRegex },
+                        { 'client.phone': containsRegex },
+                        { 'client.email': containsRegex },
+                        { 'client.company': containsRegex },
+                    ],
+                }
+            },
+            { $sort: sortConfig },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 1,
+                    leadCode: 1,
+                    company: 1,
+                    address: 1,
+                    source: 1,
+                    stage: 1,
+                    status: 1,
+                    quote_price: 1,
+                    final_price: 1,
+                    survey_date: 1,
+                    surveyor: 1,
+                    survey_done: 1,
+                    survey_file: 1,
+                    in_quote_date: 1,
+                    in_survey_date: 1,
+                    in_design_date: 1,
+                    in_review_date: 1,
+                    close_date: 1,
+                    lost_date: 1,
+                    design_deadline: 1,
+                    designer: 1,
+                    design_file: 1,
+                    payment_due_amount: 1,
+                    payment_received_total: 1,
+                    payment_discount_total: 1,
+                    payment_history: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    client: {
+                        _id: '$client._id',
+                        name: '$client.name',
+                        phone: '$client.phone',
+                        email: '$client.email',
+                        company: '$client.company',
+                    },
+                }
+            },
+        ]);
+
+    const totalPromise = !containsRegex
+        ? Lead.countDocuments(filter)
+        : Lead.aggregate([
+            { $match: queryWithoutSearch },
+            {
+                $addFields: {
+                    _clientObjectId: {
+                        $convert: {
+                            input: '$client',
+                            to: 'objectId',
+                            onError: null,
+                            onNull: null,
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'clients',
+                    localField: '_clientObjectId',
+                    foreignField: '_id',
+                    as: 'client',
+                }
+            },
+            {
+                $unwind: {
+                    path: '$client',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+            {
+                $match: {
+                    $or: [
+                        { leadCode: containsRegex },
+                        { company: containsRegex },
+                        { address: containsRegex },
+                        { project_type: containsRegex },
+                        { source: containsRegex },
+                        { stage: containsRegex },
+                        { status: containsRegex },
+                        { 'client.name': containsRegex },
+                        { 'client.phone': containsRegex },
+                        { 'client.email': containsRegex },
+                        { 'client.company': containsRegex },
+                    ],
+                }
+            },
+            { $count: 'total' },
+        ]).then((result) => Number(result?.[0]?.total || 0));
+
+    const [rows, total, companies] = await Promise.all([
+        rowsPromise,
+        totalPromise,
         Lead.distinct('company', companyFilterForDistinct),
     ]);
 
@@ -374,6 +629,8 @@ let Leads = async (req, res) => {
 const Create = async (req, res) => {
     try {
         const { client, agent, address, company, service_type, project_details, project_type, planning_permission, structural_services, interior_design, building_regulation, select_builder, help_project_management, budget, when_to_start, file_link, source, description, stage } = req.body;
+        const { allowedCompanies } = await getLeadScope(req);
+        const scopedCompany = enforceCompanyInAllowedList(company, allowedCompanies);
 
         for (let [key, label] of Object.entries({
             company: 'Company',
@@ -382,11 +639,17 @@ const Create = async (req, res) => {
         })) {
             if (!req.body[key]) return res.status(400).json(`${label} is required!`);
         }
+        if (!scopedCompany) return res.status(403).send('You do not have access to this company.');
+        const scopedClient = await Client.findOne({
+            _id: client,
+            ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies)),
+        }).select('_id');
+        if (!scopedClient) return res.status(403).send('Selected client is outside your company access.');
 
         const generateLeadCode = () => {
             const digits = Math.floor(100 + Math.random() * 900);
             const letters = Array.from({ length: 3 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
-            return `${company}-${digits}${letters}`;
+            return `${scopedCompany}-${digits}${letters}`;
         };
 
         let leadCode;
@@ -401,7 +664,7 @@ const Create = async (req, res) => {
             client,
             agent,
             address,
-            company,
+            company: scopedCompany,
             service_type,
             project_details,
             project_type,
@@ -437,6 +700,8 @@ const Create = async (req, res) => {
 let Update = async (req, res) => {
     try {
         const { client, agent, address, company, service_type, project_details, project_type, planning_permission, structural_services, interior_design, building_regulation, select_builder, help_project_management, budget, when_to_start, file_link, source, description, survey_date, surveyor, designer, design_deadline, stage } = req.body;
+        const { allowedCompanies } = await getLeadScope(req);
+        const scopedCompany = enforceCompanyInAllowedList(company, allowedCompanies);
 
         for (let [key, label] of Object.entries({
             company: 'Company',
@@ -445,14 +710,20 @@ let Update = async (req, res) => {
         })) {
             if (!req.body[key]) return res.status(400).json(`${label} is required!`);
         }
+        if (!scopedCompany) return res.status(403).send('You do not have access to this company.');
+        const scopedClient = await Client.findOne({
+            _id: client,
+            ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies)),
+        }).select('_id');
+        if (!scopedClient) return res.status(403).send('Selected client is outside your company access.');
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.client = client;
         updateData.agent = agent;
         updateData.address = address;
-        updateData.company = company;
+        updateData.company = scopedCompany;
         updateData.service_type = service_type;
         updateData.project_details = project_details;
         updateData.project_type = project_type;
@@ -467,7 +738,7 @@ let Update = async (req, res) => {
         updateData.file_link = file_link;
         updateData.source = source;
         updateData.survey_date = survey_date;
-        updateData.surveyor = surveyor;
+        updateData.surveyor = normalizeSurveyor(surveyor);
         updateData.designer = designer;
         updateData.design_deadline = design_deadline;
         const nextStage = typeof stage === 'string' ? stage.trim() : stage;
@@ -510,7 +781,8 @@ let Update = async (req, res) => {
 
 
 let View = async (req, res) => {
-    let viewOne = await Lead.findById(req.params.id).populate('client');
+    const { companyScope } = await getLeadScope(req);
+    let viewOne = await Lead.findOne({ _id: req.params.id, ...companyScope }).populate('client');
     if (!viewOne) return res.status(404).send('Lead not found');
     res.send(viewOne);
 };
@@ -522,7 +794,7 @@ let View = async (req, res) => {
 let Pending = async (req, res) => {
     try {
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
 
         if (!updateData) {
             return res.status(404).send('Lead not found');
@@ -569,7 +841,7 @@ let In_Quote = async (req, res) => {
         if (!quote_price) { return res.status(400).send('Quoted price is required!'); }
         if (!quote_file) { return res.status(400).send('Quote file link is required!'); }
 
-        const updateData = await Lead.findById(req.params.id);
+        const updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) return res.status(404).send('Lead not found');
 
         updateData.agent = agent || updateData.agent;
@@ -629,7 +901,7 @@ let Survey_Data = async (req, res) => {
     try {
         const { agent, survey_file, survey_note, survey_done } = req.body;
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
@@ -656,20 +928,21 @@ let Survey_Data = async (req, res) => {
 let In_Survey = async (req, res) => {
     try {
         const { agent, surveyor, survey_date, description } = req.body;
+        const normalizedSurveyor = normalizeSurveyor(surveyor);
 
         const requiredFields = {
             agent: 'Agent',
-            surveyor: 'Surveyor',
             survey_date: 'Survey Date',
         };
 
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
+        if (!normalizedSurveyor) return res.status(400).send('Surveyor is required!');
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
-        updateData.surveyor = surveyor;
+        updateData.surveyor = normalizedSurveyor;
         updateData.survey_date = survey_date;
         updateData.status = 'In_Survey';
         updateData.stage = STATUS_DEFAULT_STAGE.In_Survey;
@@ -709,7 +982,7 @@ let In_Design = async (req, res) => {
 
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
@@ -749,7 +1022,7 @@ let In_Review = async (req, res) => {
 
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
@@ -789,13 +1062,13 @@ let Closed = async (req, res) => {
 
         for (let [key, label] of Object.entries(requiredFields)) { if (!req.body[key]) { return res.status(400).send(`${label} is required!`); } }
 
-        let updateData = await Lead.findById(req.params.id);
+        let updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) { return res.status(404).send('Lead not found'); }
 
         updateData.agent = agent;
         updateData.final_price = final_price;
         if (survey_date !== undefined) updateData.survey_date = survey_date;
-        if (surveyor !== undefined) updateData.surveyor = surveyor;
+        if (surveyor !== undefined) updateData.surveyor = normalizeSurveyor(surveyor);
         if (design_deadline !== undefined) updateData.design_deadline = design_deadline;
         if (designer !== undefined) updateData.designer = designer;
         updateData.status = 'Closed';
@@ -805,7 +1078,7 @@ let Closed = async (req, res) => {
         if (close_source === 'In_Quote') closeMeta.push('<p><b>Directly closed from In Quote.</b></p>');
         if (survey_date || surveyor || design_deadline || designer) {
             closeMeta.push(
-                `<p>Survey Date: ${survey_date || '-'} | Surveyor: ${surveyor || '-'} | Design Deadline: ${design_deadline || '-'} | Architect/Designer: ${designer || '-'}</p>`
+                `<p>Survey Date: ${survey_date || '-'} | Surveyor: ${normalizeSurveyor(surveyor) || '-'} | Design Deadline: ${design_deadline || '-'} | Architect/Designer: ${designer || '-'}</p>`
             );
         }
         updateData.description = processDescription(
@@ -832,7 +1105,7 @@ let Lost_Lead = async (req, res) => {
     try {
         const { agent, description } = req.body;
 
-        const updateData = await Lead.findById(req.params.id);
+        const updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) return res.status(404).send('Lead not found');
 
 
@@ -865,7 +1138,7 @@ let Comment = async (req, res) => {
             return res.status(400).send('Description is required!');
         }
 
-        const updateData = await Lead.findById(req.params.id);
+        const updateData = await findScopedLeadById(req, req.params.id);
         if (!updateData) return res.status(404).send('Lead not found');
 
         updateData.agent = agent || updateData.agent;
@@ -882,14 +1155,15 @@ let Comment = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    const deleted = await Lead.findByIdAndDelete(req.params.id);
+    const { companyScope } = await getLeadScope(req);
+    const deleted = await Lead.findOneAndDelete({ _id: req.params.id, ...companyScope });
     if (!deleted) return res.status(404).send('Lead not found');
     res.send('Deleted')
 }
 
 let AddPayment = async (req, res) => {
     const { amount, discount_given, note, paid_at, agent } = req.body;
-    const updateData = await Lead.findById(req.params.id);
+    const updateData = await findScopedLeadById(req, req.params.id);
     if (!updateData) return res.status(404).send('Lead not found');
 
     const paidAmount = parseMoney(amount);
@@ -924,7 +1198,7 @@ let AddPayment = async (req, res) => {
 
 let EditPayment = async (req, res) => {
     const { amount, discount_given, note, paid_at, agent } = req.body;
-    const updateData = await Lead.findById(req.params.id);
+    const updateData = await findScopedLeadById(req, req.params.id);
     if (!updateData) return res.status(404).send('Lead not found');
 
     const item = (updateData.payment_history || []).id(req.params.paymentId);
@@ -949,6 +1223,471 @@ let EditPayment = async (req, res) => {
     res.status(200).json(updateData);
 };
 
+let SurveyorDashboard = async (req, res) => {
+    if (!['Admin', 'Management', 'Surveyor'].includes(req.userType)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const surveyorNameRaw = String(req.query?.surveyor || '').trim();
+    const identityCandidates = [
+        String(req.name || '').trim(),
+        String(req.username || '').trim(),
+    ].filter(Boolean);
+
+    const { companyScope } = await getLeadScope(req);
+    const baseMatch = { surveyor: { $exists: true, $ne: '' }, ...companyScope };
+    if (req.userType === 'Surveyor') {
+        if (!identityCandidates.length) {
+            return res.status(400).json({ error: 'Surveyor identity not found.' });
+        }
+        baseMatch.$or = identityCandidates.map((value) => ({
+            surveyor: { $regex: `(^|,\\s*)${escapeRegex(value)}(\\s*,|$)`, $options: 'i' }
+        }));
+    } else if (surveyorNameRaw) {
+        baseMatch.surveyor = { $regex: `(^|,\\s*)${escapeRegex(surveyorNameRaw)}(\\s*,|$)`, $options: 'i' };
+    }
+
+    const leads = await Lead.find(baseMatch)
+        .select('leadCode company status stage surveyor survey_date survey_done in_survey_date createdAt updatedAt')
+        .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+        .lean();
+
+    const londonTodayRaw = getLondonDateOnly();
+    const londonToday = parseLeadDate(londonTodayRaw);
+    const londonMonthKey = getLondonMonthKey(londonTodayRaw);
+
+    const toDaysLeft = (value) => {
+        const date = parseLeadDate(value);
+        if (!date || !londonToday) return null;
+        const start = new Date(londonToday);
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setUTCHours(0, 0, 0, 0);
+        return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    };
+
+    const statusBreakdownMap = {
+        Pending: 0,
+        In_Quote: 0,
+        In_Survey: 0,
+        In_Design: 0,
+        In_Review: 0,
+        Closed: 0,
+        Lost_Lead: 0,
+    };
+
+    let inSurveyNow = 0;
+    let doneOverall = 0;
+    let dueToday = 0;
+    let overdue = 0;
+    let scheduledThisMonth = 0;
+    let completedThisMonth = 0;
+
+    const upcomingSchedule = [];
+    const recentUpdates = [...leads].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 10);
+
+    for (const lead of leads) {
+        if (statusBreakdownMap[lead.status] !== undefined) {
+            statusBreakdownMap[lead.status] += 1;
+        }
+
+        if (lead.status === 'In_Survey') inSurveyNow += 1;
+
+        const isDone = String(lead.survey_done || '').toLowerCase() === 'yes';
+        if (isDone) doneOverall += 1;
+
+        const surveyDate = parseLeadDate(lead.survey_date);
+        const daysLeft = toDaysLeft(lead.survey_date);
+
+        if (surveyDate && getLondonMonthKey(surveyDate) === londonMonthKey) {
+            scheduledThisMonth += 1;
+        }
+
+        if (isDone && getLondonMonthKey(lead.updatedAt) === londonMonthKey) {
+            completedThisMonth += 1;
+        }
+
+        if (daysLeft === 0 && !isDone) dueToday += 1;
+        if (daysLeft !== null && daysLeft < 0 && !isDone) overdue += 1;
+
+        if (surveyDate && !isDone) {
+            upcomingSchedule.push({
+                _id: lead._id,
+                leadCode: lead.leadCode,
+                client: lead.client || null,
+                company: lead.company || '',
+                surveyor: lead.surveyor || '',
+                survey_date: lead.survey_date || '',
+                status: lead.status || '',
+                survey_done: lead.survey_done || 'No',
+                dueInDays: daysLeft,
+            });
+        }
+    }
+
+    upcomingSchedule.sort((a, b) => (parseLeadDate(a.survey_date) - parseLeadDate(b.survey_date)));
+
+    const statusBreakdown = Object.entries(statusBreakdownMap).map(([status, count]) => ({ status, count }));
+
+    const resolvedSurveyor = req.userType === 'Surveyor'
+        ? (identityCandidates[0] || '')
+        : surveyorNameRaw;
+
+    return res.status(200).json({
+        summary: {
+            totalAssigned: leads.length,
+            inSurveyNow,
+            doneOverall,
+            dueToday,
+            overdue,
+            scheduledThisMonth,
+            completedThisMonth,
+        },
+        statusBreakdown,
+        upcomingSchedule: upcomingSchedule.slice(0, 12),
+        recentUpdates,
+        surveyor: resolvedSurveyor || null,
+        dateContext: {
+            today: londonTodayRaw,
+            month: londonMonthKey,
+        },
+    });
+};
+
+let AdminDashboard = async (req, res) => {
+    const selectedCompany = String(req.query.company || '').trim();
+    const { allowedCompanies, companyScope } = await getLeadScope(req);
+    const companyFilter = selectedCompany && selectedCompany !== 'All Companies' ? selectedCompany : null;
+    const safeSelectedCompany = companyFilter && allowedCompanies.includes(companyFilter) ? companyFilter : null;
+    const leadFilter = safeSelectedCompany ? { company: safeSelectedCompany } : companyScope;
+
+    const [leads, clients, users, companies] = await Promise.all([
+        Lead.find(leadFilter)
+            .select({
+                _id: 1,
+                leadCode: 1,
+                company: 1,
+                status: 1,
+                quote_price: 1,
+                payment_due_amount: 1,
+                in_quote_date: 1,
+                in_survey_date: 1,
+                in_design_date: 1,
+                in_review_date: 1,
+                close_date: 1,
+                lost_date: 1,
+                survey_date: 1,
+                design_deadline: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                payment_history: 1,
+            })
+            .populate({ path: 'client', select: 'name', options: { lean: true } })
+            .lean(),
+        Client.find(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies), { _id: 1, createdAt: 1 }).lean(),
+        User.find({}, { userType: 1, createdAt: 1 }).lean(),
+        Lead.distinct('company', { ...companyScope, company: { $exists: true, $ne: '' } }),
+    ]);
+
+    const londonToday = parseLeadDate(getLondonDateOnly());
+    const currentMonthKey = getLondonMonthKey(londonToday);
+    const monthFinanceTrend = [];
+    for (let i = 5; i >= 0; i -= 1) {
+        const d = new Date(Date.UTC(londonToday.getUTCFullYear(), londonToday.getUTCMonth() - i, 1, 12, 0, 0, 0));
+        monthFinanceTrend.push({
+            key: getLondonMonthKey(d),
+            label: new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TIME_ZONE, month: 'short', year: '2-digit' }).format(d),
+            quoted: 0,
+            received: 0,
+            due: 0,
+            closed: 0,
+            lost: 0,
+            winRate: 0,
+        });
+    }
+    const monthFinanceMap = Object.fromEntries(monthFinanceTrend.map((item) => [item.key, item]));
+    const statusCountsRunningMonth = Object.fromEntries(DASHBOARD_STATUSES.map((status) => [status, 0]));
+    const statusCountsOverall = Object.fromEntries(DASHBOARD_STATUSES.map((status) => [status, 0]));
+    const companyCounter = {};
+    let receivedOverall = 0;
+    let dueOverall = 0;
+
+    for (const lead of leads) {
+        const status = lead.status;
+        if (!DASHBOARD_STATUSES.includes(status)) continue;
+        statusCountsOverall[status] += 1;
+
+        const statusDate =
+            (status === 'In_Quote' && (parseLeadDate(lead.in_quote_date) || parseLeadDate(lead.updatedAt) || parseLeadDate(lead.createdAt))) ||
+            (status === 'In_Survey' && (parseLeadDate(lead.in_survey_date) || parseLeadDate(lead.updatedAt) || parseLeadDate(lead.createdAt))) ||
+            (status === 'In_Design' && (parseLeadDate(lead.in_design_date) || parseLeadDate(lead.updatedAt) || parseLeadDate(lead.createdAt))) ||
+            (status === 'In_Review' && (parseLeadDate(lead.in_review_date) || parseLeadDate(lead.updatedAt) || parseLeadDate(lead.createdAt))) ||
+            (status === 'Closed' && (parseLeadDate(lead.close_date) || parseLeadDate(lead.updatedAt) || parseLeadDate(lead.createdAt))) ||
+            (status === 'Lost_Lead' && (parseLeadDate(lead.lost_date) || parseLeadDate(lead.updatedAt) || parseLeadDate(lead.createdAt))) ||
+            parseLeadDate(lead.createdAt);
+        if (statusDate && getLondonMonthKey(statusDate) === currentMonthKey) {
+            statusCountsRunningMonth[status] += 1;
+        }
+
+        const company = String(lead.company || '').trim();
+        if (company) companyCounter[company] = (companyCounter[company] || 0) + 1;
+
+        dueOverall += parseMoney(lead.payment_due_amount);
+
+        const quoteMonthKey = getLondonMonthKey(lead.in_quote_date);
+        if (quoteMonthKey && monthFinanceMap[quoteMonthKey]) {
+            monthFinanceMap[quoteMonthKey].quoted += parseMoney(lead.quote_price);
+            monthFinanceMap[quoteMonthKey].due += parseMoney(lead.payment_due_amount);
+        }
+
+        for (const item of lead.payment_history || []) {
+            const paid = parseMoney(item?.paid_amount);
+            if (paid > 0) receivedOverall += paid;
+            const paidMonthKey = getLondonMonthKey(item?.paid_at);
+            if (paidMonthKey && monthFinanceMap[paidMonthKey]) monthFinanceMap[paidMonthKey].received += paid;
+        }
+
+        const closedMonthKey = getLondonMonthKey(lead.close_date);
+        if (closedMonthKey && monthFinanceMap[closedMonthKey]) monthFinanceMap[closedMonthKey].closed += 1;
+        const lostMonthKey = getLondonMonthKey(lead.lost_date);
+        if (lostMonthKey && monthFinanceMap[lostMonthKey]) monthFinanceMap[lostMonthKey].lost += 1;
+    }
+
+    const financeTrend = monthFinanceTrend.map((item) => {
+        const decided = item.closed + item.lost;
+        const winRate = decided > 0 ? Number(((item.closed / decided) * 100).toFixed(1)) : 0;
+        return { ...item, quoted: toFixedMoney(item.quoted), received: toFixedMoney(item.received), due: toFixedMoney(item.due), winRate };
+    });
+    const currentMonthFinance = financeTrend.find((item) => item.key === currentMonthKey) || { quoted: 0, received: 0, due: 0, closed: 0, lost: 0 };
+    const sixMonthClosed = financeTrend.reduce((sum, item) => sum + item.closed, 0);
+    const sixMonthLost = financeTrend.reduce((sum, item) => sum + item.lost, 0);
+    const sixMonthDecided = sixMonthClosed + sixMonthLost;
+    const sixMonthWinRate = sixMonthDecided > 0 ? ((sixMonthClosed / sixMonthDecided) * 100).toFixed(1) : '0.0';
+    const overallClosed = leads.filter((lead) => Boolean(parseLeadDate(lead.close_date))).length;
+    const overallLost = leads.filter((lead) => Boolean(parseLeadDate(lead.lost_date))).length;
+    const overallDecided = overallClosed + overallLost;
+    const overallWinRate = overallDecided > 0 ? ((overallClosed / overallDecided) * 100).toFixed(1) : '0.0';
+    const runningMonthClosed = currentMonthFinance.closed || 0;
+    const runningMonthLost = currentMonthFinance.lost || 0;
+    const runningMonthDecided = runningMonthClosed + runningMonthLost;
+    const runningMonthWinRate = runningMonthDecided > 0 ? ((runningMonthClosed / runningMonthDecided) * 100).toFixed(1) : '0.0';
+    const usersByType = users.reduce((acc, user) => {
+        const key = user.userType || 'Other';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+    const upcomingDeadlines = leads
+        .filter((lead) => lead.status === 'In_Survey' || lead.status === 'In_Design')
+        .map((lead) => {
+            const targetDate = lead.status === 'In_Survey' ? lead.survey_date : lead.design_deadline;
+            const target = parseLeadDate(targetDate);
+            if (!target || !londonToday) return null;
+            const today = new Date(londonToday);
+            today.setUTCHours(0, 0, 0, 0);
+            const normalizedTarget = new Date(target);
+            normalizedTarget.setUTCHours(0, 0, 0, 0);
+            const dueInDays = Math.ceil((normalizedTarget - today) / (1000 * 60 * 60 * 24));
+            return {
+                _id: lead._id,
+                leadCode: lead.leadCode,
+                client: lead.client?.name || 'N/A',
+                company: lead.company || 'N/A',
+                status: lead.status === 'In_Survey' ? 'Site Survey' : 'Drawing Phase',
+                targetDate,
+                dueInDays,
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => (parseLeadDate(a.targetDate)?.getTime() || 0) - (parseLeadDate(b.targetDate)?.getTime() || 0))
+        .slice(0, 8);
+
+    const currentMonthDate = parseLeadDate(`${currentMonthKey}-01`);
+    const currentMonthLabelShort = currentMonthDate
+        ? new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TIME_ZONE, month: 'short', year: '2-digit' }).format(currentMonthDate)
+        : 'N/A';
+
+    const safeCompanies = companies.filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
+    const scopedCompanyOptions = allowedCompanies
+        .filter(Boolean)
+        .sort((a, b) => String(a).localeCompare(String(b)));
+    const companyOptions = req.userType === 'Admin'
+        ? ['All Companies', ...safeCompanies]
+        : ['All Companies', ...scopedCompanyOptions];
+
+    const statusMeta = {
+        Pending: { label: 'Leads', color: '#64748b' },
+        In_Quote: { label: 'In Quotation', color: '#0ea5e9' },
+        In_Survey: { label: 'Site Survey', color: '#06b6d4' },
+        In_Design: { label: 'Drawing Phase', color: '#a855f7' },
+        In_Review: { label: 'Under Review', color: '#f59e0b' },
+        Closed: { label: 'Closed', color: '#22c55e' },
+        Lost_Lead: { label: 'Lost Lead', color: '#ef4444' },
+    };
+
+    return res.status(200).json({
+        companyOptions,
+        metrics: {
+            currentMonthKey,
+            currentMonthLabelShort,
+            totalClients: clients.length,
+            totalClientsRunningMonth: clients.filter((client) => getLondonMonthKey(client.createdAt) === currentMonthKey).length,
+            totalUsers: users.length,
+            usersByType,
+            topCompanies: Object.entries(companyCounter).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })),
+            pipelineRunningMonthChart: DASHBOARD_STATUSES.map((key) => ({ name: statusMeta[key].label, value: statusCountsRunningMonth[key] || 0, fill: statusMeta[key].color })),
+            pipelineOverallChart: DASHBOARD_STATUSES.map((key) => ({ name: statusMeta[key].label, value: statusCountsOverall[key] || 0, fill: statusMeta[key].color })),
+            pipelineRunningMonthTotal: Object.values(statusCountsRunningMonth).reduce((sum, value) => sum + value, 0),
+            teamChart: [
+                { name: 'Admin', value: usersByType.Admin || 0, fill: '#334155' },
+                { name: 'Management', value: usersByType.Management || 0, fill: '#475569' },
+                { name: 'Surveyor', value: usersByType.Surveyor || 0, fill: '#06b6d4' },
+                { name: 'Designer', value: usersByType.Designer || 0, fill: '#a855f7' },
+            ].filter((item) => item.value > 0),
+            financeTrend,
+            winRateTrend: financeTrend.map((item) => ({ label: item.label, winRate: item.winRate, closed: item.closed, lost: item.lost })),
+            sixMonthWinRate,
+            sixMonthClosed,
+            sixMonthLost,
+            overallWinRate,
+            overallClosed,
+            overallLost,
+            runningMonthWinRate,
+            runningMonthClosed,
+            runningMonthLost,
+            receivedThisMonth: currentMonthFinance.received,
+            quotedThisMonth: currentMonthFinance.quoted,
+            dueThisMonth: currentMonthFinance.due,
+            receivedOverall: toFixedMoney(receivedOverall),
+            dueOverall: toFixedMoney(dueOverall),
+            upcomingDeadlines,
+        },
+    });
+};
+
+let DesignerDashboard = async (req, res) => {
+    if (!['Admin', 'Management', 'Designer'].includes(req.userType)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const designerNameRaw = String(req.query?.designer || '').trim();
+    const identityCandidates = [
+        String(req.name || '').trim(),
+        String(req.username || '').trim(),
+    ].filter(Boolean);
+
+    const { companyScope } = await getLeadScope(req);
+    const baseMatch = { designer: { $exists: true, $ne: '' }, ...companyScope };
+    if (req.userType === 'Designer') {
+        if (!identityCandidates.length) {
+            return res.status(400).json({ error: 'Designer identity not found.' });
+        }
+        baseMatch.$or = identityCandidates.map((value) => ({
+            designer: { $regex: `^${escapeRegex(value)}$`, $options: 'i' }
+        }));
+    } else if (designerNameRaw) {
+        baseMatch.designer = { $regex: `^${escapeRegex(designerNameRaw)}$`, $options: 'i' };
+    }
+
+    const leads = await Lead.find(baseMatch)
+        .select('leadCode company status stage designer design_deadline in_design_date in_review_date close_date createdAt updatedAt')
+        .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+        .lean();
+
+    const londonTodayRaw = getLondonDateOnly();
+    const londonToday = parseLeadDate(londonTodayRaw);
+    const londonMonthKey = getLondonMonthKey(londonTodayRaw);
+
+    const toDaysLeft = (value) => {
+        const date = parseLeadDate(value);
+        if (!date || !londonToday) return null;
+        const start = new Date(londonToday);
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setUTCHours(0, 0, 0, 0);
+        return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    };
+
+    const statusBreakdownMap = {
+        Pending: 0,
+        In_Quote: 0,
+        In_Survey: 0,
+        In_Design: 0,
+        In_Review: 0,
+        Closed: 0,
+        Lost_Lead: 0,
+    };
+
+    let inDesignNow = 0;
+    let dueToday = 0;
+    let overdue = 0;
+    let scheduledThisMonth = 0;
+    let completedThisMonth = 0;
+
+    const upcomingDeadlines = [];
+    const recentUpdates = [...leads].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 10);
+
+    for (const lead of leads) {
+        if (statusBreakdownMap[lead.status] !== undefined) {
+            statusBreakdownMap[lead.status] += 1;
+        }
+
+        if (lead.status === 'In_Design') inDesignNow += 1;
+
+        const designDate = parseLeadDate(lead.design_deadline);
+        const daysLeft = toDaysLeft(lead.design_deadline);
+        const designCompleted = lead.status === 'In_Review' || lead.status === 'Closed';
+
+        if (designDate && getLondonMonthKey(designDate) === londonMonthKey) {
+            scheduledThisMonth += 1;
+        }
+        if (designCompleted && getLondonMonthKey(lead.updatedAt) === londonMonthKey) {
+            completedThisMonth += 1;
+        }
+
+        if (daysLeft === 0 && !designCompleted) dueToday += 1;
+        if (daysLeft !== null && daysLeft < 0 && !designCompleted) overdue += 1;
+
+        if (designDate && !designCompleted) {
+            upcomingDeadlines.push({
+                _id: lead._id,
+                leadCode: lead.leadCode,
+                client: lead.client || null,
+                company: lead.company || '',
+                designer: lead.designer || '',
+                design_deadline: lead.design_deadline || '',
+                status: lead.status || '',
+                dueInDays: daysLeft,
+            });
+        }
+    }
+
+    upcomingDeadlines.sort((a, b) => (parseLeadDate(a.design_deadline) - parseLeadDate(b.design_deadline)));
+    const statusBreakdown = Object.entries(statusBreakdownMap).map(([status, count]) => ({ status, count }));
+
+    const resolvedDesigner = req.userType === 'Designer'
+        ? (identityCandidates[0] || '')
+        : designerNameRaw;
+
+    return res.status(200).json({
+        summary: {
+            totalAssigned: leads.length,
+            inDesignNow,
+            dueToday,
+            overdue,
+            scheduledThisMonth,
+            completedThisMonth,
+        },
+        statusBreakdown,
+        upcomingDeadlines: upcomingDeadlines.slice(0, 12),
+        recentUpdates,
+        designer: resolvedDesigner || null,
+        dateContext: {
+            today: londonTodayRaw,
+            month: londonMonthKey,
+        },
+    });
+};
+
 let IncomeReport = async (req, res) => {
     if (!['Admin', 'Management'].includes(req.userType)) {
         return res.status(403).json({ error: 'Forbidden' });
@@ -962,7 +1701,9 @@ let IncomeReport = async (req, res) => {
         return res.status(400).send('Invalid date range.');
     }
 
+    const { companyScope } = await getLeadScope(req);
     const leads = await Lead.find({
+        ...companyScope,
         payment_history: {
             $elemMatch: {
                 paid_at: { $gte: fromDate, $lte: toDate },
@@ -1019,10 +1760,15 @@ let MonthlyReport = async (req, res) => {
         return res.status(400).send('From date cannot be after To date.');
     }
 
-    const baseMatch = {};
+    const { allowedCompanies, companyScope } = await getLeadScope(req);
+    const baseMatch = { ...companyScope };
 
     if (company && String(company).trim() && String(company) !== 'All') {
-        baseMatch.company = String(company).trim();
+        const pickedCompany = String(company).trim();
+        if (!allowedCompanies.includes(pickedCompany)) {
+            return res.status(403).send('Selected company is outside your access.');
+        }
+        baseMatch.company = pickedCompany;
     }
     if (stage && String(stage).trim() && String(stage) !== 'All') {
         const normalizedStage = String(stage).trim();
@@ -1184,7 +1930,7 @@ let MonthlyReport = async (req, res) => {
         else if (lead.status === 'Lost_Lead') counts.lost_lead += 1;
     }
 
-    const companies = await Lead.distinct('company', { company: { $exists: true, $ne: '' } });
+    const companies = await Lead.distinct('company', { ...companyScope, company: { $exists: true, $ne: '' } });
     companies.sort((a, b) => String(a).localeCompare(String(b)));
 
     res.status(200).json({
@@ -1200,4 +1946,4 @@ let MonthlyReport = async (req, res) => {
     });
 };
 
-module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport, MonthlyReport };
+module.exports = { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, SurveyorDashboard, DesignerDashboard, AdminDashboard, IncomeReport, MonthlyReport };

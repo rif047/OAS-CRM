@@ -130,28 +130,38 @@ export default function Closed() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const highlightMatch = (text, query) => {
+        const source = String(text ?? "");
+        const q = String(query ?? "").trim();
+        if (!q) return source;
+        const parts = source.split(new RegExp(`(${escapeRegex(q)})`, "ig"));
+        return parts.map((part, idx) => (
+            part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part
+        ));
+    };
+
     const renderClientWithCompany = (row) => {
         const clientName = row.client?.name || "N/A";
         const companyName = row.client?.company?.trim() ? row.client.company : null;
         const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+        const contactText = row.client?.phone && row.client?.email
+            ? `${row.client.phone} (${row.client.email})`
+            : (row.client?.phone || row.client?.email || "");
 
         return (
             <div className="max-w-60 min-w-0">
-                <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
+                <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
                 {(row.client?.phone || row.client?.email) && (
                     <p
                         className="truncate text-xs text-slate-500 cursor-copy"
-                        title={`Click to copy: ${row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}`}
+                        title={`Click to copy: ${contactText}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            navigator.clipboard?.writeText(
-                                row.client?.phone && row.client?.email
-                                    ? `${row.client.phone} (${row.client.email})`
-                                    : (row.client?.phone || row.client?.email || "")
-                            );
+                            navigator.clipboard?.writeText(contactText);
                         }}
                     >
-                        {row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}
+                        {highlightMatch(contactText, tableQuery.search)}
                     </p>
                 )}
             </div>

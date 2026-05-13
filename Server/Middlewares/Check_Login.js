@@ -16,6 +16,8 @@ const Check_Login = (req, res, next) => {
         req.userId = decoded.userId;
         req.userType = decoded.userType;
         req.username = decoded.username;
+        req.name = decoded.name;
+        req.assignedCompanies = Array.isArray(decoded.assignedCompanies) ? decoded.assignedCompanies : [];
         next();
     } catch (err) {
         console.log("Token verification failed:", err?.message || err);

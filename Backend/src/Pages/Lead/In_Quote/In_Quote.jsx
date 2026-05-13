@@ -10,7 +10,7 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import TourIcon from '@mui/icons-material/Tour';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import CommentIcon from '@mui/icons-material/Comment';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Autocomplete } from '@mui/material';
 import RichTextEditor from "../../../Components/RichTextEditor";
 import 'react-toastify/dist/ReactToastify.css';
 import { markEditedRowForHighlight } from '../../../utils/datatableState';
@@ -18,6 +18,8 @@ import LeadPaymentModal from '../../../Components/LeadPaymentModal';
 import PaymentCell from '../../../Components/Datatable/PaymentCell';
 import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 import { ensureLeadDetail } from '../../../utils/leadDetails';
+import { parseMoney, resolveLeadDueAmount } from '../../../utils/payment';
+import { splitAssignees } from '../../../utils/assignees';
 
 export default function In_Quote() {
     document.title = 'In Quote';
@@ -52,25 +54,21 @@ export default function In_Quote() {
     const [drawingModalOpen, setDrawingModalOpen] = useState(false);
     const [lostModalOpen, setLostModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
-    const [form, setForm] = useState({ agent: "", surveyor: "", survey_date: "", design_deadline: "", designer: "", description: "" });
+    const [form, setForm] = useState({ agent: "", surveyor: [], survey_date: "", design_deadline: "", designer: "", description: "" });
     const [lostForm, setLostForm] = useState({ agent: "", description: "" });
     const [projectRemark, setProjectRemark] = useState("");
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
     const [closeModalOpen, setCloseModalOpen] = useState(false);
-    const [closeForm, setCloseForm] = useState({ survey_date: "", surveyor: "", design_deadline: "", designer: "", description: "" });
+    const [closeForm, setCloseForm] = useState({ survey_date: "", surveyor: [], design_deadline: "", designer: "", description: "" });
     const [closePaymentForm, setClosePaymentForm] = useState({ paid_at: "", amount: "", discount_given: "0", note: "Final due amount received while closing project." });
 
     const [surveyors, setSurveyors] = useState([]);
     const [designers, setDesigners] = useState([]);
-    const parseMoney = (value) => {
-        const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
-        return Number.isFinite(numeric) ? numeric : 0;
-    };
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users/options`);
 
             setSurveyors(res.data.filter(user => user.userType === "Surveyor"));
             setDesigners(res.data.filter(user => user.userType === "Designer"));
@@ -208,7 +206,7 @@ export default function In_Quote() {
 
         setForm({
             agent: loggedUser?.name || "",
-            surveyor: fullRow.surveyor || "",
+            surveyor: splitAssignees(fullRow.surveyor),
             survey_date: fullRow.survey_date || "",
             description: ""
         });
@@ -287,11 +285,11 @@ export default function In_Quote() {
         document.activeElement?.blur?.();
         const fullRow = await loadLeadDetail(row);
         if (!fullRow) return;
-        const due = parseMoney(fullRow?.payment_due_amount);
+        const due = resolveLeadDueAmount(fullRow);
         setSelectedRow(fullRow);
         setCloseForm({
             survey_date: fullRow?.survey_date || "",
-            surveyor: fullRow?.surveyor || "",
+            surveyor: splitAssignees(fullRow?.surveyor),
             design_deadline: fullRow?.design_deadline || "",
             designer: fullRow?.designer || "",
             description: "",
@@ -308,7 +306,7 @@ export default function In_Quote() {
     const handleCloseSubmit = async () => {
         if (!selectedRow?._id) return;
         const agent = currentUser?.name || selectedRow?.agent || "System";
-        const dueAmount = parseMoney(selectedRow?.payment_due_amount);
+        const dueAmount = resolveLeadDueAmount(selectedRow);
         const collectAmount = parseMoney(closePaymentForm.amount);
         const collectDiscount = parseMoney(closePaymentForm.discount_given);
 
@@ -434,28 +432,38 @@ export default function In_Quote() {
     useEffect(() => { fetchData(); }, [fetchData]);
     useEffect(() => { fetchUsers(); }, []);
 
+    const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const highlightMatch = (text, query) => {
+        const source = String(text ?? "");
+        const q = String(query ?? "").trim();
+        if (!q) return source;
+        const parts = source.split(new RegExp(`(${escapeRegex(q)})`, "ig"));
+        return parts.map((part, idx) => (
+            part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part
+        ));
+    };
+
     const renderClientWithCompany = (row) => {
         const clientName = row.client?.name || "N/A";
         const companyName = row.client?.company?.trim() ? row.client.company : null;
         const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+        const contactText = row.client?.phone && row.client?.email
+            ? `${row.client.phone} (${row.client.email})`
+            : (row.client?.phone || row.client?.email || "");
 
         return (
             <div className="max-w-60 min-w-0">
-                <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
+                <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
                 {(row.client?.phone || row.client?.email) && (
                     <p
                         className="truncate text-xs text-slate-500 cursor-copy"
-                        title={`Click to copy: ${row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}`}
+                        title={`Click to copy: ${contactText}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            navigator.clipboard?.writeText(
-                                row.client?.phone && row.client?.email
-                                    ? `${row.client.phone} (${row.client.email})`
-                                    : (row.client?.phone || row.client?.email || "")
-                            );
+                            navigator.clipboard?.writeText(contactText);
                         }}
                     >
-                        {row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}
+                        {highlightMatch(contactText, tableQuery.search)}
                     </p>
                 )}
             </div>
@@ -696,22 +704,48 @@ export default function In_Quote() {
                         onChange={e => setForm({ ...form, surveyor: e.target.value })}
                     /> */}
 
-                    <TextField
-                        select
+                    <Autocomplete
+                        multiple
                         fullWidth
                         size="small"
-                        margin="normal"
-                        SelectProps={{ native: true }}
-                        value={form.surveyor}
-                        onChange={e => setForm({ ...form, surveyor: e.target.value })}
-                    >
-                        <option value="">Select Surveyor*</option>
-                        {surveyors.map((s, index) => (
-                            <option key={index} value={s.name}>
-                                {s.name} - {s.phone}
-                            </option>
-                        ))}
-                    </TextField>
+                        options={surveyors}
+                        value={surveyors.filter((s) => form.surveyor.includes(s.name))}
+                        onChange={(_, selected) => setForm({ ...form, surveyor: selected.map((item) => item.name) })}
+                        getOptionLabel={(option) => `${option.name} - ${option.phone || 'No phone'}`}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                        getOptionDisabled={(option) => form.surveyor.includes(option.name)}
+                        disableCloseOnSelect
+                        renderTags={() => null}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                margin="normal"
+                                label="Select Surveyor*"
+                                placeholder="Add more..."
+                            />
+                        )}
+                    />
+                    {!!form.surveyor.length && (
+                        <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">Selected Surveyors</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {form.surveyor.map((name) => (
+                                    <span key={name} className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700">
+                                        {name}
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm((prev) => ({ ...prev, surveyor: prev.surveyor.filter((item) => item !== name) }))}
+                                            className="text-slate-400 hover:text-red-500 cursor-pointer"
+                                            aria-label={`Remove ${name}`}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <small className='text-gray-600'>Note: You can select multiple surveyors.</small>
 
 
 
@@ -876,22 +910,47 @@ export default function In_Quote() {
                         onChange={(e) => setCloseForm((prev) => ({ ...prev, survey_date: e.target.value }))}
                     />
 
-                    <TextField
-                        select
+                    <Autocomplete
+                        multiple
                         fullWidth
                         size="small"
-                        margin="normal"
-                        SelectProps={{ native: true }}
-                        value={closeForm.surveyor}
-                        onChange={(e) => setCloseForm((prev) => ({ ...prev, surveyor: e.target.value }))}
-                    >
-                        <option value="">Select Surveyor</option>
-                        {surveyors.map((s, index) => (
-                            <option key={index} value={s.name}>
-                                {s.name} - {s.phone}
-                            </option>
-                        ))}
-                    </TextField>
+                        options={surveyors}
+                        value={surveyors.filter((s) => closeForm.surveyor.includes(s.name))}
+                        onChange={(_, selected) => setCloseForm((prev) => ({ ...prev, surveyor: selected.map((item) => item.name) }))}
+                        getOptionLabel={(option) => `${option.name} - ${option.phone || 'No phone'}`}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                        getOptionDisabled={(option) => closeForm.surveyor.includes(option.name)}
+                        disableCloseOnSelect
+                        renderTags={() => null}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                margin="normal"
+                                label="Select Surveyor"
+                                placeholder="Add more..."
+                            />
+                        )}
+                    />
+                    {!!closeForm.surveyor.length && (
+                        <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">Selected Surveyors</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {closeForm.surveyor.map((name) => (
+                                    <span key={name} className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700">
+                                        {name}
+                                        <button
+                                            type="button"
+                                            onClick={() => setCloseForm((prev) => ({ ...prev, surveyor: prev.surveyor.filter((item) => item !== name) }))}
+                                            className="text-slate-400 hover:text-red-500 cursor-pointer"
+                                            aria-label={`Remove ${name}`}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <TextField
                         fullWidth
@@ -924,7 +983,7 @@ export default function In_Quote() {
                     <div className='grid grid-cols-3 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 my-3'>
                         <div><p className='text-xs text-slate-500'>Quoted</p><p className='font-semibold text-slate-800'>{formatCurrencyGBP(selectedRow?.quote_price || 0)}</p></div>
                         <div><p className='text-xs text-slate-500'>Received</p><p className='font-semibold text-emerald-700'>{formatCurrencyGBP(selectedRow?.payment_received_total || 0)}</p></div>
-                        <div><p className='text-xs text-slate-500'>Due</p><p className='font-semibold text-red-600'>{formatCurrencyGBP(selectedRow?.payment_due_amount || 0)}</p></div>
+                        <div><p className='text-xs text-slate-500'>Due</p><p className='font-semibold text-red-600'>{formatCurrencyGBP(resolveLeadDueAmount(selectedRow))}</p></div>
                     </div>
 
                     <div className='rounded-lg border border-slate-200 mb-3'>
@@ -958,11 +1017,11 @@ export default function In_Quote() {
                         </div>
                     </div>
 
-                    {parseMoney(selectedRow?.payment_due_amount) > 0 && (
+                    {resolveLeadDueAmount(selectedRow) > 0 && (
                         <>
                             <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
                                 <TextField fullWidth type="date" size="small" margin="normal" label="Payment Date" InputLabelProps={{ shrink: true }} value={closePaymentForm.paid_at} onChange={e => setClosePaymentForm(prev => ({ ...prev, paid_at: e.target.value }))} />
-                                <TextField fullWidth type="number" size="small" margin="normal" label={`Receive Amount (${formatCurrencyGBP(selectedRow?.payment_due_amount || 0)})*`} value={closePaymentForm.amount} onChange={e => setClosePaymentForm(prev => ({ ...prev, amount: e.target.value }))} />
+                                <TextField fullWidth type="number" size="small" margin="normal" label={`Receive Amount (${formatCurrencyGBP(resolveLeadDueAmount(selectedRow))})*`} value={closePaymentForm.amount} onChange={e => setClosePaymentForm(prev => ({ ...prev, amount: e.target.value }))} />
                                 <TextField fullWidth type="number" size="small" margin="normal" label="Discount Given" value={closePaymentForm.discount_given} onChange={e => setClosePaymentForm(prev => ({ ...prev, discount_given: e.target.value }))} />
                             </div>
                             <TextField fullWidth size="small" margin="normal" label="Payment Note" multiline minRows={2} value={closePaymentForm.note} onChange={e => setClosePaymentForm(prev => ({ ...prev, note: e.target.value }))} />

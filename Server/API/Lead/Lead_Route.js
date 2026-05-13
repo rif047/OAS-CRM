@@ -4,7 +4,7 @@ const multer = require('multer');
 const asyncHandler = require('../../Middlewares/Async_Handler');
 const validateObjectId = require('../../Middlewares/Validate_ObjectId');
 const authorize = require('../../Middlewares/Authorize');
-const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, IncomeReport, MonthlyReport } = require('./Lead_Controller')
+const { Leads, Create, View, Update, Delete, Pending, Closed, Lost_Lead, Comment, UploadDescriptionImages, In_Quote, In_Survey, Survey_Data, In_Design, In_Review, AddPayment, EditPayment, SurveyorDashboard, DesignerDashboard, AdminDashboard, IncomeReport, MonthlyReport } = require('./Lead_Controller')
 
 const leadDescriptionUpload = multer({
     storage: multer.memoryStorage(),
@@ -37,6 +37,9 @@ const handleLeadDescriptionUpload = (req, res, next) => {
 Route.param('id', validateObjectId('id'));
 
 Route.get('/', asyncHandler(Leads))
+Route.get('/dashboard/admin', authorize('Admin', 'Management'), asyncHandler(AdminDashboard))
+Route.get('/dashboard/surveyor', authorize('Admin', 'Management', 'Surveyor'), asyncHandler(SurveyorDashboard))
+Route.get('/dashboard/designer', authorize('Admin', 'Management', 'Designer'), asyncHandler(DesignerDashboard))
 Route.post('/', asyncHandler(Create))
 Route.post('/description-images', handleLeadDescriptionUpload, asyncHandler(UploadDescriptionImages))
 Route.get('/income/report', authorize('Admin', 'Management'), asyncHandler(IncomeReport))

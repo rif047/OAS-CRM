@@ -1,4 +1,5 @@
 let Client = require('./Client_Model');
+const { resolveAssignedCompaniesForRequest, buildCompanyMatch, enforceCompanyInAllowedList } = require('../../Utils/CompanyAccess');
 const { handleControllerError } = require('../../Utils/ControllerError');
 
 const normalizeOptionalField = (value) => {
@@ -33,7 +34,11 @@ const normalizeOptionalEmail = (value) => {
 
 
 let Clients = async (req, res) => {
-    let Data = await Client.find().sort({ createdAt: -1 }).lean();
+    const summaryOnly = String(req.query.summary || '').trim() === '1';
+    const projection = summaryOnly ? { _id: 1, createdAt: 1 } : undefined;
+    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+    const filter = req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies);
+    let Data = await Client.find(filter, projection).sort({ createdAt: -1 }).lean();
     res.status(200).json(Data);
 }
 
@@ -42,11 +47,13 @@ let Clients = async (req, res) => {
 
 let Create = async (req, res) => {
     try {
-        let { agent, name, phone, alt_phone, email, company, description } = req.body;
+        let { agent, name, phone, alt_phone, email, company, description, access_company } = req.body;
+        const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
 
         const normalizedAgent = normalizeOptionalField(agent);
         const normalizedName = normalizeOptionalField(name);
         const normalizedCompany = normalizeOptionalField(company);
+        const normalizedAccessCompany = enforceCompanyInAllowedList(access_company, allowedCompanies);
         const normalizedDescription = normalizeOptionalField(description);
         const normalizedAltPhoneResult = normalizeOptionalPhone(alt_phone);
         const normalizedPhoneResult = normalizeOptionalPhone(phone);
@@ -54,6 +61,7 @@ let Create = async (req, res) => {
 
         if (!normalizedAgent) { return res.status(400).send('User is required!'); }
         if (!normalizedName) { return res.status(400).send('Client Name is required!'); }
+        if (!normalizedAccessCompany) { return res.status(400).send('Assigned company is required and must be within your access list.'); }
         if (normalizedPhoneResult.error) { return res.status(400).send(normalizedPhoneResult.error); }
         if (normalizedAltPhoneResult.error) { return res.status(400).send('Alternative phone number must contain numbers only.'); }
         if (normalizedEmailResult.error) { return res.status(400).send(normalizedEmailResult.error); }
@@ -75,6 +83,7 @@ let Create = async (req, res) => {
             alt_phone: normalizedAltPhoneResult.value,
             email: normalizedEmailResult.value,
             company: normalizedCompany,
+            access_company: normalizedAccessCompany,
             description: normalizedDescription,
         });
 
@@ -93,6 +102,7 @@ let Create = async (req, res) => {
 let BulkImport = async (req, res) => {
     try {
         let clients = req.body;
+        const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
 
         if (!Array.isArray(clients) || clients.length === 0) {
             return res.status(400).send('Invalid or empty data array.');
@@ -100,16 +110,17 @@ let BulkImport = async (req, res) => {
 
         let validClients = [];
         for (let emp of clients) {
-            const { agent, name, phone, alt_phone, email, company, description } = emp;
+            const { agent, name, phone, alt_phone, email, company, description, access_company } = emp;
             const normalizedAgent = normalizeOptionalField(agent);
             const normalizedName = normalizeOptionalField(name);
             const normalizedPhoneResult = normalizeOptionalPhone(phone);
             const normalizedAltPhoneResult = normalizeOptionalPhone(alt_phone);
             const normalizedEmailResult = normalizeOptionalEmail(email);
             const normalizedCompany = normalizeOptionalField(company);
+            const normalizedAccessCompany = enforceCompanyInAllowedList(access_company, allowedCompanies);
             const normalizedDescription = normalizeOptionalField(description);
 
-            if (!normalizedAgent || !normalizedName || normalizedPhoneResult.error || normalizedAltPhoneResult.error || normalizedEmailResult.error) {
+            if (!normalizedAgent || !normalizedName || !normalizedAccessCompany || normalizedPhoneResult.error || normalizedAltPhoneResult.error || normalizedEmailResult.error) {
                 console.log(`Skipped invalid entry: ${name || 'Unnamed'}`);
                 continue;
             }
@@ -137,6 +148,7 @@ let BulkImport = async (req, res) => {
                 alt_phone: normalizedAltPhoneResult.value,
                 email: normalizedEmailResult.value,
                 company: normalizedCompany,
+                access_company: normalizedAccessCompany,
                 description: normalizedDescription
             });
         }
@@ -162,7 +174,11 @@ let BulkImport = async (req, res) => {
 
 
 let View = async (req, res) => {
-    let viewOne = await Client.findById(req.params.id).lean();
+    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+    const viewOne = await Client.findOne({
+        _id: req.params.id,
+        ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies))
+    }).lean();
     if (!viewOne) return res.status(404).send('Client not found');
     res.send(viewOne)
 }
@@ -172,11 +188,13 @@ let View = async (req, res) => {
 
 let Update = async (req, res) => {
     try {
-        let { agent, name, phone, alt_phone, email, company, description } = req.body;
+        let { agent, name, phone, alt_phone, email, company, description, access_company } = req.body;
+        const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
 
         const normalizedAgent = normalizeOptionalField(agent);
         const normalizedName = normalizeOptionalField(name);
         const normalizedCompany = normalizeOptionalField(company);
+        const normalizedAccessCompany = enforceCompanyInAllowedList(access_company, allowedCompanies);
         const normalizedDescription = normalizeOptionalField(description);
         const normalizedAltPhoneResult = normalizeOptionalPhone(alt_phone);
         const normalizedPhoneResult = normalizeOptionalPhone(phone);
@@ -184,6 +202,7 @@ let Update = async (req, res) => {
 
         if (!normalizedAgent) { return res.status(400).send('User is required!'); }
         if (!normalizedName) { return res.status(400).send('Client Name is required!'); }
+        if (!normalizedAccessCompany) { return res.status(400).send('Assigned company is required and must be within your access list.'); }
         if (normalizedPhoneResult.error) { return res.status(400).send(normalizedPhoneResult.error); }
         if (normalizedAltPhoneResult.error) { return res.status(400).send('Alternative phone number must contain numbers only.'); }
         if (normalizedEmailResult.error) { return res.status(400).send(normalizedEmailResult.error); }
@@ -199,7 +218,10 @@ let Update = async (req, res) => {
         }
 
 
-        let updateData = await Client.findById(req.params.id);
+        let updateData = await Client.findOne({
+            _id: req.params.id,
+            ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies))
+        });
         if (!updateData) { return res.status(404).send('Client not found'); }
 
         updateData.agent = normalizedAgent;
@@ -208,6 +230,7 @@ let Update = async (req, res) => {
         updateData.alt_phone = normalizedAltPhoneResult.value;
         updateData.email = normalizedEmailResult.value;
         updateData.company = normalizedCompany;
+        updateData.access_company = normalizedAccessCompany;
         updateData.description = normalizedDescription;
 
         await updateData.save();
@@ -225,7 +248,11 @@ let Update = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    const deleted = await Client.findByIdAndDelete(req.params.id);
+    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+    const deleted = await Client.findOneAndDelete({
+        _id: req.params.id,
+        ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies))
+    });
     if (!deleted) return res.status(404).send('Client not found');
     res.status(200).send('Deleted')
 }

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COMPANY_OPTIONS } = require('../../Config/Companies');
 
 const UserSchema = new mongoose.Schema({
     name: {
@@ -38,6 +39,12 @@ const UserSchema = new mongoose.Schema({
         required: true
     },
     description: String
+    ,
+    assignedCompanies: {
+        type: [String],
+        enum: COMPANY_OPTIONS,
+        default: []
+    }
 
 }, { timestamps: true, optimisticConcurrency: true });
 

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Typography, Modal, IconButton, TextField, Autocomplete, MenuItem } from '@mui/material';
+import { Box, Button, Typography, Modal, IconButton, TextField, MenuItem } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { markEditedRowForHighlight } from '../../utils/datatableState';
+import { getAssignedCompaniesFromUser } from '../../utils/companies';
 
 const modalStyle = {
     position: 'absolute',
@@ -26,17 +27,20 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
     const [formData, setFormData] = useState({});
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [assignedCompanies, setAssignedCompanies] = useState([]);
 
     // const capitalizeWords = (str) => { return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '); };
 
 
     useEffect(() => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
+        const companies = getAssignedCompaniesFromUser();
+        setAssignedCompanies(companies);
 
         if (data) {
-            setFormData({ ...data, agent: data.agent || loggedUser?.name });
+            setFormData({ ...data, agent: data.agent || loggedUser?.name, access_company: data.access_company || companies[0] || '' });
         } else {
-            setFormData({ agent: loggedUser?.name || '' });
+            setFormData({ agent: loggedUser?.name || '', access_company: companies[0] || '' });
         }
 
         setErrors({});
@@ -45,9 +49,10 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
 
     const validate = () => {
         const newErrors = {};
-        const { name, phone, alt_phone, email } = formData;
+        const { name, phone, alt_phone, email, access_company } = formData;
 
         if (!name) newErrors.name = 'Name is required.';
+        if (!access_company) newErrors.access_company = 'Assigned company is required.';
         if (phone && !/^\+?\d+$/.test(phone || '')) { newErrors.phone = 'Phone number must contain numbers.' }
         if (alt_phone && !/^\+?\d+$/.test(alt_phone)) { newErrors.alt_phone = "Alternative Phone number must contain numbers." }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { newErrors.email = 'Invalid email format.'; }
@@ -110,7 +115,7 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
 
                 {[
                     { name: 'name', label: 'Client Name*' },
-                    { name: 'company', label: 'Conpanies' },
+                    { name: 'company', label: 'Client Companies' },
                     { name: 'phone', label: 'Phone' },
                     { name: 'alt_phone', label: 'Alternative Phone' },
                     { name: 'email', label: 'Email' },
@@ -129,6 +134,22 @@ export default function AddEditClient({ open, onClose, data, refreshData }) {
                         helperText={errors[name]}
                     />
                 ))}
+                <TextField
+                    select
+                    name="access_company"
+                    label="Assigned Company*"
+                    fullWidth
+                    margin="normal"
+                    size="small"
+                    value={formData.access_company || ''}
+                    onChange={handleChange}
+                    error={!!errors.access_company}
+                    helperText={errors.access_company}
+                >
+                    {assignedCompanies.map((company) => (
+                        <MenuItem key={company} value={company}>{company}</MenuItem>
+                    ))}
+                </TextField>
 
 
                 <TextField

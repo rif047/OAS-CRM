@@ -2,6 +2,7 @@ import Modal from '@mui/material/Modal';
 import PaymentInfoCard from '../../../Components/PaymentInfoCard';
 import CloseIcon from '@mui/icons-material/Close';
 import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
+import { formatAssignees } from '../../../utils/assignees';
 
 export default function View({ open, onClose, viewData }) {
     const status = viewData?.status;
@@ -62,7 +63,7 @@ export default function View({ open, onClose, viewData }) {
                                             {isInReview && <InfoRow label="In Review Date" value={formatLondonDateTime(viewData.in_review_date)} />}
                                             {isClosed && <InfoRow label="Closed Date" value={formatLondonDateTime(viewData.close_date)} />}
                                             {isLost && <InfoRow label="Lost Date" value={formatLondonDateTime(viewData.lost_date)} />}
-                                            {(isInSurvey || isInReview || isInDesign || isClosed) && <InfoRow label="Surveyor" value={viewData.surveyor} />}
+                                            {(isInSurvey || isInReview || isInDesign || isClosed) && <InfoRow label="Surveyor" value={formatAssignees(viewData.surveyor)} />}
                                             {(isInSurvey || isInReview || isClosed) && <InfoRow label="Survey Date" value={formatLondonDateTime(viewData.survey_date)} />}
                                             {(isInSurvey || isClosed) && <InfoRow label="Survey Done" value={viewData.survey_done} />}
                                             {(isInDesign || isInReview || isClosed) && <InfoRow label="Designer" value={viewData.designer} />}

@@ -15,15 +15,14 @@ export default function Users() {
     const EndPoint = 'users';
 
     const userType = localStorage.getItem("userType");
-    const isManagementUser = userType === "Management";
     const user = JSON.parse(localStorage.getItem("user"));
     const username = user?.username?.toLowerCase() || "";
 
 
     const userPermissions = {
-        canEdit: !isManagementUser,
-        canView: !isManagementUser,
-        canDelete: !isManagementUser && (username === "rif047" || username === "kam"),
+        canEdit: true,
+        canView: true,
+        canDelete: (username === "rif047" || username === "kam"),
     };
 
 
@@ -41,8 +40,7 @@ export default function Users() {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
-            const reversedData = response.data.reverse();
-            setData(reversedData);
+            setData(response.data);
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching data:', error);
@@ -103,6 +101,7 @@ export default function Users() {
         { accessorKey: 'email', header: 'Email' },
         { accessorKey: 'designation', header: 'Designation' },
         { accessorKey: 'userType', header: 'User Type' },
+        { key: 'assignedCompanies', accessorFn: (row) => (row.assignedCompanies || []).join(', '), header: 'Assigned Companies' },
     ];
 
     return (
@@ -142,13 +141,11 @@ export default function Users() {
                                 <option key={type} value={type}>{type}</option>
                             ))}
                         </select>
-                        {!isManagementUser && (
-                            <button
-                                onClick={handleAdd}
-                                className="inline-flex h-9 items-center rounded-lg bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 cursor-pointer">
-                                Create +
-                            </button>
-                        )}
+                        <button
+                            onClick={handleAdd}
+                            className="inline-flex h-9 items-center rounded-lg bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 cursor-pointer">
+                            Create +
+                        </button>
                     </div>
                 </div>
 

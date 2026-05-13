@@ -12,6 +12,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import Layout from '../../Layout';
 import { formatCurrencyGBP, formatLondonDateTime } from '../../utils/formatters';
+import { formatAssignees } from '../../utils/assignees';
 import 'react-toastify/dist/ReactToastify.css';
 
 const STATUS_LABELS = {
@@ -86,7 +87,7 @@ const getStepJourney = (lead) => {
       return {
         key: field.key,
         step: field.label,
-        value: rawValue || 'N/A',
+        value: field.key === 'surveyor' ? formatAssignees(rawValue) : (rawValue || 'N/A'),
       };
     });
 
@@ -137,7 +138,7 @@ export default function ProjectHistory() {
     return [
       { label: 'Code', value: selectedLead.leadCode || 'N/A' },
       { label: 'Source', value: selectedLead.source || 'N/A' },
-      { label: 'Surveyor', value: selectedLead.surveyor || 'N/A' },
+      { label: 'Surveyor', value: formatAssignees(selectedLead.surveyor) },
       { label: 'Designer', value: selectedLead.designer || 'N/A' },
       { label: 'Need Planning Permission?', value: getDisplayValue(selectedLead.planning_permission) },
       { label: 'Need Structural Services?', value: getDisplayValue(selectedLead.structural_services) },

@@ -42,8 +42,7 @@ export default function Clients() {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
-            const reversedData = response.data.reverse();
-            setData(reversedData);
+            setData(response.data);
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching data:', error);
@@ -96,6 +95,7 @@ export default function Clients() {
         { accessorKey: 'phone', header: 'Phone', enableClickToCopy: true, },
         { accessorKey: 'email', header: 'Email', enableClickToCopy: true, },
         { accessorKey: 'company', header: 'Company' },
+        { accessorKey: 'access_company', header: 'Assigned Company' },
         { accessorKey: 'agent', header: 'Agent', maxSize: 60 },
     ];
 

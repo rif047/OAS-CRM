@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 const Login = lazy(() => import('./Pages/Auth/Login'));
 const Dashboard = lazy(() => import('./Pages/Dashboard/Dashboard'));
+const SurveyorDashboard = lazy(() => import('./Pages/Dashboard/SurveyorDashboard'));
+const DesignerDashboard = lazy(() => import('./Pages/Dashboard/DesignerDashboard'));
 const Clients = lazy(() => import('./Pages/Client/Clients'));
 const Leads = lazy(() => import('./Pages/Lead/Leads'));
 const In_Quote = lazy(() => import('./Pages/Lead/In_Quote/In_Quote'));
@@ -61,8 +63,8 @@ export default function MainRoutes() {
     const getDefaultPath = () => {
         if (!loggedIn) return "/login";
         if (userType === "Admin" || userType === "Management") return "/";
-        if (userType === "Surveyor") return "/in_survey";
-        if (userType === "Designer") return "/in_design";
+        if (userType === "Surveyor") return "/surveyor-dashboard";
+        if (userType === "Designer") return "/designer-dashboard";
         return "/login";
     };
 
@@ -117,6 +119,27 @@ export default function MainRoutes() {
                     }
                 />
 
+                <Route
+                    path="/surveyor-dashboard"
+                    element={
+                        loggedIn
+                            ? (userType === "Admin" || userType === "Management" || userType === "Surveyor")
+                                ? <SurveyorDashboard handleLogout={handleLogout} />
+                                : <Navigate to={getDefaultPath()} replace />
+                            : <Navigate to="/login" replace />
+                    }
+                />
+                <Route
+                    path="/designer-dashboard"
+                    element={
+                        loggedIn
+                            ? (userType === "Admin" || userType === "Management" || userType === "Designer")
+                                ? <DesignerDashboard handleLogout={handleLogout} />
+                                : <Navigate to={getDefaultPath()} replace />
+                            : <Navigate to="/login" replace />
+                    }
+                />
+
 
                 {(userType === "Admin" || userType === "Management") && (
                     <>
@@ -129,7 +152,6 @@ export default function MainRoutes() {
                         <Route path="/managements" element={loggedIn ? <Managements handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/designers" element={loggedIn ? <Designers handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/surveyors" element={loggedIn ? <Surveyors handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
-                        <Route path="/users" element={loggedIn ? <Users handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/income" element={loggedIn ? <Income handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/all-projects" element={loggedIn ? <AllProjects handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/reports/due-history" element={loggedIn ? <DueHistory handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
@@ -140,6 +162,7 @@ export default function MainRoutes() {
 
                 {(userType === "Admin") && (
                     <>
+                        <Route path="/users" element={loggedIn ? <Users handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/settings" element={loggedIn ? <Settings handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     </>
                 )}

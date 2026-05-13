@@ -14,6 +14,7 @@ import { markEditedRowForHighlight } from '../../utils/datatableState';
 import PaymentCell from '../../Components/Datatable/PaymentCell';
 import LeadPaymentModal from '../../Components/LeadPaymentModal';
 import { ensureLeadDetail } from '../../utils/leadDetails';
+import { parseMoney, resolveLeadDueAmount } from '../../utils/payment';
 
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'PENDING' },
@@ -177,10 +178,6 @@ export default function AllProjects() {
   const [closePaymentForm, setClosePaymentForm] = useState({ paid_at: '', amount: '', discount_given: '', note: '' });
   const [surveyors, setSurveyors] = useState([]);
   const [designers, setDesigners] = useState([]);
-  const parseMoney = (value) => {
-    const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ''));
-    return Number.isFinite(numeric) ? numeric : 0;
-  };
   const loadLeadDetail = useCallback(async (row) => {
     try {
       return await ensureLeadDetail(row);
@@ -192,7 +189,7 @@ export default function AllProjects() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+      const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users/options`);
       setSurveyors(res.data.filter((u) => u.userType === 'Surveyor'));
       setDesigners(res.data.filter((u) => u.userType === 'Designer'));
     } catch {
@@ -304,7 +301,7 @@ export default function AllProjects() {
     setActionErrors({});
 
     if (key === 'move_closed') {
-      const existingDue = parseMoney(selectedRow?.payment_due_amount);
+      const existingDue = resolveLeadDueAmount(selectedRow);
       setClosePaymentForm({
         paid_at: '',
         amount: existingDue > 0 ? String(existingDue) : '',
@@ -375,7 +372,7 @@ export default function AllProjects() {
       } else if (actionModal === 'move_in_review') {
         await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/leads/In_review/${selectedRow._id}`, { agent, design_file: form.design_file, description: form.description });
       } else if (actionModal === 'move_closed') {
-        const dueAmount = parseMoney(selectedRow?.payment_due_amount);
+        const dueAmount = resolveLeadDueAmount(selectedRow);
         const collectAmount = parseMoney(closePaymentForm.amount);
         const collectDiscount = parseMoney(closePaymentForm.discount_given);
         if (dueAmount > 0 && (collectAmount + collectDiscount !== dueAmount)) {
@@ -448,17 +445,27 @@ export default function AllProjects() {
     }
   };
 
+  const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const highlightMatch = (text, query) => {
+    const source = String(text ?? '');
+    const q = String(query ?? '').trim();
+    if (!q) return source;
+    const parts = source.split(new RegExp(`(${escapeRegex(q)})`, 'ig'));
+    return parts.map((part, idx) => (part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part));
+  };
+
   const renderClientCell = useCallback((row) => {
     const clientName = row.client?.name || 'N/A';
     const companyName = row.client?.company?.trim() ? row.client.company : null;
     const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+    const contactText = `${row.client?.phone || 'N/A'} ${row.client?.email ? `(${row.client.email})` : ''}`.trim();
     return (
       <div className="max-w-64 min-w-0">
-        <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
-        <p className="truncate text-xs text-slate-500" title={`${row.client?.phone || ''} ${row.client?.email || ''}`}>{row.client?.phone || 'N/A'} {row.client?.email ? `(${row.client.email})` : ''}</p>
+        <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
+        <p className="truncate text-xs text-slate-500" title={`${row.client?.phone || ''} ${row.client?.email || ''}`}>{highlightMatch(contactText, tableQuery.search)}</p>
       </div>
     );
-  }, []);
+  }, [tableQuery.search]);
 
   const renderAddress = useCallback((row) => {
     const address = row.address?.trim() || 'N/A';
@@ -479,13 +486,31 @@ export default function AllProjects() {
   const columns = useMemo(() => ([
     { key: 'date', header: 'Date', maxSize: 80, Cell: ({ row }) => formatLondonDate(getStatusDate(row.original)) },
     { key: 'leadCode', accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+    {
+      key: 'company',
+      accessorKey: 'company',
+      header: 'Company',
+      size: 80,
+      minSize: 80,
+      maxSize: 80,
+      muiTableHeadCellProps: { sx: { maxWidth: '80px', width: '80px' } },
+      muiTableBodyCellProps: { sx: { maxWidth: '80px', width: '80px' } },
+      Cell: ({ row }) => {
+        const company = row.original.company?.trim() || 'N/A';
+        return (
+          <span className="block truncate" style={{ maxWidth: '80px' }} title={company}>
+            {highlightMatch(company, tableQuery.search)}
+          </span>
+        );
+      },
+    },
     { key: 'client', header: 'Client', minSize: 220, maxSize: 280, Cell: ({ row }) => renderClientCell(row.original) },
     { key: 'address', header: 'Project Address', minSize: 220, maxSize: 230, Cell: ({ row }) => renderAddress(row.original) },
     {
       key: 'payment',
       header: 'Payment',
-      minSize: 120,
-      maxSize: 150,
+      minSize: 100,
+      maxSize: 100,
       Cell: ({ row }) => (
         LEDGER_VISIBLE_STATUSES.has(row.original.status) ? (
           <PaymentCell lead={row.original} onClick={handlePaymentClick} showSummary={true} />
@@ -555,7 +580,7 @@ export default function AllProjects() {
     },
   ]), [handlePaymentClick, openChooser, openStageModal, renderAddress, renderClientCell]);
   const paymentHistory = Array.isArray(selectedRow?.payment_history) ? selectedRow.payment_history : [];
-  const dueAmount = parseMoney(selectedRow?.payment_due_amount);
+  const dueAmount = resolveLeadDueAmount(selectedRow);
   const receivedAmount = parseMoney(selectedRow?.payment_received_total);
   const collectAmount = parseMoney(closePaymentForm.amount);
   const collectDiscount = parseMoney(closePaymentForm.discount_given);

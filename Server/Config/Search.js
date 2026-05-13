@@ -11,16 +11,16 @@ router.get("/", async (req, res) => {
     if (q.length > 80) return res.status(400).json({ error: "Query too long" });
     if (q.length < 2) return res.json([]);
 
-    const startsWithRegex = new RegExp(`^${escapeRegex(q)}`, "i");
+    const containsRegex = new RegExp(escapeRegex(q), "i");
 
     try {
         const [clientRows, leadRows] = await Promise.all([
             Client.find({
                 $or: [
-                    { name: startsWithRegex },
-                    { phone: startsWithRegex },
-                    { email: startsWithRegex },
-                    { company: startsWithRegex },
+                    { name: containsRegex },
+                    { phone: containsRegex },
+                    { email: containsRegex },
+                    { company: containsRegex },
                 ],
             })
                 .select("name phone email company createdAt")
@@ -29,10 +29,10 @@ router.get("/", async (req, res) => {
                 .lean(),
             Lead.find({
                 $or: [
-                    { leadCode: startsWithRegex },
-                    { company: startsWithRegex },
-                    { status: startsWithRegex },
-                    { stage: startsWithRegex },
+                    { leadCode: containsRegex },
+                    { company: containsRegex },
+                    { status: containsRegex },
+                    { stage: containsRegex },
                 ],
             })
                 .select("leadCode company status stage source address quote_price createdAt updatedAt client")

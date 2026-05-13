@@ -142,7 +142,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users/options`);
             setDesigners(res.data.filter(user => user.userType === "Designer"));
         } catch {
             toast.error("Failed to fetch users.");
@@ -244,17 +244,11 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                             handleHomeEndKeys
                             sx={{ flex: 1 }}
                             size="small"
-                            freeSolo
-                            options={["OAS", "MLP", "KPCL", "TLPS", "KPCL BD"]}
+                            options={["OAS", "MLP", "KPCL", "A2Z", "TLPS", "KPCL BD"]}
                             value={formData.company || null}
                             onChange={(e, newVal) =>
                                 setFormData(prev => ({ ...prev, company: newVal || "" }))
                             }
-                            onInputChange={(e, newInputValue) => {
-                                if (newInputValue && !["OAS", "MLP", "KPCL", "TLPS", "KPCL BD"].includes(newInputValue)) {
-                                    setFormData(prev => ({ ...prev, company: newInputValue }));
-                                }
-                            }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}

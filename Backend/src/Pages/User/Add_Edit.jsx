@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Typography, Modal, TextField, MenuItem, IconButton, InputAdornment } from '@mui/material';
+import { Box, Button, Typography, Modal, TextField, MenuItem, IconButton, InputAdornment, Autocomplete } from '@mui/material';
 import { Visibility, VisibilityOff, Close as CloseIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { markEditedRowForHighlight } from '../../utils/datatableState';
+import { COMPANY_OPTIONS } from '../../utils/companies';
 
 const modalStyle = {
     position: 'absolute',
@@ -45,7 +46,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
 
     const validate = () => {
         const newErrors = {};
-        const { name, phone, username, email, password, userType, secret_code, designation } = formData;
+        const { name, phone, username, email, password, userType, secret_code, designation, assignedCompanies } = formData;
 
         if (!name) newErrors.name = 'Name is required.';
         if (!phone) newErrors.phone = 'Phone is required.';
@@ -55,6 +56,7 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
         if (!data && !password) newErrors.password = 'Password is required.';
         if (!secret_code) newErrors.secret_code = 'Secret Word is required.';
         if (!userType) newErrors.userType = 'User Type is required.';
+        if (!Array.isArray(assignedCompanies) || assignedCompanies.length === 0) newErrors.assignedCompanies = 'At least one assigned company is required.';
 
 
         if (!/^\d+$/.test(phone || '')) newErrors.phone = 'Phone number must contain numbers.';
@@ -70,7 +72,16 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setFormData((prev) => {
+            if (name === 'userType') {
+                return {
+                    ...prev,
+                    [name]: value,
+                    assignedCompanies: value === 'Admin' ? [...COMPANY_OPTIONS] : (Array.isArray(prev.assignedCompanies) ? prev.assignedCompanies : []),
+                };
+            }
+            return { ...prev, [name]: value };
+        });
         setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
@@ -142,6 +153,55 @@ export default function AddEditUser({ open, onClose, data, refreshData }) {
                     <MenuItem value="Surveyor">Surveyor</MenuItem>
                     <MenuItem value="Designer">Designer</MenuItem>
                 </TextField>
+                <Autocomplete
+                    multiple
+                    size="small"
+                    options={COMPANY_OPTIONS}
+                    value={Array.isArray(formData.assignedCompanies) ? formData.assignedCompanies : []}
+                    disableCloseOnSelect
+                    onChange={(_, value) => {
+                        setFormData((prev) => ({ ...prev, assignedCompanies: value }));
+                        setErrors((prev) => ({ ...prev, assignedCompanies: '' }));
+                    }}
+                    sx={{
+                        mt: 0.5,
+                        mb: 0.5,
+                        '& .MuiAutocomplete-inputRoot': {
+                            minHeight: 54,
+                            alignItems: 'center',
+                            borderRadius: '10px',
+                            backgroundColor: '#f8fafc',
+                            transition: 'all .2s ease',
+                        },
+                        '& .MuiAutocomplete-inputRoot.Mui-focused': {
+                            backgroundColor: '#ffffff',
+                            boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.12)',
+                        },
+                        '& .MuiAutocomplete-tag': {
+                            height: 26,
+                            borderRadius: '999px',
+                            backgroundColor: '#e2e8f0',
+                            color: '#1e293b',
+                            fontWeight: 600,
+                            border: '1px solid #cbd5e1',
+                            '& .MuiChip-deleteIcon': {
+                                color: '#64748b',
+                            },
+                            '& .MuiChip-deleteIcon:hover': {
+                                color: '#334155',
+                            },
+                        },
+                    }}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            margin="normal"
+                            label="Assigned Company*"
+                            error={!!errors.assignedCompanies}
+                            helperText={errors.assignedCompanies}
+                        />
+                    )}
+                />
 
                 {[
                     { name: 'name', label: 'Name*' },

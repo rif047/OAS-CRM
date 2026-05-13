@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MaterialReactTable } from 'material-react-table';
-import { Button } from '@mui/material';
+import { Button, Menu, MenuItem } from '@mui/material';
 import { mkConfig, generateCsv, download } from 'export-to-csv';
+import * as XLSX from 'xlsx';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IosShareTwoToneIcon from '@mui/icons-material/IosShareTwoTone';
@@ -53,16 +54,46 @@ function Datatable({
     const [copiedCodeKey, setCopiedCodeKey] = useState('');
     const [globalFilter, setGlobalFilter] = useState('');
     const [debouncedGlobalFilter, setDebouncedGlobalFilter] = useState('');
-    const [sorting, setSorting] = useState([]);
+    const [exportAnchorEl, setExportAnchorEl] = useState(null);
+    const defaultSortId = useMemo(() => {
+        const dateColumn = columns.find((column) => {
+            const candidates = [column.id, column.key, column.accessorKey]
+                .filter(Boolean)
+                .map((value) => String(value).toLowerCase());
+            return candidates.includes('createdat') || candidates.includes('created_at');
+        });
+
+        const fallbackColumn = columns.find((column) => {
+            const headerText = String(column?.header || '').toLowerCase().trim();
+            return headerText === 'date' || headerText === 'created';
+        });
+
+        const selected = dateColumn || fallbackColumn;
+        return selected ? (selected.id || selected.key || selected.accessorKey) : '';
+    }, [columns]);
+    const defaultSorting = useMemo(() => (
+        defaultSortId
+            ? [{ id: String(defaultSortId), desc: true }]
+            : []
+    ), [defaultSortId]);
+    const [sorting, setSorting] = useState(defaultSorting);
     const previousSearchRef = useRef('');
+    const tableContainerRef = useRef(null);
     const effectiveTotalRows = serverMode ? totalRows : data.length;
     const totalPages = Math.max(1, Math.ceil(effectiveTotalRows / Math.max(1, pagination.pageSize)));
     const currentPage = Math.min(totalPages, pagination.pageIndex + 1);
     const pageStart = effectiveTotalRows === 0 ? 0 : (pagination.pageIndex * pagination.pageSize) + 1;
     const pageEnd = Math.min(effectiveTotalRows, (pagination.pageIndex * pagination.pageSize) + pagination.pageSize);
 
-    const userType = localStorage.getItem("userType");
     const hasActionPermissions = Boolean(permissions?.canView || permissions?.canEdit || permissions?.canDelete);
+    const normalizeFilterValue = useCallback((value) => {
+        if (typeof value === 'string') return value;
+        if (value == null) return '';
+        if (typeof value === 'object' && value?.target && typeof value.target.value === 'string') {
+            return value.target.value;
+        }
+        return String(value);
+    }, []);
 
     useEffect(() => {
         localStorage.setItem(paginationStorageKey, JSON.stringify(pagination));
@@ -96,13 +127,13 @@ function Datatable({
 
     useEffect(() => {
         if (!serverMode) return;
-        const normalizedGlobalFilter = typeof globalFilter === 'string' ? globalFilter : String(globalFilter ?? '');
+        const normalizedGlobalFilter = normalizeFilterValue(globalFilter);
         const timeoutId = setTimeout(() => {
             setDebouncedGlobalFilter(normalizedGlobalFilter.trim());
         }, serverSearchDebounceMs);
 
         return () => clearTimeout(timeoutId);
-    }, [globalFilter, serverMode, serverSearchDebounceMs]);
+    }, [globalFilter, normalizeFilterValue, serverMode, serverSearchDebounceMs]);
 
     useEffect(() => {
         if (!serverMode) return;
@@ -110,6 +141,22 @@ function Datatable({
         previousSearchRef.current = debouncedGlobalFilter;
         setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
     }, [debouncedGlobalFilter, serverMode]);
+
+    useEffect(() => {
+        setSorting((prev) => {
+            if (!serverMode) return prev;
+            const prevPrimary = Array.isArray(prev) && prev.length ? prev[0] : null;
+            const nextPrimary = Array.isArray(defaultSorting) && defaultSorting.length ? defaultSorting[0] : null;
+            if (
+                prevPrimary?.id === nextPrimary?.id &&
+                prevPrimary?.desc === nextPrimary?.desc &&
+                prev.length === defaultSorting.length
+            ) {
+                return prev;
+            }
+            return defaultSorting;
+        });
+    }, [defaultSorting, serverMode]);
 
     useEffect(() => {
         const raw = sessionStorage.getItem(editedRowStorageKey);
@@ -157,40 +204,93 @@ function Datatable({
 
     useEffect(() => {
         if (!serverMode || typeof onServerQueryChange !== 'function') return;
-        const primarySort = Array.isArray(sorting) && sorting.length ? sorting[0] : null;
+        const primarySort = Array.isArray(sorting) && sorting.length
+            ? sorting[0]
+            : (defaultSorting[0] || null);
         onServerQueryChange({
             page: pagination.pageIndex + 1,
             limit: pagination.pageSize,
-            search: debouncedGlobalFilter,
+            search: normalizeFilterValue(debouncedGlobalFilter).trim(),
             sortBy: primarySort?.id || '',
             sortDir: primarySort?.desc ? 'desc' : 'asc',
         });
-    }, [debouncedGlobalFilter, onServerQueryChange, pagination.pageIndex, pagination.pageSize, serverMode, sorting]);
+    }, [debouncedGlobalFilter, defaultSorting, normalizeFilterValue, onServerQueryChange, pagination.pageIndex, pagination.pageSize, serverMode, sorting]);
 
     const handleGlobalFilterChange = useCallback((updater) => {
         setGlobalFilter((prev) => {
             const resolvedValue = typeof updater === 'function' ? updater(prev) : updater;
-            if (typeof resolvedValue === 'string') return resolvedValue;
-            if (resolvedValue == null) return '';
-            return String(resolvedValue);
+            return normalizeFilterValue(resolvedValue);
         });
-    }, []);
+    }, [normalizeFilterValue]);
+
+    useEffect(() => {
+        const container = tableContainerRef.current;
+        const query = normalizeFilterValue(globalFilter).trim();
+        if (!container) return;
+
+        const tbody = container.querySelector('.MuiTableBody-root');
+        if (!tbody) return;
+
+        // Reset previous manual highlights.
+        tbody.querySelectorAll('mark.crmSearchMark').forEach((node) => {
+            const textNode = document.createTextNode(node.textContent || '');
+            node.replaceWith(textNode);
+        });
+
+        if (!query) return;
+
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+        const walker = document.createTreeWalker(tbody, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        let currentNode;
+        while ((currentNode = walker.nextNode())) {
+            const parent = currentNode.parentElement;
+            if (!parent) continue;
+            if (parent.closest('mark.crmSearchMark')) continue;
+            if (parent.closest('button, input, textarea, select, svg')) continue;
+            if (!currentNode.nodeValue || !regex.test(currentNode.nodeValue)) continue;
+            regex.lastIndex = 0;
+            textNodes.push(currentNode);
+        }
+
+        textNodes.forEach((textNode) => {
+            const text = textNode.nodeValue || '';
+            if (!text) return;
+            const parts = text.split(regex);
+            if (parts.length <= 1) return;
+            const fragment = document.createDocumentFragment();
+            parts.forEach((part) => {
+                if (!part) return;
+                if (part.toLowerCase() === query.toLowerCase()) {
+                    const mark = document.createElement('mark');
+                    mark.className = 'crmSearchMark';
+                    mark.textContent = part;
+                    fragment.appendChild(mark);
+                } else {
+                    fragment.appendChild(document.createTextNode(part));
+                }
+            });
+            textNode.replaceWith(fragment);
+        });
+    }, [data, globalFilter, normalizeFilterValue, pagination.pageIndex, pagination.pageSize]);
 
 
-    const handleExportCsv = useCallback(() => {
-        const filteredData = data.map(row => {
+    const getExportableData = useCallback(() => {
+        return data.map((row) => {
             const filteredRow = { ...row };
-            EXCLUDED_FIELDS.forEach(field => delete filteredRow[field]);
+            EXCLUDED_FIELDS.forEach((field) => delete filteredRow[field]);
 
             for (const key in filteredRow) {
                 const item = filteredRow[key];
-                if (item?.name) {
-                    filteredRow[key] = item.name;
-                }
+                if (item?.name) filteredRow[key] = item.name;
             }
 
             return filteredRow;
         });
+    }, [data]);
+
+    const handleExportCsv = useCallback(() => {
+        const filteredData = getExportableData();
 
         const csvConfig = mkConfig({
             fieldSeparator: ',',
@@ -200,7 +300,17 @@ function Datatable({
 
         const csv = generateCsv(csvConfig)(filteredData);
         download(csvConfig)(csv);
-    }, [data]);
+        setExportAnchorEl(null);
+    }, [getExportableData]);
+
+    const handleExportExcel = useCallback(() => {
+        const filteredData = getExportableData();
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(filteredData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+        XLSX.writeFile(workbook, 'datatable_export.xlsx');
+        setExportAnchorEl(null);
+    }, [getExportableData]);
 
     const handleCopyText = useCallback(async (event, value) => {
         event.stopPropagation();
@@ -302,7 +412,9 @@ function Datatable({
                     Number.isInteger(staticRowIndex)
                         ? staticRowIndex
                         : Math.max(table.getRowModel().rows.findIndex((item) => item.id === row.id), 0);
-                const totalCount = serverMode ? totalRows : data.length;
+                const totalCount = serverMode
+                    ? totalRows
+                    : table.getFilteredRowModel().rows.length;
 
                 return Math.max(totalCount - (pageStartOffset + rowIndexOnCurrentPage), 0);
             },
@@ -405,16 +517,25 @@ function Datatable({
 
             enableFullScreenToggle={false}
             enableDensityToggle={false}
-            autoResetPageIndex={false}
-            initialState={{ density: 'compact', ...(serverMode ? { showGlobalFilter: true } : {}) }}
+            enableFilters={false}
+            enableColumnFilters={false}
+            enableFilterMatchHighlighting
+            autoResetPageIndex={!serverMode}
+            initialState={{
+                density: 'compact',
+                showGlobalFilter: true,
+                ...(defaultSorting.length ? { sorting: defaultSorting } : {}),
+            }}
             onPaginationChange={setPagination}
-            onGlobalFilterChange={serverMode ? handleGlobalFilterChange : undefined}
+            onGlobalFilterChange={handleGlobalFilterChange}
             onSortingChange={serverMode ? setSorting : undefined}
             state={{
                 pagination,
                 isLoading,
-                ...(serverMode ? { globalFilter, sorting } : {}),
+                globalFilter,
+                ...(serverMode ? { sorting } : {}),
             }}
+            globalFilterFn="includesString"
             paginationDisplayMode="pages"
             muiPaginationProps={{
                 rowsPerPageOptions: [10, 50, 100],
@@ -430,11 +551,13 @@ function Datatable({
             rowCount={serverMode ? totalRows : undefined}
             enableColumnActions={false}
             enableCellActions={true}
+            enableHiding={false}
             muiTablePaperProps={{
                 className: 'crmDataTablePaper',
             }}
             muiTableContainerProps={{
                 className: 'crmDataTableContainer',
+                ref: tableContainerRef,
             }}
             muiTopToolbarProps={{
                 className: 'crmDataTableToolbar',
@@ -448,15 +571,27 @@ function Datatable({
                     <span className="crmDataTableRowsBadge">{`${pageStart}-${pageEnd} of ${effectiveTotalRows}`}</span>
                 </section>
             )}
-            renderTopToolbarCustomActions={() =>
-                userType !== "Management" && (
-                    <section className="crmDataTableExportWrap">
-                        <Button className="text-black! capitalize!" onClick={handleExportCsv} startIcon={<IosShareTwoToneIcon />}>
-                            Export
-                        </Button>
-                    </section>
-                )
-            }
+            renderTopToolbarCustomActions={() => (
+                <section className="crmDataTableExportWrap">
+                    <Button
+                        className="text-black! capitalize!"
+                        onClick={(event) => setExportAnchorEl(event.currentTarget)}
+                        startIcon={<IosShareTwoToneIcon />}
+                    >
+                        Export
+                    </Button>
+                    <Menu
+                        anchorEl={exportAnchorEl}
+                        open={Boolean(exportAnchorEl)}
+                        onClose={() => setExportAnchorEl(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                    >
+                        <MenuItem onClick={handleExportCsv}>Export CSV</MenuItem>
+                        <MenuItem onClick={handleExportExcel}>Export Excel (.xlsx)</MenuItem>
+                    </Menu>
+                </section>
+            )}
 
         />
     );

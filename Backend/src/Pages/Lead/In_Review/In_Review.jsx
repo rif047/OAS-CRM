@@ -16,6 +16,7 @@ import LeadPaymentModal from '../../../Components/LeadPaymentModal';
 import PaymentCell from '../../../Components/Datatable/PaymentCell';
 import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 import { ensureLeadDetail } from '../../../utils/leadDetails';
+import { parseMoney, resolveLeadDueAmount } from '../../../utils/payment';
 
 
 export default function In_Review() {
@@ -59,10 +60,6 @@ export default function In_Review() {
     });
     const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
-    const parseMoney = (value) => {
-        const numeric = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
-        return Number.isFinite(numeric) ? numeric : 0;
-    };
     const loadLeadDetail = useCallback(async (row) => {
         try {
             return await ensureLeadDetail(row);
@@ -127,7 +124,7 @@ export default function In_Review() {
         const fullRow = await loadLeadDetail(row);
         if (!fullRow) return;
         setSelectedRow(fullRow);
-        const existingDue = parseMoney(fullRow?.payment_due_amount);
+        const existingDue = resolveLeadDueAmount(fullRow);
 
         setForm({
             agent: loggedUser?.name || "",
@@ -144,7 +141,7 @@ export default function In_Review() {
     };
 
     const handleStatusSubmit = async () => {
-        const dueAmount = parseMoney(selectedRow?.payment_due_amount);
+        const dueAmount = resolveLeadDueAmount(selectedRow);
         const collectAmount = parseMoney(closePaymentForm.amount);
         const collectDiscount = parseMoney(closePaymentForm.discount_given);
 
@@ -313,28 +310,38 @@ export default function In_Review() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const highlightMatch = (text, query) => {
+        const source = String(text ?? "");
+        const q = String(query ?? "").trim();
+        if (!q) return source;
+        const parts = source.split(new RegExp(`(${escapeRegex(q)})`, "ig"));
+        return parts.map((part, idx) => (
+            part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part
+        ));
+    };
+
     const renderClientWithCompany = (row) => {
         const clientName = row.client?.name || "N/A";
         const companyName = row.client?.company?.trim() ? row.client.company : null;
         const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+        const contactText = row.client?.phone && row.client?.email
+            ? `${row.client.phone} (${row.client.email})`
+            : (row.client?.phone || row.client?.email || "");
 
         return (
             <div className="max-w-60 min-w-0">
-                <p className="truncate text-slate-700" title={displayText}>{displayText}</p>
+                <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
                 {(row.client?.phone || row.client?.email) && (
                     <p
                         className="truncate text-xs text-slate-500 cursor-copy"
-                        title={`Click to copy: ${row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}`}
+                        title={`Click to copy: ${contactText}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            navigator.clipboard?.writeText(
-                                row.client?.phone && row.client?.email
-                                    ? `${row.client.phone} (${row.client.email})`
-                                    : (row.client?.phone || row.client?.email || "")
-                            );
+                            navigator.clipboard?.writeText(contactText);
                         }}
                     >
-                        {row.client?.phone && row.client?.email ? `${row.client.phone} (${row.client.email})` : (row.client?.phone || row.client?.email)}
+                        {highlightMatch(contactText, tableQuery.search)}
                     </p>
                 )}
             </div>
@@ -437,7 +444,7 @@ export default function In_Review() {
     ];
 
     const paymentHistory = Array.isArray(selectedRow?.payment_history) ? selectedRow.payment_history : [];
-    const dueAmount = parseMoney(selectedRow?.payment_due_amount);
+    const dueAmount = resolveLeadDueAmount(selectedRow);
     const receivedAmount = parseMoney(selectedRow?.payment_received_total);
     const collectAmount = parseMoney(closePaymentForm.amount);
     const collectDiscount = parseMoney(closePaymentForm.discount_given);

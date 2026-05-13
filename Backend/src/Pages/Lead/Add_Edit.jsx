@@ -6,6 +6,7 @@ import axios from "axios";
 import AddEditClient from "../Client/Add_Edit";
 import RichTextEditor from "../../Components/RichTextEditor";
 import { markEditedRowForHighlight } from '../../utils/datatableState';
+import { getAssignedCompaniesFromUser } from "../../utils/companies";
 
 const modalStyle = {
     position: "absolute",
@@ -43,6 +44,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
         description: "",
     });
     const [clientModalOpen, setClientModalOpen] = useState(false);
+    const [companyOptions, setCompanyOptions] = useState([]);
 
 
     const serviceOptions = [
@@ -150,6 +152,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
 
     useEffect(() => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
+        setCompanyOptions(getAssignedCompaniesFromUser());
 
         if (data) {
             setFormData((prev) => ({
@@ -240,17 +243,11 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                             handleHomeEndKeys
                             sx={{ flex: 1 }}
                             size="small"
-                            freeSolo
-                            options={["OAS", "MLP", "KPCL", "TLPS", "KPCL BD"]}
+                            options={companyOptions}
                             value={formData.company || null}
                             onChange={(e, newVal) =>
                                 setFormData(prev => ({ ...prev, company: newVal || "" }))
                             }
-                            onInputChange={(e, newInputValue) => {
-                                if (newInputValue && !["OAS", "MLP", "KPCL", "TLPS", "KPCL BD"].includes(newInputValue)) {
-                                    setFormData(prev => ({ ...prev, company: newInputValue }));
-                                }
-                            }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
