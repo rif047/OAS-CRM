@@ -4,7 +4,8 @@
   "description": "",
   "main": "Server.js",
   "scripts": {
-    "start": "nodemon Server.js",
+    "start": "node Server.js",
+    "dev": "nodemon Server.js",
     "bench:load": "node scripts/load_test.js",
     "bench:mongo": "node scripts/mongo_benchmark.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -13,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",

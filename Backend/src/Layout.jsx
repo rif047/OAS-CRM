@@ -16,8 +16,8 @@ function Layout({ children }) {
                     <TopHeader />
                 </header>
 
-                <section className="min-h-0 flex-1 overflow-auto bg-[#f2f2f2]">
-                    <div className="mx-auto my-3 w-full max-w-[1700px] px-2 sm:my-4 sm:px-4 lg:px-5 xl:px-6">
+                <section className="min-h-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_top,#eaf2ff_0%,#f4f7fc_42%,#eef2f7_100%)]">
+                    <div className="mx-auto my-3 w-full max-w-[1820px] px-2 sm:my-4 sm:px-4 lg:my-5 lg:px-5 xl:px-6">
                         <main> {children} </main>
                     </div>
                 </section>

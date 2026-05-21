@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
-import { NavLink } from "react-router-dom";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import { NavLink, useLocation } from "react-router-dom";
 import ListIcon from "@mui/icons-material/List";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
@@ -13,6 +12,7 @@ import SideMenu from "./SideMenu";
 import { formatLondonInputDate } from "../utils/formatters";
 
 export default function TopHeader() {
+    const location = useLocation();
     const userType = localStorage.getItem("userType");
 
     const [showMenu, setShowMenu] = useState(false);
@@ -28,8 +28,10 @@ export default function TopHeader() {
     const debounceTimer = useRef(null);
     const searchRef = useRef(null);
     const resultsRef = useRef(null);
+    const profileRef = useRef(null);
 
-    const pathName = window.location.pathname.split("/").slice(1, 3).join(" > ");
+    const pathName = location.pathname.split("/").slice(1, 3).join(" > ");
+    const userInitial = (userName?.trim()?.[0] || "U").toUpperCase();
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -80,6 +82,37 @@ export default function TopHeader() {
             }
         };
     }, []);
+
+    useEffect(() => {
+        const closeProfileIfOutside = (e) => {
+            if (profileRef.current && !profileRef.current.contains(e.target)) {
+                setShowLogout(false);
+            }
+        };
+
+        const closeOnEscape = (e) => {
+            if (e.key === "Escape") {
+                setShowLogout(false);
+                setShowMenu(false);
+            }
+        };
+
+        if (showLogout) {
+            document.addEventListener("mousedown", closeProfileIfOutside);
+            document.addEventListener("keydown", closeOnEscape);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", closeProfileIfOutside);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [showLogout]);
+
+    useEffect(() => {
+        setShowLogout(false);
+        setShowMenu(false);
+        setShowResults(false);
+    }, [location.pathname]);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -152,23 +185,24 @@ export default function TopHeader() {
     }, []);
 
     return (
-        <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur-md shadow-sm">
-            <div className="mx-auto w-full max-w-[1700px] px-2 sm:px-4 lg:px-5 xl:px-6">
-                <div className="flex min-h-[60px] flex-wrap items-center gap-2 py-2 md:flex-nowrap md:justify-between md:py-0">
-                    <div className="min-w-0 flex items-center gap-2">
-                        <EastIcon className="text-gray-600" />
-                        <h1 className="truncate text-sm font-semibold tracking-wide text-gray-800 uppercase sm:text-base md:text-lg">
-                            {pathName || "Dashboard"}
-                        </h1>
+        <header className="crm-top-header sticky top-0 z-40">
+            <div className="mx-auto w-full max-w-[1820px] px-2 sm:px-4 lg:px-5 xl:px-6">
+                <div className="flex min-h-[68px] flex-wrap items-center gap-2 py-2 md:flex-nowrap md:justify-between md:py-0">
+                    <div className="crm-header-path min-w-0 px-2.5 py-1.5">
+                        <div className="flex items-center gap-2">
+                            <span className="crm-header-path-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-lg">
+                                <EastIcon fontSize="small" />
+                            </span>
+                            <h1 className="crm-header-path-title truncate text-[13px] font-semibold tracking-wide uppercase sm:text-sm md:text-base">
+                                {pathName || "Dashboard"}
+                            </h1>
+                        </div>
                     </div>
 
                     {(userType === "Admin" || userType === "Management") && (
-                        <div className="order-3 relative w-full md:order-none md:mx-4 md:max-w-[420px] md:flex-1" ref={searchRef}>
-                            <div className={`relative transition-all duration-300 rounded-xl ${focused
-                                ? "shadow-[0_0_0_3px_rgba(156,163,175,0.3)] border-gray-400"
-                                : "shadow-sm border-gray-200"
-                                } border bg-white/70 backdrop-blur-md`}>
-                                <SearchIcon className="absolute left-3 top-2.5 text-gray-600" fontSize="small" />
+                        <div className="order-3 relative w-full md:order-0 md:mx-4 md:max-w-[460px] md:flex-1" ref={searchRef}>
+                            <div className={`crm-top-search-box relative rounded-xl transition-all duration-300 ${focused ? "is-focused" : ""}`}>
+                                <SearchIcon className="crm-top-search-icon absolute left-3 top-2.5" fontSize="small" />
                                 <input
                                     type="text"
                                     placeholder="Quick search..."
@@ -176,14 +210,14 @@ export default function TopHeader() {
                                     onChange={handleSearch}
                                     onFocus={() => setFocused(true)}
                                     onBlur={() => setFocused(false)}
-                                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-transparent rounded-full outline-none text-gray-700 placeholder:text-gray-400"
+                                    className="crm-top-search-input w-full rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none"
                                 />
                             </div>
 
                             {showResults && (
                                 <div
                                     ref={resultsRef}
-                                    className="animate-fade-down absolute top-13 left-0 z-50 max-h-[70vh] w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl md:left-1/2 md:w-[600px] md:-translate-x-1/2"
+                                    className="crm-top-search-results animate-fade-down absolute top-13 left-0 z-50 max-h-[70vh] w-full overflow-hidden rounded-2xl md:left-1/2 md:w-[600px] md:-translate-x-1/2"
                                 >
                                     <div className="overflow-y-auto max-h-[calc(70vh-50px)] p-4">
                                         {loading ? (
@@ -331,29 +365,43 @@ export default function TopHeader() {
                         </div>
                     )}
 
-                    <div className="ml-auto flex items-center gap-3 md:ml-0 md:gap-5">
-                        <div className="relative hidden md:flex items-center">
+                    <div className="ml-auto flex items-center gap-2 md:ml-0 md:gap-3">
+                        <div ref={profileRef} className="relative hidden md:block">
                             <button
                                 onClick={() => setShowLogout(!showLogout)}
-                                className="flex items-center gap-2 py-1 px-4 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 cursor-pointer"
+                                aria-label="Open account menu"
+                                aria-expanded={showLogout}
+                                className={`crm-top-profile-btn flex items-center gap-3 rounded-xl px-2.5 py-1.5 transition-all duration-200 cursor-pointer ${showLogout ? "is-open" : ""}`}
                             >
-                                <div className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full">
-                                    <PersonRoundedIcon className="text-gray-600" fontSize="small" />
+                                <div className="crm-top-profile-avatar flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white">
+                                    {userInitial}
                                 </div>
-                                {userName && <span className="font-medium text-gray-700 capitalize">{userName}</span>}
+                                <div className="flex flex-col items-start leading-tight">
+                                    <span className="max-w-[150px] truncate text-sm font-semibold text-slate-800 capitalize">
+                                        {userName || "User"}
+                                    </span>
+                                    <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                                        {userType || "Team Member"}
+                                    </span>
+                                </div>
+                                <ExpandMoreIcon
+                                    fontSize="small"
+                                    className={`crm-top-profile-arrow transition-transform duration-200 ${showLogout ? "rotate-180" : ""}`}
+                                />
                             </button>
 
                             {showLogout && (
-                                <div className="absolute right-0 top-12 w-44 bg-white shadow-lg rounded-xl border border-gray-100 animate-fade-down z-30">
+                                <div className="crm-top-profile-dropdown absolute right-0 top-13 z-30 w-52 overflow-hidden rounded-xl animate-fade-down">
                                     <NavLink
                                         to="/settings"
-                                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
+                                        className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                                        onClick={() => setShowLogout(false)}
                                     >
                                         <SettingsOutlinedIcon fontSize="small" /> Settings
                                     </NavLink>
                                     <button
                                         onClick={handleLogout}
-                                        className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
+                                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
                                     >
                                         <LogoutOutlinedIcon fontSize="small" /> Logout
                                     </button>
@@ -362,7 +410,9 @@ export default function TopHeader() {
                         </div>
 
                         <button
-                            className="rounded-md border border-gray-300 p-2 transition hover:bg-gray-100 md:hidden"
+                            type="button"
+                            aria-label="Open menu"
+                            className="crm-top-mobile-btn rounded-lg p-2 transition md:hidden"
                             onClick={() => setShowMenu(!showMenu)}
                         >
                             <ListIcon />

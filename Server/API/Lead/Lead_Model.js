@@ -123,9 +123,43 @@ const LeadSchema = Mongoose.Schema({
     description: {
         type: String
     },
-}, { timestamps: true })
+    payment_received_total: {
+        type: Number,
+        default: 0
+    },
+    payment_discount_total: {
+        type: Number,
+        default: 0
+    },
+    payment_due_amount: {
+        type: Number,
+        default: 0
+    },
+    payment_cycle: {
+        type: Number,
+        default: 1
+    },
+    payment_history: [{
+        paid_amount: { type: Number, default: 0 },
+        discount_given: { type: Number, default: 0 },
+        note: { type: String, default: '' },
+        paid_at: { type: Date, default: Date.now },
+        agent: { type: String, default: '' },
+        stage: { type: String, default: '' },
+        cycle: { type: Number, default: 1 },
+    }],
+}, { timestamps: true, optimisticConcurrency: true })
 
 LeadSchema.index({ status: 1, company: 1, createdAt: -1 });
+LeadSchema.index({ company: 1 });
+LeadSchema.index({ status: 1 });
+LeadSchema.index({ createdAt: -1 });
+LeadSchema.index({ status: 1, in_quote_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, in_survey_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, in_design_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, in_review_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, close_date: -1, updatedAt: -1, createdAt: -1 });
+LeadSchema.index({ status: 1, lost_date: -1, updatedAt: -1, createdAt: -1 });
 LeadSchema.index({ client: 1 });
 LeadSchema.index({ stage: 1 });
 

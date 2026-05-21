@@ -1,9 +1,13 @@
 .crmDataTablePaper {
-    border: 1px solid #F0F0F0 !important;
-    border-radius: 0.75rem !important;
+    border: 1px solid #d9e1ec !important;
+    border-radius: 0 !important;
     overflow: hidden !important;
-    box-shadow: none !important;
-    --Paper-shadow: none !important;
+    box-shadow: 0 10px 30px rgb(15 23 42 / 7%) !important;
+    --Paper-shadow: 0 10px 30px rgb(15 23 42 / 7%) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+    --crm-pagination-accent: #5e7978;
+    --crm-pagination-accent-dark: #4d6463;
+    --crm-pagination-accent-soft: #edf4f1;
 }
 
 .crmDataTablePaper .MuiPaper-root {
@@ -12,14 +16,16 @@
 }
 
 .crmDataTableToolbar {
-    min-height: 48px !important;
-    padding: 8px 10px !important;
-    border-bottom: 1px solid #F0F0F0 !important;
+    min-height: 50px !important;
+    padding: 0 !important;
+    border-bottom: 1px solid #e4eaf3 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
 }
 
 .crmDataTableFooter {
-    border-top: 1px solid #F0F0F0 !important;
-    min-height: 48px !important;
+    border-top: 1px solid #e4eaf3 !important;
+    min-height: 50px !important;
+    background: linear-gradient(180deg, #fcfdff 0%, #f7faff 100%) !important;
 }
 
 .crmDataTableContainer {
@@ -31,26 +37,63 @@
 }
 
 .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root {
-    font-family: 'PT Sans', sans-serif !important;
-    letter-spacing: 2px !important;
-    font-size: 0.78rem !important;
+    font-family: 'Source Sans 3', sans-serif !important;
+    letter-spacing: 0.75px !important;
+    font-size: 0.73rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
     text-transform: uppercase !important;
-    border: 1px solid #F0F0F0 !important;
-    background-color: #a6adb8 !important;
-    color: black !important;
+    border: 1px solid #d6deea !important;
+    background: linear-gradient(180deg, #b9c2cf 0%, #a7b1be 100%) !important;
+    color: #111827 !important;
     padding: 10px 8px !important;
 }
 
 .crmDataTablePaper .MuiTableBody-root .MuiTableCell-root {
-    font-family: 'PT Sans', sans-serif !important;
-    color: #4F5664 !important;
-    border: 1px solid #F0F0F0 !important;
-    padding: 10px 8px !important;
+    font-family: 'Source Sans 3', sans-serif !important;
+    font-size: 0.8rem !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+    color: #334155 !important;
+    border: 1px solid #e6ebf3 !important;
+    padding: 8px 7px !important;
     vertical-align: middle !important;
 }
 
+.crmDataTablePaper mark,
+.crmDataTablePaper .MuiTableBody-root mark,
+.crmDataTablePaper .MuiTableHead-root mark {
+    background: #ffcb7f !important;
+    color: #1f2937 !important;
+    padding: 0 2px !important;
+    border-radius: 3px !important;
+}
+
+.crmDataTablePaper mark.crmSearchMark {
+    background: #ffcb7f !important;
+    color: #1f2937 !important;
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableRow-root:nth-of-type(2n) {
+    background-color: #fbfcff !important;
+}
+
 .crmDataTablePaper .MuiTableBody-root .MuiTableRow-root:hover {
-    background-color: #f2f2f2 !important;
+    background: linear-gradient(180deg, #f8fbff 0%, #f1f6fd 100%) !important;
+}
+
+@keyframes crmRowFadeHighlightBg {
+    0% {
+        background-color: rgba(253, 224, 71, 0.44);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableRow-root.crmRowHighlight td {
+    animation: crmRowFadeHighlightBg 5s ease-out forwards;
 }
 
 .crmDataTablePaper .MuiTableCell-root:first-child > div,
@@ -65,9 +108,18 @@
 }
 
 .crmDataTableExportWrap .MuiButton-root {
-    border-radius: 0.5rem !important;
+    border: 1px solid #d2dcea !important;
+    border-radius: 999px !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%) !important;
+    color: #1f3353 !important;
     font-weight: 700 !important;
-    padding: 4px 10px !important;
+    padding: 4px 12px !important;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.crmDataTableExportWrap .MuiButton-root:hover {
+    border-color: #becce0 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%) !important;
 }
 
 .tableActionGroup {
@@ -81,6 +133,169 @@
     margin: 0 auto;
 }
 
+.crmSetStatusGroup {
+    gap: 6px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.crmSetStatusGroup button {
+    min-height: 25px;
+    padding: 3px 8px !important;
+    border: 1px solid #ccd5e2 !important;
+    border-right-width: 1px !important;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+    box-shadow:
+        0 1px 1px rgb(15 23 42 / 0.05),
+        inset 0 1px 0 rgb(255 255 255 / 0.8);
+    transition: all 0.18s ease, box-shadow 0.22s ease, border-color 0.18s ease;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+}
+
+.crmSetStatusGroup button:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 10px rgb(15 23 42 / 0.12),
+        inset 0 1px 0 rgb(255 255 255 / 0.85);
+    border-color: #b8c5d8 !important;
+}
+
+.crmSetStatusGroup button:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 1px;
+}
+
+.crmSetStatusGroup button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
+.crmSetStatusGroup button span {
+    font-size: 0.69rem !important;
+    line-height: 1.1 !important;
+}
+
+.crmSetStatusGroup .MuiSvgIcon-root {
+    font-size: 0.9rem !important;
+}
+
+.crmStageBtn {
+    min-height: 25px;
+    padding: 3px 10px;
+    border: 1px solid #cfd7e3;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f8fafd 0%, #eef3f8 100%);
+    color: #243b5a;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    box-shadow:
+        0 1px 1px rgb(15 23 42 / 0.06),
+        inset 0 1px 0 rgb(255 255 255 / 0.85);
+    transition: all 0.18s ease, box-shadow 0.22s ease;
+}
+
+.crmStageBtn:hover {
+    transform: translateY(-1px);
+    border-color: #bcc9db;
+    box-shadow:
+        0 4px 10px rgb(15 23 42 / 0.12),
+        inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.crmStageBtn:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 1px;
+}
+
+.crmStageBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
+.crmPaymentCellWrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+}
+
+.crmPaymentMeta {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    white-space: nowrap;
+}
+
+.crmPaymentMeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 0.61rem;
+    font-weight: 500;
+    color: #334155;
+    border: 0;
+    background: transparent;
+    line-height: 1.05;
+}
+
+.crmPaymentMeta span b {
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.crmPaymentBtn {
+    min-height: 30px;
+    min-width: 78px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 11px;
+    border: 1px solid #38bdf8;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+    color: #0c4a6e;
+    font-size: 0.69rem;
+    font-weight: 700;
+    letter-spacing: 0.28px;
+    text-transform: uppercase;
+    line-height: 1.1;
+    cursor: pointer;
+    box-shadow:
+        0 1px 1px rgb(15 23 42 / 0.06),
+        inset 0 1px 0 rgb(255 255 255 / 0.86);
+    transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.crmPaymentBtn:hover {
+    border-color: #0ea5e9;
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 12px rgb(14 165 233 / 22%),
+        inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.crmPaymentBtn:focus-visible {
+    outline: 2px solid #7dd3fc;
+    outline-offset: 1px;
+}
+
+.crmPaymentBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
 .actionBtn {
     width: 32px;
     height: 28px;
@@ -91,9 +306,11 @@
     justify-content: center;
     padding: 0 !important;
     border: 0;
-    border-radius: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d7e0ec;
     line-height: 1;
     cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease;
 }
 
 .actionBtn .MuiSvgIcon-root {
@@ -103,43 +320,321 @@
 }
 
 .actionBtnView {
-    background-color: #dbeafe;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1d4ed8;
 }
 
 .actionBtnView:hover {
-    background-color: #93c5fd;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 22%);
 }
 
 .actionBtnEdit {
-    background-color: #ffedd5;
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+    color: #92400e;
 }
 
 .actionBtnEdit:hover {
-    background-color: #fdba74;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-color: #fdba74;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(249 115 22 / 22%);
 }
 
 .actionBtnDelete {
-    background-color: #fee2e2;
+    background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
     color: #ef4444;
 }
 
 .actionBtnDelete:hover {
-    background-color: #fecaca;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-color: #fda4af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(239 68 68 / 20%);
+}
+
+.crmDataTablePaper .MuiTablePagination-root,
+.crmDataTablePaper .MuiTablePagination-toolbar,
+.crmDataTablePaper .MuiIconButton-root,
+.crmDataTablePaper .MuiSelect-select,
+.crmDataTablePaper .MuiInputBase-input {
+    color: #334155 !important;
+}
+
+.crmDataTableFooter {
+    padding: 8px 12px !important;
+}
+
+.crmDataTableFooter>div {
+    padding: 0 !important;
+}
+
+.crmDataTablePaginationMeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.crmDataTablePageBadge,
+.crmDataTableRowsBadge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d6e2f0;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff 0%, #f3f7fd 100%);
+    color: #1e3a5f;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.1px;
+    padding: 6px 11px;
+}
+
+.crmDataTableRowsBadge {
+    color: #334155;
+    font-weight: 600;
+}
+
+.crmDataTablePaper .MuiTablePagination-root {
+    gap: 10px !important;
+    padding: 6px 10px !important;
+    border: 1px solid #d9e4f2;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f6fd 100%);
+}
+
+.crmDataTablePaper .MuiTablePagination-root .MuiInputLabel-root {
+    margin: 0 !important;
+    color: #475569 !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+}
+
+.crmDataTablePaper .MuiTablePagination-root .MuiSelect-select {
+    border: 1px solid #c7d6e8 !important;
+    border-radius: 999px !important;
+    padding: 4px 26px 4px 12px !important;
+    background: #ffffff !important;
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+}
+
+.crmDataTablePaper .MuiTablePagination-root .MuiSvgIcon-root {
+    color: #475569 !important;
+}
+
+.crmDataTablePaper .MuiPagination-ul {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.crmDataTablePaper .MuiPaginationItem-root {
+    min-width: 32px;
+    height: 32px;
+    margin: 0 !important;
+    border: 1px solid #d1dceb;
+    border-radius: 10px;
+    color: #334155;
+    font-size: 0.79rem;
+    font-weight: 700;
+    background: #ffffff;
+    transition: all 0.16s ease;
+}
+
+.crmDataTablePaper .MuiPaginationItem-root:hover {
+    border-color: #b7c8de;
+    background: var(--crm-pagination-accent-soft);
+}
+
+.crmDataTablePaper .MuiPaginationItem-root.Mui-selected {
+    border-color: var(--crm-pagination-accent);
+    background: linear-gradient(180deg, var(--crm-pagination-accent) 0%, var(--crm-pagination-accent-dark) 100%);
+    color: #ffffff;
+    box-shadow: 0 6px 12px rgb(109 145 132 / 28%);
+}
+
+.crmDataTablePaper .MuiPaginationItem-root.Mui-selected:hover {
+    background: linear-gradient(180deg, var(--crm-pagination-accent-dark) 0%, #4e6a60 100%);
+}
+
+.crmDataTablePaper .MuiPaginationItem-root.Mui-disabled {
+    opacity: 0.45;
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableCell-root p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.crmDataTablePaper .MuiTableBody-root .MuiTableCell-root .text-xs {
+    font-size: 0.72rem !important;
+    line-height: 1.25 !important;
+}
+
+.crmDataTablePaper .MuiIconButton-root {
+    border-radius: 8px !important;
+}
+
+.crmDataTablePaper .MuiIconButton-root:hover {
+    background-color: #eaf2ff !important;
+}
+
+.leadPageShell {
+    overflow: hidden;
+    border: 1px solid #d7e2ef;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    box-shadow:
+        0 16px 36px rgb(15 23 42 / 8%),
+        0 2px 8px rgb(15 23 42 / 4%);
+}
+
+.leadPageHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 13px 14px;
+    border-bottom: 1px solid #d8e2ef;
+    background:
+        radial-gradient(circle at top right, rgb(148 163 184 / 20%) 0%, transparent 56%),
+        linear-gradient(135deg, #334155 0%, #475569 52%, #3a4a5d 100%);
+}
+
+.leadPageHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+}
+
+.leadPageTitle {
+    font-size: 1.03rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: #fff;
+}
+
+.leadPageCount {
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 30%);
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    background: rgb(255 255 255 / 12%);
+}
+
+.leadPageHeaderActions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leadPageFilterSelect {
+    height: 38px;
+    min-width: 172px;
+    border-radius: 0.62rem;
+    border: 1px solid #94a3b8;
+    background: linear-gradient(180deg, #3f4d66 0%, #37465f 100%);
+    padding: 0 12px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #f8fafc;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.leadPageFilterSelect:focus {
+    border-color: #bdd1f5;
+    box-shadow: 0 0 0 2px rgb(191 219 254 / 35%);
+}
+
+.leadPageFilterSelect option {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+.leadPagePrimaryBtn {
+    height: 38px;
+    min-width: 118px;
+    border: 1px solid #d6deea;
+    border-radius: 0.62rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f6fd 100%);
+    color: #1f3353;
+    padding: 0 16px;
+    font-size: 0.87rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease;
+}
+
+.leadPagePrimaryBtn:hover {
+    transform: translateY(-1px);
+    border-color: #b9c8dd;
+    box-shadow: 0 8px 16px rgb(15 23 42 / 16%);
+}
+
+.leadPageTableWrap {
+    padding: 0;
+    background: linear-gradient(180deg, #f8fbff 0%, #f3f7fd 100%);
+}
+
+@media (min-width: 768px) {
+    .leadPageHeader {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .leadPageHeaderActions {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .leadPageTableWrap {
+        padding: 0;
+    }
 }
 
 @media (max-width: 768px) {
     .crmDataTableToolbar,
     .crmDataTableFooter {
-        padding: 6px 8px !important;
+        padding: 0 !important;
+    }
+
+    .crmDataTableFooter>div {
+        gap: 8px;
+        justify-content: center !important;
+        padding: 8px 6px !important;
+    }
+
+    .crmDataTablePaginationMeta {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .crmDataTablePageBadge,
+    .crmDataTableRowsBadge {
+        justify-content: center;
+        flex: 1 1 auto;
+    }
+
+    .crmDataTablePaper .MuiTablePagination-root {
+        justify-content: center !important;
+    }
+
+    .crmDataTablePaper .MuiPaginationItem-root {
+        min-width: 30px;
+        height: 30px;
+        font-size: 0.74rem;
     }
 
     .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root,
     .crmDataTablePaper .MuiTableBody-root .MuiTableCell-root {
         padding: 8px 6px !important;
-        font-size: 0.78rem !important;
+        font-size: 0.74rem !important;
     }
 
     .crmDataTablePaper .MuiTableHead-root .MuiTableCell-root {
@@ -148,5 +643,18 @@
 
     .tableActionGroup {
         gap: 6px;
+    }
+
+    .leadPageFilterSelect,
+    .leadPagePrimaryBtn {
+        width: 100%;
+    }
+
+    .leadPageTitle {
+        font-size: 0.98rem;
+    }
+
+    .leadPageTableWrap {
+        padding: 0;
     }
 }

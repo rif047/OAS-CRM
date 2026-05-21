@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import AddEditClient from "../../Client/Add_Edit";
 import RichTextEditor from "../../../Components/RichTextEditor";
+import { markEditedRowForHighlight } from '../../../utils/datatableState';
 
 const modalStyle = {
     position: "absolute",
@@ -146,7 +147,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users/options`);
             setSurveyors(res.data.filter(user => user.userType === "Surveyor"));
         } catch {
             toast.error("Failed to fetch users.");
@@ -202,6 +203,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
             const method = data?._id ? "patch" : "post";
 
             await axios[method](url, formData, { headers: { "Content-Type": "application/json" }, });
+            if (data?._id) markEditedRowForHighlight(data._id);
 
             toast.success(data?._id ? "Updated successfully." : "Created successfully.");
             refreshData();
@@ -247,17 +249,11 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                             handleHomeEndKeys
                             sx={{ flex: 1 }}
                             size="small"
-                            freeSolo
-                            options={["OAS", "MLP", "KPCL", "TLPS", "KPCL BD"]}
+                            options={["OAS", "MLP", "KPCL", "A2Z", "TLPS", "KPCL BD"]}
                             value={formData.company || null}
                             onChange={(e, newVal) =>
                                 setFormData(prev => ({ ...prev, company: newVal || "" }))
                             }
-                            onInputChange={(e, newInputValue) => {
-                                if (newInputValue && !["OAS", "MLP", "KPCL", "TLPS", "KPCL BD"].includes(newInputValue)) {
-                                    setFormData(prev => ({ ...prev, company: newInputValue }));
-                                }
-                            }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
@@ -279,7 +275,7 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
                             sx={{ flex: 1 }}
                             size="small"
                             options={clients}
-                            getOptionLabel={(o) => o ? `${o.name} (${o.phone})` : ""}
+                            getOptionLabel={(o) => o ? `${o.name}${o.company?.trim() ? ` (${o.company})` : ""}` : ""}
                             value={clients.find(o => o._id === formData.client) || null}
                             onChange={(e, newVal) =>
                                 setFormData(prev => ({ ...prev, client: newVal?._id || "" }))

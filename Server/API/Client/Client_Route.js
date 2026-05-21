@@ -9,11 +9,11 @@ const { Clients, Create, BulkImport, View, Update, Delete } = require('./Client_
 
 Route.param('id', validateObjectId('id'));
 
-Route.get('/', asyncHandler(Clients))
-Route.post('/', asyncHandler(Create))
-Route.post('/bulk', asyncHandler(BulkImport));
-Route.get('/:id', asyncHandler(View))
-Route.patch('/:id', asyncHandler(Update))
+Route.get('/', authorize('Admin', 'Management', 'Surveyor', 'Designer'), asyncHandler(Clients))
+Route.post('/', authorize('Admin', 'Management'), asyncHandler(Create))
+Route.post('/bulk', authorize('Admin', 'Management'), asyncHandler(BulkImport));
+Route.get('/:id', authorize('Admin', 'Management', 'Surveyor', 'Designer'), asyncHandler(View))
+Route.patch('/:id', authorize('Admin', 'Management'), asyncHandler(Update))
 Route.delete('/:id', authorize('Admin'), asyncHandler(Delete))
 
 

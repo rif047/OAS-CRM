@@ -1,6 +1,10 @@
 const jwt = require("jsonwebtoken");
 
 const Check_Login = (req, res, next) => {
+    if (!process.env.JWT_SECRET) {
+        return res.status(500).json({ error: "Server authentication is not configured" });
+    }
+
     const { authorization } = req.headers;
 
     if (!authorization || !authorization.startsWith("Bearer ")) { return res.status(401).json({ error: "Unauthorized access!" }); }
@@ -12,6 +16,8 @@ const Check_Login = (req, res, next) => {
         req.userId = decoded.userId;
         req.userType = decoded.userType;
         req.username = decoded.username;
+        req.name = decoded.name;
+        req.assignedCompanies = Array.isArray(decoded.assignedCompanies) ? decoded.assignedCompanies : [];
         next();
     } catch (err) {
         console.log("Token verification failed:", err?.message || err);

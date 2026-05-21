@@ -3,6 +3,7 @@ const User = require("../User/User_Model");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const { authenticateBuiltinAdmin } = require("../../Config/Builtin_Admin");
+const { sanitizeAssignedCompanies, COMPANY_OPTIONS } = require('../../Config/Companies');
 
 Route.post("/", async (req, res) => {
     try {
@@ -25,6 +26,7 @@ Route.post("/", async (req, res) => {
                     name: builtinAdmin.name,
                     phone: builtinAdmin.phone,
                     email: builtinAdmin.email,
+                    assignedCompanies: COMPANY_OPTIONS,
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '1d' }
@@ -39,6 +41,7 @@ Route.post("/", async (req, res) => {
                     name: builtinAdmin.name,
                     phone: builtinAdmin.phone,
                     email: builtinAdmin.email,
+                    assignedCompanies: COMPANY_OPTIONS,
                 },
                 message: "Login successful!"
             });
@@ -54,6 +57,8 @@ Route.post("/", async (req, res) => {
             return res.status(401).json({ error: 'Invalid username or password' });
         }
 
+        const assignedCompanies = sanitizeAssignedCompanies(user.assignedCompanies || []);
+        const resolvedAssignedCompanies = assignedCompanies.length ? assignedCompanies : COMPANY_OPTIONS;
         const token = jwt.sign(
             {
                 userId: user._id,
@@ -62,6 +67,7 @@ Route.post("/", async (req, res) => {
                 name: user.name,
                 phone: user.phone,
                 email: user.email,
+                assignedCompanies: resolvedAssignedCompanies,
             },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
@@ -76,6 +82,7 @@ Route.post("/", async (req, res) => {
                 name: user.name,
                 phone: user.phone,
                 email: user.email,
+                assignedCompanies: resolvedAssignedCompanies,
             },
             message: "Login successful!"
         });

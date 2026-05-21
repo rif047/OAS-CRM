@@ -23,7 +23,7 @@ export default function Designers() {
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
             const managements = response.data.filter(user => user.userType === 'Designer');
-            setData(managements.reverse());
+            setData(managements);
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching managements:', error);

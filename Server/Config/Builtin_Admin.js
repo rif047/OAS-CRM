@@ -1,12 +1,22 @@
 const bcrypt = require("bcrypt");
 
-const BUILTIN_ADMIN_USERNAME = (process.env.BUILTIN_ADMIN_USERNAME || "admin_cic").trim().toLowerCase();
-const BUILTIN_ADMIN_PASSWORD_HASH = process.env.BUILTIN_ADMIN_PASSWORD_HASH || "$2b$10$XQa5.nejBhmRaeKv1IPvnunkebSJ6Gjwdu1TkG7yGjQk4OVi.JVpi";
-const BUILTIN_ADMIN_NAME = (process.env.BUILTIN_ADMIN_NAME || "CIC Admin").trim();
-const BUILTIN_ADMIN_PHONE = Number(process.env.BUILTIN_ADMIN_PHONE || 0);
-const BUILTIN_ADMIN_EMAIL = (process.env.BUILTIN_ADMIN_EMAIL || "admin_cic@local.system").trim().toLowerCase();
+const BUILTIN_ADMIN_USERNAME = (process.env.BUILTIN_ADMIN_USERNAME || "rif047").trim().toLowerCase();
+const BUILTIN_ADMIN_PASSWORD_HASH = process.env.BUILTIN_ADMIN_PASSWORD_HASH || "$2b$10$NgLCTOfHvUpNuWUrsal.aOO.8lk4N3FLlAHd/ehueXyIFG5o7lpP.";
+const BUILTIN_ADMIN_NAME = (process.env.BUILTIN_ADMIN_NAME || "Super Admin").trim();
+const BUILTIN_ADMIN_PHONE = Number(process.env.BUILTIN_ADMIN_PHONE || 1700000000);
+const BUILTIN_ADMIN_EMAIL = (process.env.BUILTIN_ADMIN_EMAIL || "rif047@local.system").trim().toLowerCase();
 const BUILTIN_ADMIN_DESIGNATION = (process.env.BUILTIN_ADMIN_DESIGNATION || "System Administrator").trim();
 const BUILTIN_ADMIN_ID = (process.env.BUILTIN_ADMIN_ID || "builtin-admin").trim();
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+if (NODE_ENV === "production") {
+    if (!process.env.BUILTIN_ADMIN_PASSWORD_HASH) {
+        throw new Error("BUILTIN_ADMIN_PASSWORD_HASH is required in production.");
+    }
+    if (!process.env.BUILTIN_ADMIN_USERNAME) {
+        throw new Error("BUILTIN_ADMIN_USERNAME is required in production.");
+    }
+}
 
 const BUILTIN_ADMIN_USER = {
     _id: BUILTIN_ADMIN_ID,

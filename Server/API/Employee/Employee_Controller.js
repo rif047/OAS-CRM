@@ -1,4 +1,5 @@
 let Employee = require('./Employee_Model');
+const { handleControllerError } = require('../../Utils/ControllerError');
 
 
 
@@ -52,7 +53,7 @@ let Create = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Creation Error!!!');
+        return handleControllerError(res, error, 'Creation Error!!!');
     }
 }
 
@@ -121,7 +122,7 @@ let BulkImport = async (req, res) => {
         console.log(`✅ Imported ${validEmployees.length} employees.`);
     } catch (error) {
         console.error(error);
-        res.status(500).send('Bulk import failed.');
+        return handleControllerError(res, error, 'Bulk import failed.');
     }
 };
 
@@ -183,7 +184,7 @@ let Update = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Updating Error!!!');
+        return handleControllerError(res, error, 'Updating Error!!!');
     }
 }
 

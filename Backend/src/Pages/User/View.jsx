@@ -31,7 +31,7 @@ const capitalizeWords = (str) => {
 
 
 export default function View({ open, onClose, viewData }) {
-    const fieldsToView = ['name', 'phone', 'email', 'username', 'designation', 'secret_code', 'description'];
+    const fieldsToView = ['name', 'phone', 'email', 'username', 'designation', 'secret_code', 'description', 'assignedCompanies'];
 
     return (
         <Modal open={open} onClose={onClose}>
@@ -50,7 +50,7 @@ export default function View({ open, onClose, viewData }) {
                     fieldsToView.map((field) => (
                         viewData[field] && (
                             <Typography key={field}>
-                                <strong>{capitalizeWords(field)}:</strong> {viewData[field]}
+                                <strong>{capitalizeWords(field)}:</strong> {Array.isArray(viewData[field]) ? viewData[field].join(', ') : viewData[field]}
                             </Typography>
                         )
                     ))

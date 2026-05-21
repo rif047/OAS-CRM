@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
@@ -12,6 +12,10 @@ import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import 'react-toastify/dist/ReactToastify.css';
 import RichTextEditor from "../../../Components/RichTextEditor";
+import { markEditedRowForHighlight } from '../../../utils/datatableState';
+import LeadPaymentModal from '../../../Components/LeadPaymentModal';
+import PaymentCell from '../../../Components/Datatable/PaymentCell';
+import { ensureLeadDetail } from '../../../utils/leadDetails';
 
 
 export default function Project_Phase() {
@@ -25,7 +29,7 @@ export default function Project_Phase() {
     const isAdminOrManagement = loggedUser?.userType === "Admin" || loggedUser?.userType === "Management";
 
     const userPermissions = {
-        canEdit: isAdminOrManagement,
+        canEdit: false,
         canView: true,
         canDelete: false,
     };
@@ -36,43 +40,93 @@ export default function Project_Phase() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentLead, setPaymentLead] = useState(null);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
+    const [lostModalOpen, setLostModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
     const [form, setForm] = useState({ agent: "", design_file: "", description: "" });
+    const [lostForm, setLostForm] = useState({ agent: "", description: "" });
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
+    const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+    const [stageModalOpen, setStageModalOpen] = useState(false);
+    const [stageForm, setStageForm] = useState({
+        stage: "",
+        description: ""
+    });
+    const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
+    const loadLeadDetail = useCallback(async (row) => {
+        try {
+            return await ensureLeadDetail(row);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return null;
+        }
+    }, []);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "In_Design" }
+                params: {
+                    status: "In_Design",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            setData(filteredByCompany);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
     const handleStatusClick = async (row) => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
 
         setForm({
             agent: loggedUser?.name || "",
@@ -104,18 +158,32 @@ export default function Project_Phase() {
         }
     };
 
-    const handleToPending = async (row) => {
-        if (window.confirm(`Move back to leads - ${row.leadCode.toUpperCase()}?`)) {
-            try {
-                await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/pending/${row._id}`, {
-                    agent: form.agent,
-                });
+    const handleLostClick = async (row) => {
+        document.activeElement?.blur?.();
+        const user = JSON.parse(localStorage.getItem("user"));
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
+        setLostForm({ agent: user?.name || "", description: "" });
+        setLostModalOpen(true);
+    };
 
-                toast.success("Project marked as Cancelled!");
-                fetchData();
-            } catch {
-                toast.error("Failed to mark as Cancelled.");
-            }
+    const handleLostSubmit = async () => {
+        if (isRichTextEmpty(lostForm.description)) {
+            toast.error("Description is required.");
+            return;
+        }
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`,
+                { ...lostForm, status: "Lost_Lead" }
+            );
+            toast.success("Lead moved to Lost Lead.");
+            fetchData();
+            setLostModalOpen(false);
+        } catch {
+            toast.error("Failed to mark as Lost.");
         }
     };
 
@@ -131,52 +199,166 @@ export default function Project_Phase() {
         }
     };
 
-    const handleEdit = (row) => {
-        setEditData(row);
+    const handleEdit = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setEditData(fullRow);
         setModalOpen(true);
     };
 
-    const handleView = (row) => {
-        setViewData(row);
+    const handleView = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setViewData(fullRow);
         setViewModalOpen(true);
     };
+    const handlePaymentClick = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setPaymentLead(fullRow);
+        setPaymentModalOpen(true);
+    };
 
-    const handleCommentClick = (row) => {
+    const handleCommentClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setCommentForm({ agent: user?.name || "", description: "" });
         setCommentModalOpen(true);
     };
 
+    const handleStageClick = async (row) => {
+        document.activeElement?.blur?.();
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
+        setStageForm({
+            stage: fullRow.stage || "",
+            description: ""
+        });
+        setStageErrors({});
+        setStageModalOpen(true);
+    };
+
+    const handleStageSubmit = async () => {
+        const errors = {};
+        if (!stageForm.stage) errors.stage = "Stage required";
+        if (isRichTextEmpty(stageForm.description)) errors.description = "Description required";
+
+        setStageErrors(errors);
+        if (Object.keys(errors).length) return;
+
+        const user = JSON.parse(localStorage.getItem("user"));
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/${selectedRow._id}`,
+                {
+                    company: selectedRow.company,
+                    client: selectedRow.client?._id || selectedRow.client,
+                    source: selectedRow.source,
+                    stage: stageForm.stage,
+                    description: stageForm.description,
+                    agent: user?.name
+                }
+            );
+
+            markEditedRowForHighlight(selectedRow._id);
+            toast.success("Stage updated");
+            fetchData();
+            setStageModalOpen(false);
+        } catch {
+            toast.error("Failed to update stage");
+        }
+    };
+
     const handleCommentSubmit = async () => {
+        if (isCommentSubmitting) return;
+
         if (isRichTextEmpty(commentForm.description)) {
             toast.error("Description is required.");
             return;
         }
 
+        setIsCommentSubmitting(true);
         try {
             await axios.patch(
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
                 commentForm
             );
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Comment added successfully.");
             fetchData();
             setCommentModalOpen(false);
         } catch {
             toast.error("Failed to add comment.");
+        } finally {
+            setIsCommentSubmitting(false);
         }
     };
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    const renderAddressCell = (row) => {
+        const address = row.address?.trim() || "N/A";
+        return (
+            <p
+                className="block text-xs leading-4 text-slate-600"
+                title={address}
+                style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
+                }}
+            >
+                {address}
+            </p>
+        );
+    };
 
     const columns = [
-        { key: "in_design_date", accessorKey: 'in_design_date', header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { key: "service_type", accessorKey: 'service_type', header: 'Service Type' },
+        { key: "in_design_date", accessorKey: 'in_design_date', header: 'Date', maxSize: 60 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
+        { key: "surveyor", accessorKey: 'surveyor', header: 'Surveyor', maxSize: 100 },
+        { key: "survey_date", accessorKey: 'survey_date', header: 'Survey Date', maxSize: 100 },
         { key: "designer", accessorKey: 'designer', header: 'Designer', maxSize: 80 },
         { key: "design_deadline", accessorKey: 'design_deadline', header: 'Deadline', maxSize: 80 },
+        {
+            key: "payment",
+            header: "Payment",
+            maxSize: 130,
+            Cell: ({ row }) => (
+                <PaymentCell
+                    lead={row.original}
+                    onClick={handlePaymentClick}
+                    showSummary={isAdminOrManagement}
+                />
+            )
+        },
+        {
+            key: "stage",
+            header: "Stage",
+            maxSize: 120,
+            Cell: ({ row }) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleStageClick(row.original);
+                    }}
+                    className="crmStageBtn cursor-pointer"
+                >
+                    {row.original.stage}
+                </button>
+            )
+        },
         {
             id: "setStatus",
             key: "actions",
@@ -186,10 +368,10 @@ export default function Project_Phase() {
             maxSize: 420,
             grow: false,
             Cell: ({ row }) => (
-                <div className='inline-flex w-max items-center whitespace-nowrap'>
+                <div className='crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
+                        className="text-amber-600 font-bold flex items-center cursor-pointer border-r-2 pr-2">
                         <span className="text-xs mr-1 text-center ">Submit</span>
                         <CheckCircleOutlineIcon fontSize="small" />
                     </button>
@@ -197,9 +379,9 @@ export default function Project_Phase() {
                     {
                         isAdminOrManagement && (
                             <button
-                                onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
-                                className="text-red-400 font-bold flex items-center cursor-pointer ml-3">
-                                <span className="text-xs mr-1 text-center ">Cancel</span>
+                                onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
+                                className="text-rose-600 font-bold flex items-center cursor-pointer ml-3">
+                                <span className="text-xs mr-1 text-center ">Lost</span>
                                 <HighlightOffIcon fontSize="small" />
                             </button>
                         )
@@ -223,10 +405,10 @@ export default function Project_Phase() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">Design Stage</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">Design Stage</h1>
 
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
@@ -240,16 +422,20 @@ export default function Project_Phase() {
                             </button>
                         )}
 
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
-                            Total: {data.length}
+                        <span className="leadPageCount">
+                            Total: {totalRows}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions'>
                         <select
-                            className="rounded-md border border-gray-500 bg-gray-700 px-3 py-2 text-sm text-white focus:outline-none cursor-pointer"
+                            className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -259,23 +445,19 @@ export default function Project_Phase() {
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
-                    {loading ? (
-                        <div className="flex justify-center py-10">
-                            <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
-                            </svg>
-                        </div>
-                    ) : (
-                        <Datatable
-                            columns={columns}
-                            data={data}
-                            onEdit={handleEdit}
-                            onView={handleView}
-                            onDelete={handleDelete}
-                            permissions={userPermissions}
-                        />
-                    )}
+                <div className="leadPageTableWrap">
+                    <Datatable
+                        columns={columns}
+                        data={data}
+                        onEdit={handleEdit}
+                        onView={handleView}
+                        onDelete={handleDelete}
+                        permissions={userPermissions}
+                        serverMode={true}
+                        totalRows={totalRows}
+                        isLoading={loading}
+                        onServerQueryChange={handleServerQueryChange}
+                    />
                 </div>
             </section>
 
@@ -301,6 +483,20 @@ export default function Project_Phase() {
                 <DialogTitle><b>Move To Review</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
 
                     <TextField
                         fullWidth
@@ -352,6 +548,130 @@ export default function Project_Phase() {
             </Dialog>
 
             <Dialog
+                open={lostModalOpen}
+                onClose={() => setLostModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Mark as Lost</b>
+                </DialogTitle>
+                <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setLostModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
+                    <RichTextEditor
+                        value={lostForm.description}
+                        onChange={(html) =>
+                            setLostForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+
+                    <div className='bg-gray-50 p-3 rounded-md border border-gray-300 mt-4'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleLostSubmit}
+                        className="bg-red-500! hover:bg-red-600! font-bold!"
+                    >
+                        Mark as Lost
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={stageModalOpen}
+                onClose={() => setStageModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Change Stage</b>
+                </DialogTitle>
+                <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
+                    <TextField
+                        select
+                        fullWidth
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={stageForm.stage}
+                        onChange={(e) =>
+                            setStageForm(prev => ({ ...prev, stage: e.target.value }))
+                        }
+                        error={!!stageErrors.stage}
+                        helperText={stageErrors.stage}
+                    >
+                        <option value="">Stage*</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="First Draft Sent">First Draft Sent</option>
+                        <option value="Revision Ongoing">Revision Ongoing</option>
+                        <option value="Final Draft Ready">Final Draft Ready</option>
+                        <option value="Submitted for Review">Submitted for Review</option>
+                        <option value="Full Paid">Full Paid</option>
+                        <option value="Hold">Hold</option>
+                        <option value="Other">Other</option>
+                    </TextField>
+
+                    <RichTextEditor
+                        value={stageForm.description}
+                        onChange={(html) =>
+                            setStageForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+                    {stageErrors.description && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {stageErrors.description}
+                        </p>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleStageSubmit}
+                        className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
+                    >
+                        Submit
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
                 open={commentModalOpen}
                 onClose={() => setCommentModalOpen(false)}
                 fullWidth
@@ -375,12 +695,14 @@ export default function Project_Phase() {
                         fullWidth
                         variant="contained"
                         onClick={handleCommentSubmit}
+                        disabled={isCommentSubmitting}
                         className="bg-[#272e3f]! hover:bg-gray-700! font-bold!"
                     >
-                        Submit Comment
+                        {isCommentSubmitting ? "Submitting..." : "Submit Comment"}
                     </Button>
                 </DialogActions>
             </Dialog>
+            <LeadPaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} lead={paymentLead} onUpdated={() => fetchData()} />
         </Layout>
     );
 }

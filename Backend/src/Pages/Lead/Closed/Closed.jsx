@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
@@ -8,6 +8,7 @@ import CachedIcon from '@mui/icons-material/Cached';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
 import 'react-toastify/dist/ReactToastify.css';
 import { formatCurrencyGBP } from '../../../utils/formatters';
+import { ensureLeadDetail } from '../../../utils/leadDetails';
 
 export default function Closed() {
     document.title = 'Closed Projects';
@@ -27,34 +28,63 @@ export default function Closed() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
 
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "Closed" }
+                params: {
+                    status: "Closed",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            setData(filteredByCompany);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
 
     const handleDelete = async (row) => {
@@ -87,22 +117,109 @@ export default function Closed() {
     };
 
 
-    const handleView = (row) => {
-        setViewData(row);
+    const handleView = async (row) => {
+        try {
+            const fullRow = await ensureLeadDetail(row);
+            setViewData(fullRow);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return;
+        }
         setViewModalOpen(true);
     };
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
+    const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const highlightMatch = (text, query) => {
+        const source = String(text ?? "");
+        const q = String(query ?? "").trim();
+        if (!q) return source;
+        const parts = source.split(new RegExp(`(${escapeRegex(q)})`, "ig"));
+        return parts.map((part, idx) => (
+            part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part
+        ));
+    };
 
+    const renderClientWithCompany = (row) => {
+        const clientName = row.client?.name || "N/A";
+        const companyName = row.client?.company?.trim() ? row.client.company : null;
+        const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+        const contactText = row.client?.phone && row.client?.email
+            ? `${row.client.phone} (${row.client.email})`
+            : (row.client?.phone || row.client?.email || "");
+
+        return (
+            <div className="max-w-60 min-w-0">
+                <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
+                {(row.client?.phone || row.client?.email) && (
+                    <p
+                        className="truncate text-xs text-slate-500 cursor-copy"
+                        title={`Click to copy: ${contactText}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard?.writeText(contactText);
+                        }}
+                    >
+                        {highlightMatch(contactText, tableQuery.search)}
+                    </p>
+                )}
+            </div>
+        );
+    };
+
+    const renderAddressCell = (row) => {
+        const address = row.address?.trim() || "N/A";
+        return (
+            <p
+                className="block text-xs leading-4 text-slate-600"
+                title={address}
+                style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
+                }}
+            >
+                {address}
+            </p>
+        );
+    };
 
     const columns = [
-        { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
+        { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 60 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "quote_price", header: "Quote Price", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 50 },
-        { key: "final_price", header: "Final Price", accessorFn: row => formatCurrencyGBP(row.final_price), maxSize: 50 },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
+        {
+            key: "quote_price",
+            header: "Quote",
+            accessorFn: row => formatCurrencyGBP(row.quote_price),
+            maxSize: 50,
+            muiTableHeadCellProps: { align: "center" },
+            muiTableBodyCellProps: { align: "center" }
+        },
+        {
+            key: "payment_received_total",
+            header: "Received",
+            accessorFn: row => formatCurrencyGBP(row.payment_received_total || 0),
+            maxSize: 50,
+            muiTableHeadCellProps: { align: "center" },
+            muiTableBodyCellProps: { align: "center" }
+        },
+        {
+            key: "payment_discount_total",
+            header: "Discount",
+            accessorFn: row => formatCurrencyGBP(row.payment_discount_total || 0),
+            maxSize: 50,
+            muiTableHeadCellProps: { align: "center" },
+            muiTableBodyCellProps: { align: "center" }
+        },
         ...(userType === "Admin"
             ? [
                 {
@@ -114,7 +231,7 @@ export default function Closed() {
                     maxSize: 260,
                     grow: false,
                     Cell: ({ row }) => (
-                        <div className="inline-flex w-max items-center whitespace-nowrap">
+                        <div className="crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap">
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -136,10 +253,10 @@ export default function Closed() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">Closed Projects</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">Closed Projects</h1>
 
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
@@ -153,16 +270,20 @@ export default function Closed() {
                             </button>
                         )}
 
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
-                            Total: {data.length}
+                        <span className="leadPageCount">
+                            Total: {totalRows}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions'>
                         <select
-                            className="rounded-md border border-gray-500 bg-gray-700 px-3 py-2 text-sm text-white focus:outline-none cursor-pointer"
+                            className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -172,23 +293,19 @@ export default function Closed() {
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
-                    {loading ? (
-                        <div className="flex justify-center py-10">
-                            <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
-                            </svg>
-                        </div>
-                    ) : (
-                        <Datatable
-                            columns={columns}
-                            data={data}
-                            onEdit={() => { }}
-                            onView={handleView}
-                            onDelete={handleDelete}
-                            permissions={userPermissions}
-                        />
-                    )}
+                <div className="leadPageTableWrap">
+                    <Datatable
+                        columns={columns}
+                        data={data}
+                        onEdit={() => { }}
+                        onView={handleView}
+                        onDelete={handleDelete}
+                        permissions={userPermissions}
+                        serverMode={true}
+                        totalRows={totalRows}
+                        isLoading={loading}
+                        onServerQueryChange={handleServerQueryChange}
+                    />
                 </div>
             </section>
 

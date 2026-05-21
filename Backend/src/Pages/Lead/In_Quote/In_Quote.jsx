@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../../Layout';
 import Datatable from '../../../Components/Datatable/Datatable';
@@ -10,15 +10,23 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import TourIcon from '@mui/icons-material/Tour';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import CommentIcon from '@mui/icons-material/Comment';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Autocomplete } from '@mui/material';
 import RichTextEditor from "../../../Components/RichTextEditor";
 import 'react-toastify/dist/ReactToastify.css';
-import { formatCurrencyGBP } from '../../../utils/formatters';
+import { markEditedRowForHighlight } from '../../../utils/datatableState';
+import LeadPaymentModal from '../../../Components/LeadPaymentModal';
+import PaymentCell from '../../../Components/Datatable/PaymentCell';
+import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
+import { ensureLeadDetail } from '../../../utils/leadDetails';
+import { parseMoney, resolveLeadDueAmount } from '../../../utils/payment';
+import { splitAssignees } from '../../../utils/assignees';
 
 export default function In_Quote() {
     document.title = 'In Quote';
 
     const EndPoint = 'leads';
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const isAdminOrManagement = currentUser?.userType === "Admin" || currentUser?.userType === "Management";
 
     const userPermissions = {
         canEdit: true,
@@ -34,24 +42,33 @@ export default function In_Quote() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentLead, setPaymentLead] = useState(null);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [drawingModalOpen, setDrawingModalOpen] = useState(false);
+    const [lostModalOpen, setLostModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
-    const [form, setForm] = useState({ agent: "", surveyor: "", survey_date: "", design_deadline: "", designer: "", description: "" });
+    const [form, setForm] = useState({ agent: "", surveyor: [], survey_date: "", design_deadline: "", designer: "", description: "" });
+    const [lostForm, setLostForm] = useState({ agent: "", description: "" });
     const [projectRemark, setProjectRemark] = useState("");
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
+    const [closeModalOpen, setCloseModalOpen] = useState(false);
+    const [closeForm, setCloseForm] = useState({ survey_date: "", surveyor: [], design_deadline: "", designer: "", description: "" });
+    const [closePaymentForm, setClosePaymentForm] = useState({ paid_at: "", amount: "", discount_given: "0", note: "Final due amount received while closing project." });
 
     const [surveyors, setSurveyors] = useState([]);
     const [designers, setDesigners] = useState([]);
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users`);
+            const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/users/options`);
 
             setSurveyors(res.data.filter(user => user.userType === "Surveyor"));
             setDesigners(res.data.filter(user => user.userType === "Designer"));
@@ -72,10 +89,21 @@ export default function In_Quote() {
     });
     const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
-    const handleStageClick = (row) => {
-        setSelectedRow(row);
+    const loadLeadDetail = useCallback(async (row) => {
+        try {
+            return await ensureLeadDetail(row);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return null;
+        }
+    }, []);
+
+    const handleStageClick = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setStageForm({
-            stage: row.stage || "",
+            stage: fullRow.stage || "",
             description: ""
         });
         setStageErrors({});
@@ -86,22 +114,12 @@ export default function In_Quote() {
     const handleStageSubmit = async () => {
         const errors = {};
         if (!stageForm.stage) errors.stage = "Stage required";
-        if (!stageForm.description) errors.description = "Description required";
+        if (isRichTextEmpty(stageForm.description)) errors.description = "Description required";
 
         setStageErrors(errors);
         if (Object.keys(errors).length) return;
 
         const user = JSON.parse(localStorage.getItem("user"));
-
-        const previousDescription = selectedRow.description || "";
-
-        const finalDescription = `
-                        ${previousDescription}
-                        <hr />
-                        <p><b>Stage -  ${stageForm.stage}</b></p>
-                        ${stageForm.description} 
-                    `;
-
 
         try {
             await axios.patch(
@@ -112,11 +130,12 @@ export default function In_Quote() {
                     source: selectedRow.source,
 
                     stage: stageForm.stage,
-                    description: finalDescription,
+                    description: stageForm.description,
                     agent: user?.name
                 }
             );
 
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Stage updated");
             fetchData();
             setStageModalOpen(false);
@@ -129,37 +148,66 @@ export default function In_Quote() {
 
 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "In_Quote" }
+                params: {
+                    status: "In_Quote",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            setData(filteredByCompany);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
     const handleStatusClick = async (row) => {
         const loggedUser = JSON.parse(localStorage.getItem('user'));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
 
         setForm({
             agent: loggedUser?.name || "",
-            surveyor: row.surveyor || "",
-            survey_date: row.survey_date || "",
+            surveyor: splitAssignees(fullRow.surveyor),
+            survey_date: fullRow.survey_date || "",
             description: ""
         });
 
@@ -167,7 +215,9 @@ export default function In_Quote() {
     };
 
     const handleDrawingClick = async (row) => {
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setProjectRemark("");
         setDrawingModalOpen(true);
     };
@@ -221,17 +271,99 @@ export default function In_Quote() {
         }
     };
 
-    const handleToPending = async (row) => {
-        if (window.confirm(`Move back to leads - ${row.leadCode.toUpperCase()}?`)) {
-            try {
-                const loggedUser = JSON.parse(localStorage.getItem('user'));
-                await axios.patch(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/pending/${row._id}`, { agent: loggedUser?.name || "" });
+    const handleLostClick = async (row) => {
+        document.activeElement?.blur?.();
+        const user = JSON.parse(localStorage.getItem("user"));
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
+        setLostForm({ agent: user?.name || "", description: "" });
+        setLostModalOpen(true);
+    };
 
-                toast.success("Project moved to leads");
-                fetchData();
-            } catch {
-                toast.error("Failed to mark as Cancelled.");
+    const handleCloseClick = async (row) => {
+        document.activeElement?.blur?.();
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        const due = resolveLeadDueAmount(fullRow);
+        setSelectedRow(fullRow);
+        setCloseForm({
+            survey_date: fullRow?.survey_date || "",
+            surveyor: splitAssignees(fullRow?.surveyor),
+            design_deadline: fullRow?.design_deadline || "",
+            designer: fullRow?.designer || "",
+            description: "",
+        });
+        setClosePaymentForm({
+            paid_at: "",
+            amount: due > 0 ? String(due) : "",
+            discount_given: "0",
+            note: "Final due amount received while closing project.",
+        });
+        setCloseModalOpen(true);
+    };
+
+    const handleCloseSubmit = async () => {
+        if (!selectedRow?._id) return;
+        const agent = currentUser?.name || selectedRow?.agent || "System";
+        const dueAmount = resolveLeadDueAmount(selectedRow);
+        const collectAmount = parseMoney(closePaymentForm.amount);
+        const collectDiscount = parseMoney(closePaymentForm.discount_given);
+
+        if (dueAmount > 0 && (collectAmount + collectDiscount !== dueAmount)) {
+            toast.error(`Please settle full due amount (${formatCurrencyGBP(dueAmount)}) using receive amount and/or discount before closing.`);
+            return;
+        }
+
+        try {
+            if (dueAmount > 0) {
+                await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/leads/payments/${selectedRow._id}`, {
+                    amount: collectAmount,
+                    discount_given: collectDiscount,
+                    note: closePaymentForm.note,
+                    paid_at: closePaymentForm.paid_at || undefined,
+                    agent,
+                });
             }
+
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/leads/closed/${selectedRow._id}`,
+                {
+                    agent,
+                    description: closeForm.description,
+                    survey_date: closeForm.survey_date,
+                    surveyor: closeForm.surveyor,
+                    design_deadline: closeForm.design_deadline,
+                    designer: closeForm.designer,
+                    close_source: "In_Quote",
+                }
+            );
+
+            markEditedRowForHighlight(selectedRow._id);
+            toast.success("Project closed successfully from In Quote.");
+            setCloseModalOpen(false);
+            fetchData();
+        } catch (error) {
+            toast.error(error?.response?.data || "Failed to close project.");
+        }
+    };
+
+    const handleLostSubmit = async () => {
+        if (isRichTextEmpty(lostForm.description)) {
+            toast.error("Description is required.");
+            return;
+        }
+
+        try {
+            await axios.patch(
+                `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`,
+                { ...lostForm, status: "Lost_Lead" }
+            );
+            toast.success("Lead moved to Lost Lead.");
+            fetchData();
+            setLostModalOpen(false);
+        } catch {
+            toast.error("Failed to mark as Lost.");
         }
     };
 
@@ -247,20 +379,32 @@ export default function In_Quote() {
         }
     };
 
-    const handleEdit = (row) => {
-        setEditData(row);
+    const handleEdit = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setEditData(fullRow);
         setModalOpen(true);
     };
 
-    const handleView = (row) => {
-        setViewData(row);
+    const handleView = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setViewData(fullRow);
         setViewModalOpen(true);
     };
+    const handlePaymentClick = async (row) => {
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setPaymentLead(fullRow);
+        setPaymentModalOpen(true);
+    };
 
-    const handleCommentClick = (row) => {
+    const handleCommentClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setCommentForm({ agent: user?.name || "", description: "" });
         setCommentModalOpen(true);
     };
@@ -276,6 +420,7 @@ export default function In_Quote() {
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
                 commentForm
             );
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Comment added successfully.");
             fetchData();
             setCommentModalOpen(false);
@@ -284,30 +429,97 @@ export default function In_Quote() {
         }
     };
 
-    useEffect(() => {
-        fetchData();
-        fetchUsers();
-    }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { fetchUsers(); }, []);
 
+    const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const highlightMatch = (text, query) => {
+        const source = String(text ?? "");
+        const q = String(query ?? "").trim();
+        if (!q) return source;
+        const parts = source.split(new RegExp(`(${escapeRegex(q)})`, "ig"));
+        return parts.map((part, idx) => (
+            part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part
+        ));
+    };
+
+    const renderClientWithCompany = (row) => {
+        const clientName = row.client?.name || "N/A";
+        const companyName = row.client?.company?.trim() ? row.client.company : null;
+        const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+        const contactText = row.client?.phone && row.client?.email
+            ? `${row.client.phone} (${row.client.email})`
+            : (row.client?.phone || row.client?.email || "");
+
+        return (
+            <div className="max-w-60 min-w-0">
+                <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
+                {(row.client?.phone || row.client?.email) && (
+                    <p
+                        className="truncate text-xs text-slate-500 cursor-copy"
+                        title={`Click to copy: ${contactText}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard?.writeText(contactText);
+                        }}
+                    >
+                        {highlightMatch(contactText, tableQuery.search)}
+                    </p>
+                )}
+            </div>
+        );
+    };
+
+    const renderAddressCell = (row) => {
+        const address = row.address?.trim() || "N/A";
+        return (
+            <p
+                className="block text-xs leading-4 text-slate-600"
+                title={address}
+                style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
+                }}
+            >
+                {address}
+            </p>
+        );
+    };
 
     const columns = [
-        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
-        { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "quote_price", header: "Quoted P.", accessorFn: row => formatCurrencyGBP(row.quote_price), maxSize: 80 },
-        { key: "source", accessorKey: 'source', header: 'Source' },
+        { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 60 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
+        {
+            key: "payment",
+            header: "Payment",
+            maxSize: 130,
+            Cell: ({ row }) => (
+                <PaymentCell
+                    lead={row.original}
+                    onClick={handlePaymentClick}
+                    showSummary={isAdminOrManagement}
+                />
+            )
+        },
         {
             key: "stage",
             header: "Stage",
-            maxSize: 120,
+            maxSize: 80,
             Cell: ({ row }) => (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         handleStageClick(row.original);
                     }}
-                    className="px-3 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                    className="crmStageBtn cursor-pointer"
                 >
                     {row.original.stage}
                 </button>
@@ -323,10 +535,10 @@ export default function In_Quote() {
             maxSize: 420,
             grow: false,
             Cell: ({ row }) => (
-                <div className='inline-flex w-max items-center whitespace-nowrap'>
+                <div className='crmSetStatusGroup inline-flex w-max items-center whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-emerald-600 font-bold flex items-center cursor-pointer border-r-2 pr-2"
+                        className="text-cyan-600 font-bold flex items-center cursor-pointer border-r-2 pr-2"
                         title="Move to Survey"
                     >
                         <span className="text-xs mr-1 text-center">Survey</span>
@@ -335,19 +547,28 @@ export default function In_Quote() {
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDrawingClick(row.original); }}
-                        className="text-gray-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
+                        className="text-violet-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
                         title="Move to Drawing Phase"
                     >
-                        <span className="text-xs mr-1 text-center">Drawing Phase</span>
+                        <span className="text-xs mr-1 text-center">Drawing</span>
                         <DesignServicesIcon fontSize="small" />
                     </button>
 
                     <button
-                        onClick={(e) => { e.stopPropagation(); handleToPending(row.original); }}
-                        className="text-red-400 font-bold flex items-center cursor-pointer ml-2"
-                        title="Move to Cancelled"
+                        onClick={(e) => { e.stopPropagation(); handleCloseClick(row.original); }}
+                        className="text-emerald-600 font-bold flex items-center cursor-pointer border-r-2 px-2"
+                        title="Close Project"
                     >
-                        <span className="text-xs mr-1 text-center">Cancel</span>
+                        <span className="text-xs mr-1 text-center">Close</span>
+                        <HighlightOffIcon fontSize="small" />
+                    </button>
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleLostClick(row.original); }}
+                        className="text-rose-600 font-bold flex items-center cursor-pointer ml-2"
+                        title="Mark as Lost"
+                    >
+                        <span className="text-xs mr-1 text-center">Lost</span>
                         <HighlightOffIcon fontSize="small" />
                     </button>
 
@@ -368,10 +589,10 @@ export default function In_Quote() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">Under Quote</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">Under Quote</h1>
 
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
@@ -385,16 +606,20 @@ export default function In_Quote() {
                             </button>
                         )}
 
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
-                            Total: {data.length}
+                        <span className="leadPageCount">
+                            Total: {totalRows}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions'>
                         <select
-                            className="rounded-md border border-gray-500 bg-gray-700 px-3 py-2 text-sm text-white focus:outline-none cursor-pointer"
+                            className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -404,23 +629,19 @@ export default function In_Quote() {
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
-                    {loading ? (
-                        <div className="flex justify-center py-10">
-                            <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
-                            </svg>
-                        </div>
-                    ) : (
-                        <Datatable
-                            columns={columns}
-                            data={data}
-                            onEdit={handleEdit}
-                            onView={handleView}
-                            onDelete={handleDelete}
-                            permissions={userPermissions}
-                        />
-                    )}
+                <div className="leadPageTableWrap">
+                    <Datatable
+                        columns={columns}
+                        data={data}
+                        onEdit={handleEdit}
+                        onView={handleView}
+                        onDelete={handleDelete}
+                        permissions={userPermissions}
+                        serverMode={true}
+                        totalRows={totalRows}
+                        isLoading={loading}
+                        onServerQueryChange={handleServerQueryChange}
+                    />
                 </div>
             </section>
 
@@ -446,6 +667,20 @@ export default function In_Quote() {
                 <DialogTitle><b>Send Site Survey</b></DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <div onClick={() => startRef.current.showPicker()}>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                             Survey Date*
@@ -469,22 +704,48 @@ export default function In_Quote() {
                         onChange={e => setForm({ ...form, surveyor: e.target.value })}
                     /> */}
 
-                    <TextField
-                        select
+                    <Autocomplete
+                        multiple
                         fullWidth
                         size="small"
-                        margin="normal"
-                        SelectProps={{ native: true }}
-                        value={form.surveyor}
-                        onChange={e => setForm({ ...form, surveyor: e.target.value })}
-                    >
-                        <option value="">Select Surveyor*</option>
-                        {surveyors.map((s, index) => (
-                            <option key={index} value={s.name}>
-                                {s.name} - {s.phone}
-                            </option>
-                        ))}
-                    </TextField>
+                        options={surveyors}
+                        value={surveyors.filter((s) => form.surveyor.includes(s.name))}
+                        onChange={(_, selected) => setForm({ ...form, surveyor: selected.map((item) => item.name) })}
+                        getOptionLabel={(option) => `${option.name} - ${option.phone || 'No phone'}`}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                        getOptionDisabled={(option) => form.surveyor.includes(option.name)}
+                        disableCloseOnSelect
+                        renderTags={() => null}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                margin="normal"
+                                label="Select Surveyor*"
+                                placeholder="Add more..."
+                            />
+                        )}
+                    />
+                    {!!form.surveyor.length && (
+                        <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">Selected Surveyors</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {form.surveyor.map((name) => (
+                                    <span key={name} className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700">
+                                        {name}
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm((prev) => ({ ...prev, surveyor: prev.surveyor.filter((item) => item !== name) }))}
+                                            className="text-slate-400 hover:text-red-500 cursor-pointer"
+                                            aria-label={`Remove ${name}`}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <small className='text-gray-600'>Note: You can select multiple surveyors.</small>
 
 
 
@@ -522,6 +783,20 @@ export default function In_Quote() {
 
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setDrawingModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <div onClick={() => startRef.current.showPicker()}>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                             Deadline*
@@ -601,6 +876,231 @@ export default function In_Quote() {
             </Dialog>
 
             <Dialog
+                open={closeModalOpen}
+                onClose={() => setCloseModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Close Project - {selectedRow?.leadCode?.toUpperCase()}</b>
+                </DialogTitle>
+                <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setCloseModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
+                    <TextField
+                        fullWidth
+                        type="date"
+                        size="small"
+                        margin="normal"
+                        InputLabelProps={{ shrink: true }}
+                        label="Survey Date"
+                        value={closeForm.survey_date}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, survey_date: e.target.value }))}
+                    />
+
+                    <Autocomplete
+                        multiple
+                        fullWidth
+                        size="small"
+                        options={surveyors}
+                        value={surveyors.filter((s) => closeForm.surveyor.includes(s.name))}
+                        onChange={(_, selected) => setCloseForm((prev) => ({ ...prev, surveyor: selected.map((item) => item.name) }))}
+                        getOptionLabel={(option) => `${option.name} - ${option.phone || 'No phone'}`}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                        getOptionDisabled={(option) => closeForm.surveyor.includes(option.name)}
+                        disableCloseOnSelect
+                        renderTags={() => null}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                margin="normal"
+                                label="Select Surveyor"
+                                placeholder="Add more..."
+                            />
+                        )}
+                    />
+                    {!!closeForm.surveyor.length && (
+                        <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">Selected Surveyors</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {closeForm.surveyor.map((name) => (
+                                    <span key={name} className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700">
+                                        {name}
+                                        <button
+                                            type="button"
+                                            onClick={() => setCloseForm((prev) => ({ ...prev, surveyor: prev.surveyor.filter((item) => item !== name) }))}
+                                            className="text-slate-400 hover:text-red-500 cursor-pointer"
+                                            aria-label={`Remove ${name}`}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <TextField
+                        fullWidth
+                        type="date"
+                        size="small"
+                        margin="normal"
+                        InputLabelProps={{ shrink: true }}
+                        label="Design Deadline"
+                        value={closeForm.design_deadline}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, design_deadline: e.target.value }))}
+                    />
+
+                    <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        margin="normal"
+                        SelectProps={{ native: true }}
+                        value={closeForm.designer}
+                        onChange={(e) => setCloseForm((prev) => ({ ...prev, designer: e.target.value }))}
+                    >
+                        <option value="">Select Architect/Designer</option>
+                        {designers.map((d, index) => (
+                            <option key={index} value={d.name}>
+                                {d.name} - {d.phone}
+                            </option>
+                        ))}
+                    </TextField>
+
+                    <div className='grid grid-cols-3 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 my-3'>
+                        <div><p className='text-xs text-slate-500'>Quoted</p><p className='font-semibold text-slate-800'>{formatCurrencyGBP(selectedRow?.quote_price || 0)}</p></div>
+                        <div><p className='text-xs text-slate-500'>Received</p><p className='font-semibold text-emerald-700'>{formatCurrencyGBP(selectedRow?.payment_received_total || 0)}</p></div>
+                        <div><p className='text-xs text-slate-500'>Due</p><p className='font-semibold text-red-600'>{formatCurrencyGBP(resolveLeadDueAmount(selectedRow))}</p></div>
+                    </div>
+
+                    <div className='rounded-lg border border-slate-200 mb-3'>
+                        <div className='px-3 py-2 bg-slate-100 border-b border-slate-200'>
+                            <p className='text-sm font-semibold text-slate-700'>Payment History</p>
+                        </div>
+                        <div className='max-h-44 overflow-y-auto'>
+                            <table className='w-full text-sm'>
+                                <thead className='bg-slate-50'>
+                                    <tr>
+                                        <th className='text-left px-3 py-2'>Date</th>
+                                        <th className='text-left px-3 py-2'>Agent</th>
+                                        <th className='text-left px-3 py-2'>Amount</th>
+                                        <th className='text-left px-3 py-2'>Discount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(selectedRow?.payment_history || []).map((item) => (
+                                        <tr key={item._id} className='border-t border-slate-200'>
+                                            <td className='px-3 py-2'>{formatLondonDateTime(item?.paid_at)}</td>
+                                            <td className='px-3 py-2'>{item?.agent || '-'}</td>
+                                            <td className='px-3 py-2'>{formatCurrencyGBP(item?.paid_amount || 0)}</td>
+                                            <td className='px-3 py-2'>{formatCurrencyGBP(item?.discount_given || 0)}</td>
+                                        </tr>
+                                    ))}
+                                    {!(selectedRow?.payment_history || []).length && (
+                                        <tr><td className='px-3 py-3 text-slate-500' colSpan={4}>No payment history found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {resolveLeadDueAmount(selectedRow) > 0 && (
+                        <>
+                            <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
+                                <TextField fullWidth type="date" size="small" margin="normal" label="Payment Date" InputLabelProps={{ shrink: true }} value={closePaymentForm.paid_at} onChange={e => setClosePaymentForm(prev => ({ ...prev, paid_at: e.target.value }))} />
+                                <TextField fullWidth type="number" size="small" margin="normal" label={`Receive Amount (${formatCurrencyGBP(resolveLeadDueAmount(selectedRow))})*`} value={closePaymentForm.amount} onChange={e => setClosePaymentForm(prev => ({ ...prev, amount: e.target.value }))} />
+                                <TextField fullWidth type="number" size="small" margin="normal" label="Discount Given" value={closePaymentForm.discount_given} onChange={e => setClosePaymentForm(prev => ({ ...prev, discount_given: e.target.value }))} />
+                            </div>
+                            <TextField fullWidth size="small" margin="normal" label="Payment Note" multiline minRows={2} value={closePaymentForm.note} onChange={e => setClosePaymentForm(prev => ({ ...prev, note: e.target.value }))} />
+                        </>
+                    )}
+
+                    <div className="mt-3">
+                        <RichTextEditor
+                            value={closeForm.description}
+                            onChange={(value) => setCloseForm((prev) => ({ ...prev, description: value }))}
+                        />
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleCloseSubmit}
+                        className="bg-emerald-600! hover:bg-emerald-700! font-bold!"
+                    >
+                        Collect Due & Close Project
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={lostModalOpen}
+                onClose={() => setLostModalOpen(false)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    <b>Mark as Lost</b>
+                </DialogTitle>
+                <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setLostModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
+                    <RichTextEditor
+                        value={lostForm.description}
+                        onChange={(html) =>
+                            setLostForm(prev => ({ ...prev, description: html }))
+                        }
+                    />
+
+                    <div className='bg-gray-50 p-3 rounded-md border border-gray-300 mt-4'>
+                        <h1 className='font-bold mb-2'>Previous Description</h1>
+                        <div
+                            className="text-gray-500 description-view"
+                            dangerouslySetInnerHTML={{
+                                __html: selectedRow?.description || "No description provided"
+                            }}
+                        />
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleLostSubmit}
+                        className="bg-red-500! hover:bg-red-600! font-bold!"
+                    >
+                        Mark as Lost
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
                 open={stageModalOpen}
                 onClose={() => setStageModalOpen(false)}
                 fullWidth
@@ -611,6 +1111,20 @@ export default function In_Quote() {
                 </DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <TextField
                         select
                         fullWidth
@@ -689,6 +1203,7 @@ export default function In_Quote() {
                     </Button>
                 </DialogActions>
             </Dialog>
+            <LeadPaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} lead={paymentLead} onUpdated={() => fetchData()} />
         </Layout>
     );
 }

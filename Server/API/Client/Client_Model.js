@@ -1,4 +1,5 @@
 const Mongoose = require('mongoose');
+const { COMPANY_OPTIONS } = require('../../Config/Companies');
 
 
 const ClientSchema = Mongoose.Schema({
@@ -24,6 +25,11 @@ const ClientSchema = Mongoose.Schema({
     company: {
         type: String
     },
+    access_company: {
+        type: String,
+        enum: COMPANY_OPTIONS,
+        default: undefined
+    },
     alt_phone: {
         type: String,
         trim: true
@@ -32,9 +38,12 @@ const ClientSchema = Mongoose.Schema({
         type: String,
     },
 
-}, { timestamps: true })
+}, { timestamps: true, optimisticConcurrency: true })
 
 ClientSchema.index({ createdAt: -1 });
+ClientSchema.index({ name: 1 });
+ClientSchema.index({ company: 1 });
+ClientSchema.index({ access_company: 1 });
 
 ClientSchema.index(
     { phone: 1 },

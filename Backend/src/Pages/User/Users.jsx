@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../Layout';
 import Datatable from '../../Components/Datatable/Datatable';
@@ -7,13 +7,14 @@ import View from './View';
 import axios from 'axios';
 import CachedIcon from '@mui/icons-material/Cached';
 import 'react-toastify/dist/ReactToastify.css';
+import { formatLondonDate } from '../../utils/formatters';
 
 export default function Users() {
     document.title = 'Users';
 
     const EndPoint = 'users';
 
-
+    const userType = localStorage.getItem("userType");
     const user = JSON.parse(localStorage.getItem("user"));
     const username = user?.username?.toLowerCase() || "";
 
@@ -21,7 +22,7 @@ export default function Users() {
     const userPermissions = {
         canEdit: true,
         canView: true,
-        canDelete: username === "rif047" || username === "kam",
+        canDelete: (username === "rif047" || username === "kam"),
     };
 
 
@@ -32,14 +33,14 @@ export default function Users() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [selectedUserType, setSelectedUserType] = useState('All');
 
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
-            const reversedData = response.data.reverse();
-            setData(reversedData);
+            setData(response.data);
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching data:', error);
@@ -81,24 +82,36 @@ export default function Users() {
         fetchData();
     }, []);
 
+    const userTypes = useMemo(() => {
+        const uniqueTypes = [...new Set(data.map((item) => item?.userType).filter(Boolean))];
+        return ['All', ...uniqueTypes];
+    }, [data]);
+
+    const filteredData = useMemo(() => {
+        if (selectedUserType === 'All') return data;
+        return data.filter((item) => item?.userType === selectedUserType);
+    }, [data, selectedUserType]);
+
 
 
     const columns = [
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 70 },
         { accessorKey: 'name', header: 'Name', },
         { accessorKey: 'phone', header: 'Phone', enableClickToCopy: true, },
         { accessorKey: 'email', header: 'Email' },
         { accessorKey: 'designation', header: 'Designation' },
         { accessorKey: 'userType', header: 'User Type' },
+        { key: 'assignedCompanies', accessorFn: (row) => (row.assignedCompanies || []).join(', '), header: 'Assigned Companies' },
     ];
 
     return (
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">User List</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">User List</h1>
 
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
@@ -112,21 +125,31 @@ export default function Users() {
                             </button>
                         )}
 
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
-                            Total: {data.length}
+                        <span className="leadPageCount">
+                            Total: {filteredData.length}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions gap-2'>
+                        <select
+                            className="leadPageFilterSelect"
+                            value={selectedUserType}
+                            onChange={(e) => setSelectedUserType(e.target.value)}
+                        >
+                            <option value="All">All User Type</option>
+                            {userTypes.filter((type) => type !== 'All').map((type) => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </select>
                         <button
                             onClick={handleAdd}
-                            className="rounded-lg bg-white px-6 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                            className="inline-flex h-9 items-center rounded-lg bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 cursor-pointer">
                             Create +
                         </button>
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
+                <div>
                     {loading ? (
                         <div className="flex justify-center py-10">
                             <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -136,7 +159,7 @@ export default function Users() {
                     ) : (
                         <Datatable
                             columns={columns}
-                            data={data}
+                            data={filteredData}
                             onEdit={handleEdit}
                             onView={handleView}
                             onDelete={handleDelete}

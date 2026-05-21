@@ -2,7 +2,7 @@ const Mongoose = require('mongoose');
 
 // Enable detailed logs for debugging during development
 Mongoose.set('strictQuery', true);
-Mongoose.set('debug', process.env.NODE_ENV !== 'production');
+Mongoose.set('debug', process.env.MONGOOSE_DEBUG === 'true');
 
 Mongoose.connect(process.env.MONGO_URI, {
     serverSelectionTimeoutMS: 5000, // Wait 5 seconds for MongoDB to respond

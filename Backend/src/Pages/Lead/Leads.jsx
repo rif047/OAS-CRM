@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Layout from '../../Layout';
@@ -12,7 +12,10 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import CommentIcon from '@mui/icons-material/Comment';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import RichTextEditor from "../../Components/RichTextEditor";
-import { formatCurrencyGBP, formatLondonDate } from "../../utils/formatters";
+import LeadPaymentModal from '../../Components/LeadPaymentModal';
+import { formatLondonDate } from "../../utils/formatters";
+import { markEditedRowForHighlight } from '../../utils/datatableState';
+import { ensureLeadDetail } from '../../utils/leadDetails';
 
 export default function Leads() {
     document.title = 'Leads';
@@ -31,14 +34,18 @@ export default function Leads() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
 
     const [selectedCompany, setSelectedCompany] = useState("All");
     const [companies, setCompanies] = useState([]);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState("");
     const [selectedRow, setSelectedRow] = useState(null);
-    const [form, setForm] = useState({ agent: "", quote_price: "", quote_file: "", description: "" });
+    const [form, setForm] = useState({ agent: "", quote_price: "", quote_file: "", description: "", initial_payment: "", discount_given: "", payment_note: "" });
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentLead, setPaymentLead] = useState(null);
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [commentForm, setCommentForm] = useState({ agent: "", description: "" });
 
@@ -54,11 +61,22 @@ export default function Leads() {
     });
     const [stageErrors, setStageErrors] = useState({});
     const isRichTextEmpty = (html = "") => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() === "";
-    const handleStageClick = (row) => {
+    const loadLeadDetail = useCallback(async (row) => {
+        try {
+            return await ensureLeadDetail(row);
+        } catch {
+            toast.error("Failed to load lead details.");
+            return null;
+        }
+    }, []);
+
+    const handleStageClick = async (row) => {
         document.activeElement?.blur?.();
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setStageForm({
-            stage: row.stage || "",
+            stage: fullRow.stage || "",
             description: ""
         });
         setStageErrors({});
@@ -69,22 +87,12 @@ export default function Leads() {
     const handleStageSubmit = async () => {
         const errors = {};
         if (!stageForm.stage) errors.stage = "Stage required";
-        if (!stageForm.description) errors.description = "Description required";
+        if (isRichTextEmpty(stageForm.description)) errors.description = "Description required";
 
         setStageErrors(errors);
         if (Object.keys(errors).length) return;
 
         const user = JSON.parse(localStorage.getItem("user"));
-
-        const previousDescription = selectedRow.description || "";
-
-        const finalDescription = `
-                    ${previousDescription}
-                    <hr />
-                    <p><b>Stage -  ${stageForm.stage}</b></p>
-                    ${stageForm.description} 
-                `;
-
 
         try {
             await axios.patch(
@@ -95,11 +103,12 @@ export default function Leads() {
                     source: selectedRow.source,
 
                     stage: stageForm.stage,
-                    description: finalDescription,
+                    description: stageForm.description,
                     agent: user?.name
                 }
             );
 
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Stage updated");
             fetchData();
             setStageModalOpen(false);
@@ -116,45 +125,75 @@ export default function Leads() {
 
 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
-                params: { status: "Pending" }
+                params: {
+                    status: "Pending",
+                    company: selectedCompany === "All" ? "" : selectedCompany,
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
             });
-            const filteredData = response.data;
-
-            const uniqueCompanies = [...new Set(filteredData.map(item => item.company))].filter(Boolean);
-            setCompanies(uniqueCompanies);
-
-            const filteredByCompany = selectedCompany === "All"
-                ? filteredData
-                : filteredData.filter(item => item.company === selectedCompany);
-
-            setData(filteredByCompany);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (Array.isArray(payload?.companies)) {
+                setCompanies(payload.companies);
+            } else {
+                const uniqueCompanies = [...new Set(rows.map((item) => item.company))].filter(Boolean);
+                setCompanies(uniqueCompanies);
+            }
         } catch {
             toast.error('Failed to fetch data.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedCompany, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
 
-    useEffect(() => { fetchData(); }, [selectedCompany]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handleStatusClick = (row) => {
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
+
+    const handleStatusClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
-        setForm({ agent: user?.name || "", quote_price: "", quote_file: "", description: "" });
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
+        setForm({ agent: user?.name || "", quote_price: "", quote_file: "", description: "", initial_payment: "", discount_given: "", payment_note: "" });
         setSelectedStatus("In_Quote");
         setStatusModalOpen(true);
     };
 
-    const handleCancelled = (row) => {
+    const handleCancelled = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setForm({ agent: user?.name || "", description: "" });
         setSelectedStatus("Lost_Lead");
         setStatusModalOpen(true);
@@ -162,6 +201,15 @@ export default function Leads() {
 
     const handleStatusSubmit = async () => {
         try {
+            if (selectedStatus !== "Lost_Lead") {
+                const quoted = Number(form.quote_price || 0);
+                const paid = Number(form.initial_payment || 0);
+                const discount = Number(form.discount_given || 0);
+                if ((paid + discount) > quoted) {
+                    toast.error("Initial payment + discount cannot exceed the quoted price.");
+                    return;
+                }
+            }
             let url = "";
             if (selectedStatus === "Lost_Lead") {
                 url = `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/lost_lead/${selectedRow._id}`;
@@ -179,6 +227,10 @@ export default function Leads() {
             toast.error("Please complete all fields.");
         }
     };
+    const q = Number(form.quote_price || 0);
+    const p = Number(form.initial_payment || 0);
+    const d = Number(form.discount_given || 0);
+    const due = Math.max(q - (p + d), 0);
 
     const handleDelete = async (row) => {
         if (window.confirm(`Delete ${row.leadCode.toUpperCase()}?`)) {
@@ -193,12 +245,26 @@ export default function Leads() {
     };
 
     const handleAdd = () => { document.activeElement?.blur?.(); setEditData(null); setModalOpen(true); };
-    const handleEdit = (row) => { document.activeElement?.blur?.(); setEditData(row); setModalOpen(true); };
-    const handleView = (row) => { document.activeElement?.blur?.(); setViewData(row); setViewModalOpen(true); };
-    const handleCommentClick = (row) => {
+    const handleEdit = async (row) => {
+        document.activeElement?.blur?.();
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setEditData(fullRow);
+        setModalOpen(true);
+    };
+    const handleView = async (row) => {
+        document.activeElement?.blur?.();
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setViewData(fullRow);
+        setViewModalOpen(true);
+    };
+    const handleCommentClick = async (row) => {
         document.activeElement?.blur?.();
         const user = JSON.parse(localStorage.getItem("user"));
-        setSelectedRow(row);
+        const fullRow = await loadLeadDetail(row);
+        if (!fullRow) return;
+        setSelectedRow(fullRow);
         setCommentForm({ agent: user?.name || "", description: "" });
         setCommentModalOpen(true);
     };
@@ -214,6 +280,7 @@ export default function Leads() {
                 `${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}/comment/${selectedRow._id}`,
                 commentForm
             );
+            markEditedRowForHighlight(selectedRow._id);
             toast.success("Comment added successfully.");
             fetchData();
             setCommentModalOpen(false);
@@ -222,24 +289,83 @@ export default function Leads() {
         }
     };
 
+    const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const highlightMatch = (text, query) => {
+        const source = String(text ?? "");
+        const q = String(query ?? "").trim();
+        if (!q) return source;
+        const parts = source.split(new RegExp(`(${escapeRegex(q)})`, "ig"));
+        return parts.map((part, idx) => (
+            part.toLowerCase() === q.toLowerCase() ? <mark key={`${part}-${idx}`}>{part}</mark> : part
+        ));
+    };
+
+    const renderClientWithCompany = (row) => {
+        const clientName = row.client?.name || "N/A";
+        const companyName = row.client?.company?.trim() ? row.client.company : null;
+        const displayText = companyName ? `${clientName} (${companyName})` : clientName;
+        const contactText = row.client?.phone && row.client?.email
+            ? `${row.client.phone} (${row.client.email})`
+            : (row.client?.phone || row.client?.email || "");
+
+        return (
+            <div className="max-w-60 min-w-0">
+                <p className="truncate text-slate-700" title={displayText}>{highlightMatch(displayText, tableQuery.search)}</p>
+                {(row.client?.phone || row.client?.email) && (
+                    <p
+                        className="truncate text-xs text-slate-500 cursor-copy"
+                        title={`Click to copy: ${contactText}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard?.writeText(contactText);
+                        }}
+                    >
+                        {highlightMatch(contactText, tableQuery.search)}
+                    </p>
+                )}
+            </div>
+        );
+    };
+
+    const renderAddressCell = (row) => {
+        const address = row.address?.trim() || "N/A";
+        return (
+            <p
+                className="block text-xs leading-4 text-slate-600"
+                title={address}
+                style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    width: "220px",
+                    minWidth: "220px",
+                    maxWidth: "220px",
+                }}
+            >
+                {address}
+            </p>
+        );
+    };
+
     const columns = [
-        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 80 },
-        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
-        { accessorFn: row => row.client?.phone ? `${row.client?.name || "N/A"} (${row.client.phone})` : (row.client?.name || "N/A"), header: 'Client' },
+        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 70 },
+        { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 70 },
+        { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
-        { key: "budget", header: "Budget", accessorFn: row => formatCurrencyGBP(row.budget), maxSize: 80 },
-        { key: "source", accessorKey: 'source', header: 'Source' },
+        { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         {
             key: "stage",
             header: "Stage",
-            maxSize: 120,
+            maxSize: 80,
             Cell: ({ row }) => (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         handleStageClick(row.original);
                     }}
-                    className="px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                    className="crmStageBtn cursor-pointer"
                 >
                     {row.original.stage}
                 </button>
@@ -255,7 +381,7 @@ export default function Leads() {
             maxSize: 420,
             grow: false,
             Cell: ({ row }) => (
-                <div className='inline-flex w-max items-center gap-2 whitespace-nowrap'>
+                <div className='crmSetStatusGroup inline-flex w-max items-center gap-2 whitespace-nowrap'>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
                         className="text-cyan-600 font-bold flex items-center cursor-pointer">
@@ -287,10 +413,10 @@ export default function Leads() {
         <Layout>
             <ToastContainer position="bottom-right" autoClose={2000} />
 
-            <section className="overflow-hidden rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                <div className="flex flex-col gap-3 bg-[#4c5165] px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div className='flex items-center gap-2 text-white'>
-                        <h1 className="text-lg font-bold">Project Leads</h1>
+            <section className="leadPageShell">
+                <div className="leadPageHeader">
+                    <div className='leadPageHeaderLeft'>
+                        <h1 className="leadPageTitle">Project Leads</h1>
                         {loading ? (
                             <div className="flex items-center justify-center text-white">
                                 <svg className="h-5 w-5 animate-spin text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -302,16 +428,20 @@ export default function Leads() {
                                 <CachedIcon />
                             </button>
                         )}
-                        <span className="rounded-full bg-[#4c5165] px-2 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-400/40">
-                            Total: {data.length}
+                        <span className="leadPageCount">
+                            Total: {totalRows}
                         </span>
                     </div>
 
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                    <div className='leadPageHeaderActions'>
                         <select
-                            className="rounded-md border border-gray-500 bg-gray-700 px-3 py-2 text-sm text-white focus:outline-none cursor-pointer"
+                            className="leadPageFilterSelect"
                             value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSelectedCompany(value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All Companies</option>
                             {companies.map((company, index) => (
@@ -321,29 +451,25 @@ export default function Leads() {
 
                         <button
                             onClick={handleAdd}
-                            className="rounded-lg bg-white px-6 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                            className="leadPagePrimaryBtn">
                             Create +
                         </button>
                     </div>
                 </div>
 
-                <div className="p-3 md:p-4">
-                    {loading ? (
-                        <div className="flex justify-center py-10">
-                            <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
-                            </svg>
-                        </div>
-                    ) : (
-                        <Datatable
-                            columns={columns}
-                            data={data}
-                            onEdit={handleEdit}
-                            onView={handleView}
-                            onDelete={handleDelete}
-                            permissions={userPermissions}
-                        />
-                    )}
+                <div className="leadPageTableWrap">
+                    <Datatable
+                        columns={columns}
+                        data={data}
+                        onEdit={handleEdit}
+                        onView={handleView}
+                        onDelete={handleDelete}
+                        permissions={userPermissions}
+                        serverMode={true}
+                        totalRows={totalRows}
+                        isLoading={loading}
+                        onServerQueryChange={handleServerQueryChange}
+                    />
                 </div>
             </section>
 
@@ -367,16 +493,42 @@ export default function Leads() {
 
             <Dialog open={statusModalOpen} onClose={() => setStatusModalOpen(false)} fullWidth maxWidth='sm'>
                 <DialogTitle>
-                    <b>{selectedStatus === "Lost_Lead" ? "Write Reason" : "Sent Quote"}</b>
+                    <b>{selectedStatus === "Lost_Lead" ? "Mark as Lost" : "Sent Quote"}</b>
                 </DialogTitle>
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStatusModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     {selectedStatus === "Lost_Lead" ? (
-                        <RichTextEditor
-                            value={form.description}
-                            onChange={(html) =>
-                                setForm(prev => ({ ...prev, description: html }))
-                            }
-                        />
+                        <>
+                            <RichTextEditor
+                                value={form.description}
+                                onChange={(html) =>
+                                    setForm(prev => ({ ...prev, description: html }))
+                                }
+                            />
+
+                            <div className='bg-gray-50 p-3 rounded-md border border-gray-300 mt-4'>
+                                <h1 className='font-bold mb-2'>Previous Description</h1>
+                                <div
+                                    className="text-gray-500 description-view"
+                                    dangerouslySetInnerHTML={{
+                                        __html: selectedRow?.description || "No description provided"
+                                    }}
+                                />
+                            </div>
+                        </>
                     ) : (
                         <>
                             <TextField
@@ -396,6 +548,14 @@ export default function Leads() {
                                 value={form.quote_file}
                                 onChange={e => setForm({ ...form, quote_file: e.target.value })}
                             />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <TextField fullWidth label="Initial Payment" size="small" margin="normal" type='number' value={form.initial_payment} onChange={e => setForm({ ...form, initial_payment: e.target.value })} />
+                                <TextField fullWidth label="Discount Given" size="small" margin="normal" type='number' value={form.discount_given} onChange={e => setForm({ ...form, discount_given: e.target.value })} />
+                            </div>
+                            <TextField fullWidth label="Payment Note" size="small" margin="normal" value={form.payment_note} onChange={e => setForm({ ...form, payment_note: e.target.value })} />
+                            <div className="rounded-md border border-slate-300 bg-slate-50 p-2 text-sm text-slate-700 mb-2">
+                                Due Amount: <b>{Number.isFinite(due) ? due : 0}</b>
+                            </div>
 
                             <RichTextEditor
                                 value={form.description}
@@ -407,11 +567,22 @@ export default function Leads() {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button fullWidth variant="contained" onClick={handleStatusSubmit} className="bg-[#272e3f]! hover:bg-gray-700! font-bold!">
-                        Submit
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleStatusSubmit}
+                        className={selectedStatus === "Lost_Lead" ? "bg-red-500! hover:bg-red-600! font-bold!" : "bg-[#272e3f]! hover:bg-gray-700! font-bold!"}
+                    >
+                        {selectedStatus === "Lost_Lead" ? "Mark as Lost" : "Submit"}
                     </Button>
                 </DialogActions>
             </Dialog>
+            <LeadPaymentModal
+                open={paymentModalOpen}
+                onClose={() => setPaymentModalOpen(false)}
+                lead={paymentLead}
+                onUpdated={() => fetchData()}
+            />
 
             <Dialog
                 open={commentModalOpen}
@@ -457,6 +628,20 @@ export default function Leads() {
                 </DialogTitle>
 
                 <DialogContent>
+                    <div className="mb-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!selectedRow) return;
+                                setStageModalOpen(false);
+                                handleCommentClick(selectedRow);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-700 transition-all duration-200 hover:border-slate-500 hover:bg-white hover:shadow-sm cursor-pointer"
+                        >
+                            <CommentIcon sx={{ fontSize: 16 }} />
+                            Add Comment
+                        </button>
+                    </div>
                     <TextField
                         select
                         fullWidth

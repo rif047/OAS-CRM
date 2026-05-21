@@ -54,7 +54,7 @@ const EmployeeSchema = Mongoose.Schema({
         type: String,
     },
 
-}, { timestamps: true })
+}, { timestamps: true, optimisticConcurrency: true })
 
 EmployeeSchema.index({ createdAt: -1 });
 
