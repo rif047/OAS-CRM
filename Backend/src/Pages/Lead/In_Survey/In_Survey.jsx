@@ -430,18 +430,20 @@ export default function In_Survey() {
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         { key: "survey_date", accessorKey: 'survey_date', header: 'Survey Date' },
         { key: "survey_done", accessorKey: 'survey_done', header: 'Done', maxSize: 50 },
-        {
-            key: "payment",
-            header: "Payment",
-            maxSize: 130,
-            Cell: ({ row }) => (
-                <PaymentCell
-                    lead={row.original}
-                    onClick={handlePaymentClick}
-                    showSummary={isAdminOrManagement}
-                />
-            )
-        },
+        ...(loggedUser?.userType !== "Surveyor" ? [
+            {
+                key: "payment",
+                header: "Payment",
+                maxSize: 130,
+                Cell: ({ row }) => (
+                    <PaymentCell
+                        lead={row.original}
+                        onClick={handlePaymentClick}
+                        showSummary={isAdminOrManagement}
+                    />
+                )
+            }
+        ] : []),
         {
             key: "stage",
             header: "Stage",

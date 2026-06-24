@@ -86,11 +86,13 @@ export default function SideMenu() {
             )}
 
 
-            {(userType === "Admin" || userType === "Management") && (
+            {(userType === "Admin" || userType === "Management" || userType === "Surveyor") && (
                 <>
                     <MenuItem to="/clients" icon={PeopleTwoTone} label="Clients" />
                     <MenuItem to="/leads" icon={WorkHistoryTwoTone} label="Pending Leads" />
-                    <MenuItem to="/in_quote" icon={RequestQuoteTwoTone} label="In Quotation" />
+                    {(userType === "Admin" || userType === "Management") && (
+                        <MenuItem to="/in_quote" icon={RequestQuoteTwoTone} label="In Quotation" />
+                    )}
                 </>
             )}
 

@@ -141,14 +141,19 @@ export default function MainRoutes() {
                 />
 
 
-                {(userType === "Admin" || userType === "Management") && (
+                {(userType === "Admin" || userType === "Management" || userType === "Surveyor") && (
                     <>
                         <Route path="/leads" element={loggedIn ? <Leads handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                        <Route path="/clients" element={loggedIn ? <Clients handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                    </>
+                )}
+
+                {(userType === "Admin" || userType === "Management") && (
+                    <>
                         <Route path="/in_quote" element={loggedIn ? <In_Quote handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/in_review" element={loggedIn ? <In_Review handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/closed" element={loggedIn ? <Closed handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/lost_lead" element={loggedIn ? <Lost_Lead handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
-                        <Route path="/clients" element={loggedIn ? <Clients handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/managements" element={loggedIn ? <Managements handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/designers" element={loggedIn ? <Designers handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/surveyors" element={loggedIn ? <Surveyors handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />

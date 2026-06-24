@@ -33,11 +33,18 @@ const normalizeOptionalEmail = (value) => {
 };
 
 
+const getClientAllowedCompanies = async (req) => {
+    if (req.userType === 'Admin' || req.userType === 'Surveyor') {
+        return [...require('../../Config/Companies').COMPANY_OPTIONS];
+    }
+    return resolveAssignedCompaniesForRequest(req);
+};
+
 let Clients = async (req, res) => {
     const summaryOnly = String(req.query.summary || '').trim() === '1';
     const projection = summaryOnly ? { _id: 1, createdAt: 1 } : undefined;
-    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
-    const filter = req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies);
+    const allowedCompanies = await getClientAllowedCompanies(req);
+    const filter = (req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies);
     let Data = await Client.find(filter, projection).sort({ createdAt: -1 }).lean();
     res.status(200).json(Data);
 }
@@ -48,7 +55,7 @@ let Clients = async (req, res) => {
 let Create = async (req, res) => {
     try {
         let { agent, name, phone, alt_phone, email, company, description, access_company } = req.body;
-        const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+        const allowedCompanies = await getClientAllowedCompanies(req);
 
         const normalizedAgent = normalizeOptionalField(agent);
         const normalizedName = normalizeOptionalField(name);
@@ -102,7 +109,7 @@ let Create = async (req, res) => {
 let BulkImport = async (req, res) => {
     try {
         let clients = req.body;
-        const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+        const allowedCompanies = await getClientAllowedCompanies(req);
 
         if (!Array.isArray(clients) || clients.length === 0) {
             return res.status(400).send('Invalid or empty data array.');
@@ -174,10 +181,10 @@ let BulkImport = async (req, res) => {
 
 
 let View = async (req, res) => {
-    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+    const allowedCompanies = await getClientAllowedCompanies(req);
     const viewOne = await Client.findOne({
         _id: req.params.id,
-        ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies))
+        ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies))
     }).lean();
     if (!viewOne) return res.status(404).send('Client not found');
     res.send(viewOne)
@@ -189,7 +196,7 @@ let View = async (req, res) => {
 let Update = async (req, res) => {
     try {
         let { agent, name, phone, alt_phone, email, company, description, access_company } = req.body;
-        const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+        const allowedCompanies = await getClientAllowedCompanies(req);
 
         const normalizedAgent = normalizeOptionalField(agent);
         const normalizedName = normalizeOptionalField(name);
@@ -220,7 +227,7 @@ let Update = async (req, res) => {
 
         let updateData = await Client.findOne({
             _id: req.params.id,
-            ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies))
+            ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies))
         });
         if (!updateData) { return res.status(404).send('Client not found'); }
 
@@ -248,10 +255,10 @@ let Update = async (req, res) => {
 
 
 let Delete = async (req, res) => {
-    const allowedCompanies = await resolveAssignedCompaniesForRequest(req);
+    const allowedCompanies = await getClientAllowedCompanies(req);
     const deleted = await Client.findOneAndDelete({
         _id: req.params.id,
-        ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies))
+        ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies))
     });
     if (!deleted) return res.status(404).send('Client not found');
     res.status(200).send('Deleted')

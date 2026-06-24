@@ -371,42 +371,43 @@ export default function Leads() {
                 </button>
             )
         },
+        ...(userType !== "Surveyor" ? [
+            {
+                id: "setStatus",
+                key: "actions",
+                header: 'Set Status',
+                size: 1,
+                minSize: 1,
+                maxSize: 420,
+                grow: false,
+                Cell: ({ row }) => (
+                    <div className='crmSetStatusGroup inline-flex w-max items-center gap-2 whitespace-nowrap'>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
+                            className="text-cyan-600 font-bold flex items-center cursor-pointer">
+                            <span className="text-xs mr-1">Quote</span>
+                            <EventRepeatIcon fontSize="small" />
+                        </button>
 
-        {
-            id: "setStatus",
-            key: "actions",
-            header: 'Set Status',
-            size: 1,
-            minSize: 1,
-            maxSize: 420,
-            grow: false,
-            Cell: ({ row }) => (
-                <div className='crmSetStatusGroup inline-flex w-max items-center gap-2 whitespace-nowrap'>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusClick(row.original); }}
-                        className="text-cyan-600 font-bold flex items-center cursor-pointer">
-                        <span className="text-xs mr-1">Quote</span>
-                        <EventRepeatIcon fontSize="small" />
-                    </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleCancelled(row.original); }}
+                            className="text-red-500 font-bold flex items-center cursor-pointer">
+                            <span className="text-xs mr-1">Lost</span>
+                            <HighlightOffIcon fontSize="small" />
+                        </button>
 
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleCancelled(row.original); }}
-                        className="text-red-500 font-bold flex items-center cursor-pointer">
-                        <span className="text-xs mr-1">Lost</span>
-                        <HighlightOffIcon fontSize="small" />
-                    </button>
-
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleCommentClick(row.original); }}
-                        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200 cursor-pointer"
-                        title="Add Comment"
-                    >
-                        <span>Comment</span>
-                        <CommentIcon sx={{ fontSize: 15 }} />
-                    </button>
-                </div>
-            )
-        }
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleCommentClick(row.original); }}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200 cursor-pointer"
+                            title="Add Comment"
+                        >
+                            <span>Comment</span>
+                            <CommentIcon sx={{ fontSize: 15 }} />
+                        </button>
+                    </div>
+                )
+            }
+        ] : [])
     ];
 
     return (

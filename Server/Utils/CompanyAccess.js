@@ -2,7 +2,7 @@ const User = require('../API/User/User_Model');
 const { COMPANY_OPTIONS, sanitizeAssignedCompanies, normalizeCompanyName } = require('../Config/Companies');
 
 const resolveAssignedCompaniesForRequest = async (req) => {
-    if (req.userType === 'Admin') {
+    if (req.userType === 'Admin' || req.userType === 'Surveyor') {
         return [...COMPANY_OPTIONS];
     }
 

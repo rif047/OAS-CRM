@@ -345,7 +345,14 @@ const getLeadScope = async (req) => {
 
 const findScopedLeadById = async (req, id) => {
     const { companyScope } = await getLeadScope(req);
-    return Lead.findOne({ _id: id, ...companyScope });
+    const query = { _id: id, ...companyScope };
+    if (req.userType === 'Surveyor') {
+        query.$or = [
+            { status: { $ne: 'Pending' } },
+            { createdBy: req.userId }
+        ];
+    }
+    return Lead.findOne(query);
 };
 
 let Leads = async (req, res) => {
@@ -356,6 +363,12 @@ let Leads = async (req, res) => {
 
     if (status && ALLOWED_STATUSES.has(status)) {
         filter.status = status;
+    }
+
+    if (req.userType === 'Surveyor') {
+        if (!status || status === 'Pending') {
+            filter.createdBy = req.userId;
+        }
     }
     if (company && String(company).trim() !== '') {
         filter.company = String(company).trim();
@@ -642,7 +655,7 @@ const Create = async (req, res) => {
         if (!scopedCompany) return res.status(403).send('You do not have access to this company.');
         const scopedClient = await Client.findOne({
             _id: client,
-            ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies)),
+            ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies)),
         }).select('_id');
         if (!scopedClient) return res.status(403).send('Selected client is outside your company access.');
 
@@ -680,7 +693,8 @@ const Create = async (req, res) => {
             source,
             stage: "Pending",
             description: processDescription("", description, agent),
-            status: 'Pending'
+            status: 'Pending',
+            createdBy: req.userId
         });
 
         await newData.save();
@@ -713,7 +727,7 @@ let Update = async (req, res) => {
         if (!scopedCompany) return res.status(403).send('You do not have access to this company.');
         const scopedClient = await Client.findOne({
             _id: client,
-            ...(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies)),
+            ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies)),
         }).select('_id');
         if (!scopedClient) return res.status(403).send('Selected client is outside your company access.');
 
@@ -782,7 +796,14 @@ let Update = async (req, res) => {
 
 let View = async (req, res) => {
     const { companyScope } = await getLeadScope(req);
-    let viewOne = await Lead.findOne({ _id: req.params.id, ...companyScope }).populate('client');
+    const query = { _id: req.params.id, ...companyScope };
+    if (req.userType === 'Surveyor') {
+        query.$or = [
+            { status: { $ne: 'Pending' } },
+            { createdBy: req.userId }
+        ];
+    }
+    let viewOne = await Lead.findOne(query).populate('client');
     if (!viewOne) return res.status(404).send('Lead not found');
     res.send(viewOne);
 };
