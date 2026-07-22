@@ -17,6 +17,7 @@ import PaymentCell from '../../../Components/Datatable/PaymentCell';
 import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 import { ensureLeadDetail } from '../../../utils/leadDetails';
 import { parseMoney, resolveLeadDueAmount } from '../../../utils/payment';
+import { getLeadCreatedByName } from '../../../utils/leadCreatedBy';
 
 
 export default function In_Review() {
@@ -373,6 +374,7 @@ export default function In_Review() {
     const columns = [
         { key: "in_review_date", accessorKey: 'in_review_date', header: 'Date', maxSize: 60 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "createdBy", accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },

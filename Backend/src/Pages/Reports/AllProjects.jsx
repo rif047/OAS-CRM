@@ -15,6 +15,7 @@ import PaymentCell from '../../Components/Datatable/PaymentCell';
 import LeadPaymentModal from '../../Components/LeadPaymentModal';
 import { ensureLeadDetail } from '../../utils/leadDetails';
 import { parseMoney, resolveLeadDueAmount } from '../../utils/payment';
+import { getLeadCreatedByName } from '../../utils/leadCreatedBy';
 
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'PENDING' },
@@ -486,6 +487,7 @@ export default function AllProjects() {
   const columns = useMemo(() => ([
     { key: 'date', header: 'Date', maxSize: 80, Cell: ({ row }) => formatLondonDate(getStatusDate(row.original)) },
     { key: 'leadCode', accessorKey: 'leadCode', header: 'Code', maxSize: 80 },
+    { key: 'createdBy', accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
     {
       key: 'company',
       accessorKey: 'company',

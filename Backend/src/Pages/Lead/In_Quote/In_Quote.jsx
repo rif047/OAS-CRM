@@ -20,6 +20,7 @@ import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatte
 import { ensureLeadDetail } from '../../../utils/leadDetails';
 import { parseMoney, resolveLeadDueAmount } from '../../../utils/payment';
 import { splitAssignees } from '../../../utils/assignees';
+import { getLeadCreatedByName } from '../../../utils/leadCreatedBy';
 
 export default function In_Quote() {
     document.title = 'In Quote';
@@ -495,6 +496,7 @@ export default function In_Quote() {
     const columns = [
         { key: "in_quote_date", accessorKey: 'in_quote_date', header: 'Date', maxSize: 60 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "createdBy", accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         {

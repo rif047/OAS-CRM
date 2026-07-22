@@ -5,6 +5,7 @@ const Route = Express.Router();
 const Lead = require('./API/Lead/Lead_Route.js');
 const Employee = require('./API/Employee/Employee_Route.js');
 const Client = require('./API/Client/Client_Route.js');
+const Professional = require('./API/Professional/Professional_Route.js');
 const User = require('./API/User/User_Route.js');
 
 
@@ -16,6 +17,8 @@ Route.use('/leads', Lead);
 Route.use('/employees', Employee);
 
 Route.use('/clients', Client);
+
+Route.use('/professionals', Professional);
 
 Route.use('/users', User);
 

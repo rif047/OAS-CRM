@@ -16,6 +16,7 @@ import { markEditedRowForHighlight } from '../../../utils/datatableState';
 import LeadPaymentModal from '../../../Components/LeadPaymentModal';
 import PaymentCell from '../../../Components/Datatable/PaymentCell';
 import { ensureLeadDetail } from '../../../utils/leadDetails';
+import { getLeadCreatedByName } from '../../../utils/leadCreatedBy';
 
 
 export default function Project_Phase() {
@@ -325,6 +326,7 @@ export default function Project_Phase() {
     const columns = [
         { key: "in_design_date", accessorKey: 'in_design_date', header: 'Date', maxSize: 60 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "createdBy", accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         { key: "surveyor", accessorKey: 'surveyor', header: 'Surveyor', maxSize: 100 },

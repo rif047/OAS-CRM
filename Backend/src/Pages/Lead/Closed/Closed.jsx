@@ -9,6 +9,7 @@ import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
 import 'react-toastify/dist/ReactToastify.css';
 import { formatCurrencyGBP } from '../../../utils/formatters';
 import { ensureLeadDetail } from '../../../utils/leadDetails';
+import { getLeadCreatedByName } from '../../../utils/leadCreatedBy';
 
 export default function Closed() {
     document.title = 'Closed Projects';
@@ -193,6 +194,7 @@ export default function Closed() {
     const columns = [
         { key: "close_date", accessorKey: 'close_date', header: 'Date', maxSize: 60 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "createdBy", accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },

@@ -17,6 +17,7 @@ import { markEditedRowForHighlight } from '../../../utils/datatableState';
 import LeadPaymentModal from '../../../Components/LeadPaymentModal';
 import PaymentCell from '../../../Components/Datatable/PaymentCell';
 import { ensureLeadDetail } from '../../../utils/leadDetails';
+import { getLeadCreatedByName } from '../../../utils/leadCreatedBy';
 
 export default function In_Survey() {
     document.title = 'In Survey';
@@ -426,6 +427,7 @@ export default function In_Survey() {
     const columns = [
         { key: "in_survey_date", accessorKey: 'in_survey_date', header: 'Date', maxSize: 60 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 60 },
+        { key: "createdBy", accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },
         { key: "survey_date", accessorKey: 'survey_date', header: 'Survey Date' },

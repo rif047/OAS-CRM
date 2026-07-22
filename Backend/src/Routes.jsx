@@ -6,6 +6,7 @@ const Dashboard = lazy(() => import('./Pages/Dashboard/Dashboard'));
 const SurveyorDashboard = lazy(() => import('./Pages/Dashboard/SurveyorDashboard'));
 const DesignerDashboard = lazy(() => import('./Pages/Dashboard/DesignerDashboard'));
 const Clients = lazy(() => import('./Pages/Client/Clients'));
+const Professionals = lazy(() => import('./Pages/Professional/Professionals'));
 const Leads = lazy(() => import('./Pages/Lead/Leads'));
 const In_Quote = lazy(() => import('./Pages/Lead/In_Quote/In_Quote'));
 const In_Survey = lazy(() => import('./Pages/Lead/In_Survey/In_Survey'));
@@ -145,6 +146,7 @@ export default function MainRoutes() {
                     <>
                         <Route path="/leads" element={loggedIn ? <Leads handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                         <Route path="/clients" element={loggedIn ? <Clients handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+                        <Route path="/professionals" element={loggedIn ? <Professionals handleLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                     </>
                 )}
 

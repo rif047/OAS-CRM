@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
     DashboardOutlined,
     PeopleTwoTone,
+    EngineeringTwoTone,
     CheckBoxTwoTone,
     WorkHistoryTwoTone,
     CancelPresentationTwoTone,
@@ -89,6 +90,7 @@ export default function SideMenu() {
             {(userType === "Admin" || userType === "Management" || userType === "Surveyor") && (
                 <>
                     <MenuItem to="/clients" icon={PeopleTwoTone} label="Clients" />
+                    <MenuItem to="/professionals" icon={EngineeringTwoTone} label="Professionals" />
                     <MenuItem to="/leads" icon={WorkHistoryTwoTone} label="Pending Leads" />
                     {(userType === "Admin" || userType === "Management") && (
                         <MenuItem to="/in_quote" icon={RequestQuoteTwoTone} label="In Quotation" />

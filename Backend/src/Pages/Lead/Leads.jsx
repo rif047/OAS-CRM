@@ -16,6 +16,7 @@ import LeadPaymentModal from '../../Components/LeadPaymentModal';
 import { formatLondonDate } from "../../utils/formatters";
 import { markEditedRowForHighlight } from '../../utils/datatableState';
 import { ensureLeadDetail } from '../../utils/leadDetails';
+import { getLeadCreatedByName } from '../../utils/leadCreatedBy';
 
 export default function Leads() {
     document.title = 'Leads';
@@ -352,6 +353,7 @@ export default function Leads() {
     const columns = [
         { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 70 },
         { key: "leadCode", accessorKey: 'leadCode', header: 'Code', maxSize: 70 },
+        { key: "createdBy", accessorFn: (row) => getLeadCreatedByName(row), header: 'Created By', maxSize: 90 },
         { key: "client", header: 'Client', minSize: 220, maxSize: 260, Cell: ({ row }) => renderClientWithCompany(row.original) },
         { key: "project_type", accessorKey: 'project_type', header: 'Project Type' },
         { key: "address", header: 'Project Address', size: 220, minSize: 220, maxSize: 220, grow: false, muiTableBodyCellProps: { sx: { whiteSpace: 'normal !important', overflow: 'hidden' } }, Cell: ({ row }) => renderAddressCell(row.original) },

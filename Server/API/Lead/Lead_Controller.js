@@ -343,6 +343,19 @@ const getLeadScope = async (req) => {
     return { allowedCompanies, companyScope };
 };
 
+const buildLeadClientAccessMatch = (req, allowedCompanies) => {
+    if (req.userType === 'Admin' || req.userType === 'Surveyor') return {};
+
+    return {
+        $or: [
+            buildCompanyMatch('access_company', allowedCompanies),
+            { access_company: { $exists: false } },
+            { access_company: null },
+            { access_company: '' },
+        ],
+    };
+};
+
 const findScopedLeadById = async (req, id) => {
     const { companyScope } = await getLeadScope(req);
     const query = { _id: id, ...companyScope };
@@ -393,6 +406,7 @@ let Leads = async (req, res) => {
                 .select(LEAD_DASHBOARD_PROJECTION)
                 .sort(sortConfig)
                 .populate({ path: 'client', select: 'name', options: { lean: true } })
+                .populate({ path: 'createdBy', select: 'name username userType', options: { lean: true } })
                 .lean();
             return res.status(200).json(Data);
         }
@@ -401,6 +415,7 @@ let Leads = async (req, res) => {
             const Data = await Lead.find(filter)
                 .sort(sortConfig)
                 .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+                .populate({ path: 'createdBy', select: 'name username userType', options: { lean: true } })
                 .lean();
             return res.status(200).json(Data);
         }
@@ -430,8 +445,22 @@ let Leads = async (req, res) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'createdBy',
+                    foreignField: '_id',
+                    as: 'createdBy',
+                }
+            },
+            {
                 $unwind: {
                     path: '$client',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+            {
+                $unwind: {
+                    path: '$createdBy',
                     preserveNullAndEmptyArrays: true,
                 }
             },
@@ -449,6 +478,8 @@ let Leads = async (req, res) => {
                         { 'client.phone': containsRegex },
                         { 'client.email': containsRegex },
                         { 'client.company': containsRegex },
+                        { 'createdBy.name': containsRegex },
+                        { 'createdBy.username': containsRegex },
                     ],
                 }
             },
@@ -473,6 +504,7 @@ let Leads = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .populate({ path: 'client', select: 'name phone email company', options: { lean: true } })
+            .populate({ path: 'createdBy', select: 'name username userType', options: { lean: true } })
             .lean()
         : Lead.aggregate([
             { $match: queryWithoutSearch },
@@ -497,8 +529,22 @@ let Leads = async (req, res) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'createdBy',
+                    foreignField: '_id',
+                    as: 'createdBy',
+                }
+            },
+            {
                 $unwind: {
                     path: '$client',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+            {
+                $unwind: {
+                    path: '$createdBy',
                     preserveNullAndEmptyArrays: true,
                 }
             },
@@ -516,6 +562,8 @@ let Leads = async (req, res) => {
                         { 'client.phone': containsRegex },
                         { 'client.email': containsRegex },
                         { 'client.company': containsRegex },
+                        { 'createdBy.name': containsRegex },
+                        { 'createdBy.username': containsRegex },
                     ],
                 }
             },
@@ -552,12 +600,19 @@ let Leads = async (req, res) => {
                     payment_history: 1,
                     createdAt: 1,
                     updatedAt: 1,
+                    agent: 1,
                     client: {
                         _id: '$client._id',
                         name: '$client.name',
                         phone: '$client.phone',
                         email: '$client.email',
                         company: '$client.company',
+                    },
+                    createdBy: {
+                        _id: '$createdBy._id',
+                        name: '$createdBy.name',
+                        username: '$createdBy.username',
+                        userType: '$createdBy.userType',
                     },
                 }
             },
@@ -588,8 +643,22 @@ let Leads = async (req, res) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'createdBy',
+                    foreignField: '_id',
+                    as: 'createdBy',
+                }
+            },
+            {
                 $unwind: {
                     path: '$client',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+            {
+                $unwind: {
+                    path: '$createdBy',
                     preserveNullAndEmptyArrays: true,
                 }
             },
@@ -607,6 +676,8 @@ let Leads = async (req, res) => {
                         { 'client.phone': containsRegex },
                         { 'client.email': containsRegex },
                         { 'client.company': containsRegex },
+                        { 'createdBy.name': containsRegex },
+                        { 'createdBy.username': containsRegex },
                     ],
                 }
             },
@@ -655,7 +726,7 @@ const Create = async (req, res) => {
         if (!scopedCompany) return res.status(403).send('You do not have access to this company.');
         const scopedClient = await Client.findOne({
             _id: client,
-            ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies)),
+            ...buildLeadClientAccessMatch(req, allowedCompanies),
         }).select('_id');
         if (!scopedClient) return res.status(403).send('Selected client is outside your company access.');
 
@@ -727,7 +798,7 @@ let Update = async (req, res) => {
         if (!scopedCompany) return res.status(403).send('You do not have access to this company.');
         const scopedClient = await Client.findOne({
             _id: client,
-            ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies)),
+            ...buildLeadClientAccessMatch(req, allowedCompanies),
         }).select('_id');
         if (!scopedClient) return res.status(403).send('Selected client is outside your company access.');
 
@@ -803,7 +874,9 @@ let View = async (req, res) => {
             { createdBy: req.userId }
         ];
     }
-    let viewOne = await Lead.findOne(query).populate('client');
+    let viewOne = await Lead.findOne(query)
+        .populate('client')
+        .populate({ path: 'createdBy', select: 'name username userType', options: { lean: true } });
     if (!viewOne) return res.status(404).send('Lead not found');
     res.send(viewOne);
 };
@@ -1405,7 +1478,7 @@ let AdminDashboard = async (req, res) => {
             })
             .populate({ path: 'client', select: 'name', options: { lean: true } })
             .lean(),
-        Client.find(req.userType === 'Admin' ? {} : buildCompanyMatch('access_company', allowedCompanies), { _id: 1, createdAt: 1 }).lean(),
+        Client.find(buildLeadClientAccessMatch(req, allowedCompanies), { _id: 1, createdAt: 1 }).lean(),
         User.find({}, { userType: 1, createdAt: 1 }).lean(),
         Lead.distinct('company', { ...companyScope, company: { $exists: true, $ne: '' } }),
     ]);

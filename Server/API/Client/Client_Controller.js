@@ -40,11 +40,24 @@ const getClientAllowedCompanies = async (req) => {
     return resolveAssignedCompaniesForRequest(req);
 };
 
+const buildClientAccessMatch = (req, allowedCompanies) => {
+    if (req.userType === 'Admin' || req.userType === 'Surveyor') return {};
+
+    return {
+        $or: [
+            buildCompanyMatch('access_company', allowedCompanies),
+            { access_company: { $exists: false } },
+            { access_company: null },
+            { access_company: '' },
+        ],
+    };
+};
+
 let Clients = async (req, res) => {
     const summaryOnly = String(req.query.summary || '').trim() === '1';
     const projection = summaryOnly ? { _id: 1, createdAt: 1 } : undefined;
     const allowedCompanies = await getClientAllowedCompanies(req);
-    const filter = (req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies);
+    const filter = buildClientAccessMatch(req, allowedCompanies);
     let Data = await Client.find(filter, projection).sort({ createdAt: -1 }).lean();
     res.status(200).json(Data);
 }
@@ -184,7 +197,7 @@ let View = async (req, res) => {
     const allowedCompanies = await getClientAllowedCompanies(req);
     const viewOne = await Client.findOne({
         _id: req.params.id,
-        ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies))
+        ...buildClientAccessMatch(req, allowedCompanies)
     }).lean();
     if (!viewOne) return res.status(404).send('Client not found');
     res.send(viewOne)
@@ -227,7 +240,7 @@ let Update = async (req, res) => {
 
         let updateData = await Client.findOne({
             _id: req.params.id,
-            ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies))
+            ...buildClientAccessMatch(req, allowedCompanies)
         });
         if (!updateData) { return res.status(404).send('Client not found'); }
 
@@ -258,7 +271,7 @@ let Delete = async (req, res) => {
     const allowedCompanies = await getClientAllowedCompanies(req);
     const deleted = await Client.findOneAndDelete({
         _id: req.params.id,
-        ...((req.userType === 'Admin' || req.userType === 'Surveyor') ? {} : buildCompanyMatch('access_company', allowedCompanies))
+        ...buildClientAccessMatch(req, allowedCompanies)
     });
     if (!deleted) return res.status(404).send('Client not found');
     res.status(200).send('Deleted')

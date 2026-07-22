@@ -3,6 +3,7 @@ import PaymentInfoCard from '../../../Components/PaymentInfoCard';
 import CloseIcon from '@mui/icons-material/Close';
 import { formatCurrencyGBP, formatLondonDateTime } from '../../../utils/formatters';
 import { formatAssignees } from '../../../utils/assignees';
+import { getLeadCreatedByName } from '../../../utils/leadCreatedBy';
 
 export default function View({ open, onClose, viewData }) {
     const status = viewData?.status;
@@ -50,6 +51,7 @@ export default function View({ open, onClose, viewData }) {
 
                                         <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-gray-300">
                                             <InfoRow label="Agent" value={viewData.agent} />
+                                            <InfoRow label="Created By" value={getLeadCreatedByName(viewData)} />
                                             <InfoRow label="Status" value={viewData.status} />
                                             <InfoRow label="Created Date" value={formatLondonDateTime(viewData.createdAt)} />
                                             <InfoRow label="Updated Date" value={formatLondonDateTime(viewData.updatedAt)} />
