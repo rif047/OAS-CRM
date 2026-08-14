@@ -15,7 +15,6 @@ const authorize = require('./Middlewares/Authorize');
 const sanitizeRequest = require('./Middlewares/Sanitize_Request');
 const BackupRoutes = require('./Config/Backup');
 const Search = require('./Config/Search');
-require('./Config/Database');
 
 const app = express();
 const PORT = process.env.PORT || 9000;
@@ -42,6 +41,8 @@ if (NODE_ENV === 'production' && String(process.env.JWT_SECRET || '').trim().len
     console.error('❌ JWT_SECRET must be at least 32 characters in production.');
     process.exit(1);
 }
+
+require('./Config/Database');
 
 app.disable('x-powered-by');
 
@@ -95,6 +96,9 @@ app.use(cors({
         if (!allowedOrigins.length && NODE_ENV !== 'production') return callback(null, true);
         if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+            return callback(null, true);
+        }
         return callback(new Error('Origin not allowed by CORS policy'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -152,6 +156,11 @@ app.use((err, req, res, next) => {
 // Start server
 const server = app.listen(PORT, () => {
     console.log(`🚀 Server is running at http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
 });
 
 // Handle connection errors

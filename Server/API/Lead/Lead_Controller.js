@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Lead = require('./Lead_Model');
 const Client = require('../Client/Client_Model');
 const User = require('../User/User_Model');
@@ -765,7 +766,7 @@ const Create = async (req, res) => {
             stage: "Pending",
             description: processDescription("", description, agent),
             status: 'Pending',
-            createdBy: req.userId
+            createdBy: mongoose.Types.ObjectId.isValid(req.userId) ? req.userId : undefined
         });
 
         await newData.save();

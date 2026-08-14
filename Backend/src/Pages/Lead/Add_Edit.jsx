@@ -204,11 +204,14 @@ export default function AddEdit({ open, onClose, data, refreshData, hideDescript
             refreshData();
             onClose();
         } catch (error) {
-            const backendErrors = error.response?.data || {};
-            toast.error(error.response?.data || "Failed to submit data.");
-            setErrors({
-                ...backendErrors.includes?.('Source link already exists') && { source_link: 'Source link already exists.' }
-            });
+            const responseData = error.response?.data;
+            const backendMsg = typeof responseData === 'string'
+                ? responseData
+                : (responseData?.error || "Failed to submit data.");
+            toast.error(backendMsg);
+            if (typeof responseData === 'string' && responseData.includes('Source link already exists')) {
+                setErrors({ source_link: 'Source link already exists.' });
+            }
         } finally {
             setLoading(false);
         }

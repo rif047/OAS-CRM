@@ -130,12 +130,12 @@ export default function Professionals() {
     };
 
     const columns = [
-        { key: 'createdAt', accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 60 },
-        { accessorKey: 'sector', header: 'Sector' },
-        { accessorKey: 'name', header: 'Name' },
-        { accessorKey: 'phone', header: 'Contact Number', enableClickToCopy: true },
-        { accessorKey: 'company', header: 'Companies' },
-        { accessorKey: 'email', header: 'Email', enableClickToCopy: true },
+        { id: 'createdAt', key: 'createdAt', accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 60 },
+        { id: 'sector', accessorKey: 'sector', header: 'Sector' },
+        { id: 'name', accessorKey: 'name', header: 'Name' },
+        { id: 'phone', accessorKey: 'phone', header: 'Contact Number', enableClickToCopy: true },
+        { id: 'company', accessorKey: 'company', header: 'Companies' },
+        { id: 'email', accessorKey: 'email', header: 'Email', enableClickToCopy: true },
         {
             id: 'actions',
             header: 'Actions',
@@ -143,6 +143,7 @@ export default function Professionals() {
             minSize: 220,
             maxSize: 260,
             grow: false,
+            enableGlobalFilter: false,
             muiTableHeadCellProps: { align: 'center', sx: { px: 0 } },
             muiTableBodyCellProps: {
                 align: 'center',

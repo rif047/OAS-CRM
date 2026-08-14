@@ -15,6 +15,17 @@ const EXCLUDED_FIELDS = ['_id', 'secret_code', 'password', '__v', 'images'];
 const CENTERED_COLUMNS = new Set(['stage', 'setstatus', 'set_status', 'actions', 'payment']);
 const ZERO_HORIZONTAL_PADDING_COLUMNS = new Set(['date', 'code', 'payment', 'stage', 'set_status', 'setstatus', 'actions']);
 
+const getSearchableText = (value) => {
+    if (value === undefined || value === null) return '';
+    if (value instanceof Date) return value.toISOString();
+    if (Array.isArray(value)) return value.map(getSearchableText).filter(Boolean).join(' ');
+    if (typeof value === 'object') {
+        if (value.name) return getSearchableText(value.name);
+        return Object.values(value).map(getSearchableText).filter(Boolean).join(' ');
+    }
+    return String(value);
+};
+
 function Datatable({
     columns,
     data,
@@ -94,6 +105,15 @@ function Datatable({
         }
         return String(value);
     }, []);
+    const tableGlobalFilterFn = useCallback((row, columnId, filterValue) => {
+        const query = normalizeFilterValue(filterValue).trim().toLowerCase();
+        if (!query) return true;
+        return getSearchableText(row.getValue(columnId)).toLowerCase().includes(query);
+    }, [normalizeFilterValue]);
+    const getColumnCanGlobalFilter = useCallback((column) => {
+        if (column.columnDef?.enableGlobalFilter === false) return false;
+        return Boolean(column.accessorFn);
+    }, []);
 
     useEffect(() => {
         localStorage.setItem(paginationStorageKey, JSON.stringify(pagination));
@@ -136,11 +156,14 @@ function Datatable({
     }, [globalFilter, normalizeFilterValue, serverMode, serverSearchDebounceMs]);
 
     useEffect(() => {
-        if (!serverMode) return;
+        if (!serverMode) {
+            setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+            return;
+        }
         if (previousSearchRef.current === debouncedGlobalFilter) return;
         previousSearchRef.current = debouncedGlobalFilter;
         setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
-    }, [debouncedGlobalFilter, serverMode]);
+    }, [debouncedGlobalFilter, globalFilter, serverMode]);
 
     useEffect(() => {
         setSorting((prev) => {
@@ -327,8 +350,9 @@ function Datatable({
 
 
     const normalizedColumns = useMemo(() => columns.map((column) => {
+        const colId = column.id || column.key || column.accessorKey;
         const normalizedId = String(
-            column.id || column.key || column.accessorKey || column.header || ''
+            colId || column.header || ''
         ).toLowerCase().replace(/\s+/g, '_');
         const plainId = normalizedId.replace(/_/g, '');
         const headerText = String(column.header || '').toLowerCase().trim();
@@ -347,10 +371,12 @@ function Datatable({
             isDateColumn;
         const shouldZeroHorizontalPadding = ZERO_HORIZONTAL_PADDING_COLUMNS.has(normalizedId) || ZERO_HORIZONTAL_PADDING_COLUMNS.has(plainId);
 
-        if (!shouldCenter && !isPriceColumn && !shouldZeroHorizontalPadding && !isCodeColumn) return column;
+        const baseColumn = colId && !column.id ? { ...column, id: String(colId) } : column;
+
+        if (!shouldCenter && !isPriceColumn && !shouldZeroHorizontalPadding && !isCodeColumn) return baseColumn;
 
         return {
-            ...column,
+            ...baseColumn,
             ...(isCodeColumn && !column.Cell ? {
                 Cell: ({ cell, renderedCellValue }) => {
                     const value = cell.getValue?.() ?? renderedCellValue ?? '';
@@ -398,6 +424,7 @@ function Datatable({
             id: 'serial',
             header: 'SL',
             size: 50,
+            enableGlobalFilter: false,
             muiTableHeadCellProps: {
                 align: 'center',
                 sx: { px: 0 },
@@ -428,6 +455,7 @@ function Datatable({
             minSize: 1,
             maxSize: 180,
             grow: false,
+            enableGlobalFilter: false,
             muiTableHeadCellProps: {
                 align: 'center',
                 sx: { px: 0 },
@@ -517,7 +545,7 @@ function Datatable({
 
             enableFullScreenToggle={false}
             enableDensityToggle={false}
-            enableFilters={false}
+            enableGlobalFilter={true}
             enableColumnFilters={false}
             enableFilterMatchHighlighting
             autoResetPageIndex={!serverMode}
@@ -535,7 +563,8 @@ function Datatable({
                 globalFilter,
                 ...(serverMode ? { sorting } : {}),
             }}
-            globalFilterFn="includesString"
+            globalFilterFn={serverMode ? 'includesString' : tableGlobalFilterFn}
+            getColumnCanGlobalFilter={serverMode ? undefined : getColumnCanGlobalFilter}
             paginationDisplayMode="pages"
             muiPaginationProps={{
                 rowsPerPageOptions: [10, 50, 100],
