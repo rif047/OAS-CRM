@@ -2004,6 +2004,37 @@ let MonthlyReport = async (req, res) => {
         }
     ]);
 
+    const rawSearch = String(req.query.search || '').trim();
+    let filteredLeads = leads;
+
+    if (rawSearch) {
+        const searchRegex = new RegExp(rawSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        filteredLeads = leads.filter(item => (
+            searchRegex.test(item.leadCode || '') ||
+            searchRegex.test(item.company || '') ||
+            searchRegex.test(item.project_type || '') ||
+            searchRegex.test(item.status || '') ||
+            searchRegex.test(item.client?.name || '') ||
+            searchRegex.test(item.client?.phone || '') ||
+            searchRegex.test(item.client?.email || '') ||
+            searchRegex.test(item.client?.company || '')
+        ));
+    }
+
+    const rawPage = req.query.page;
+    const rawLimit = req.query.limit;
+    const hasPagination = rawPage !== undefined || rawLimit !== undefined;
+
+    let paginatedLeads = filteredLeads;
+    const total = filteredLeads.length;
+
+    if (hasPagination) {
+        const page = Math.max(1, parseInt(rawPage, 10) || 1);
+        const limit = Math.min(500, Math.max(1, parseInt(rawLimit, 10) || 50));
+        const skip = (page - 1) * limit;
+        paginatedLeads = filteredLeads.slice(skip, skip + limit);
+    }
+
     const counts = {
         all: leads.length,
         pending: 0,
@@ -2029,7 +2060,8 @@ let MonthlyReport = async (req, res) => {
     companies.sort((a, b) => String(a).localeCompare(String(b)));
 
     res.status(200).json({
-        rows: leads,
+        rows: paginatedLeads,
+        total,
         counts,
         companies,
         filters: {

@@ -202,11 +202,68 @@ const Professionals = async (req, res) => {
         filter.sector = sector;
     }
 
-    const data = await Professional.find(filter)
-        .sort({ createdAt: -1 })
-        .lean();
+    const { page: rawPage, limit: rawLimit, sortBy: rawSortBy, sortDir: rawSortDir, search: rawSearch } = req.query;
+    const hasPagination = rawPage !== undefined || rawLimit !== undefined || rawSearch !== undefined;
 
-    res.status(200).json(data);
+    if (!hasPagination) {
+        const data = await Professional.find(filter)
+            .sort({ createdAt: -1 })
+            .lean();
+        return res.status(200).json(data);
+    }
+
+    const search = String(rawSearch || '').trim();
+    const containsRegex = search ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null;
+
+    let finalFilter = { ...filter };
+    if (containsRegex) {
+        const searchConditions = [
+            { name: containsRegex },
+            { phone: containsRegex },
+            { alt_phone: containsRegex },
+            { email: containsRegex },
+            { company: containsRegex },
+            { sector: containsRegex },
+            { address: containsRegex },
+            { agent: containsRegex },
+        ];
+        if (filter.$or) {
+            finalFilter = {
+                $and: [
+                    { $or: filter.$or },
+                    { $or: searchConditions }
+                ]
+            };
+        } else {
+            finalFilter.$or = searchConditions;
+        }
+    }
+
+    const page = Math.max(1, parseInt(rawPage, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(rawLimit, 10) || 10));
+    const skip = (page - 1) * limit;
+
+    const requestedSortBy = String(rawSortBy || '').trim();
+    const sortField = ['name', 'phone', 'email', 'company', 'sector', 'createdAt', 'updatedAt'].includes(requestedSortBy)
+        ? requestedSortBy
+        : 'createdAt';
+    const sortDir = String(rawSortDir || '').toLowerCase() === 'asc' ? 1 : -1;
+    const sortConfig = { [sortField]: sortDir, _id: sortDir };
+
+    const [rows, total] = await Promise.all([
+        Professional.find(finalFilter).sort(sortConfig).skip(skip).limit(limit).lean(),
+        Professional.countDocuments(finalFilter)
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    res.status(200).json({
+        rows,
+        total,
+        page,
+        limit,
+        totalPages,
+        search
+    });
 };
 
 const Meta = async (_req, res) => {

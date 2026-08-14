@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '../../Layout';
 import Datatable from '../../Components/Datatable/Datatable';
 import Add_Edit from './Add_Edit';
@@ -36,21 +36,55 @@ export default function Clients() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: "", sortBy: "", sortDir: "desc" });
 
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
-            setData(response.data);
+            const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
+                params: {
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                }
+            });
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
 
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
     const handleDelete = async (row) => {
         if (window.confirm(`Are you sure you want to delete ${row.name.toUpperCase()}?`)) {
@@ -79,15 +113,6 @@ export default function Clients() {
         setViewData(row);
         setViewModalOpen(true);
     };
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-
-
-
-
 
     const columns = [
         { id: "createdAt", key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 60 },
@@ -121,7 +146,7 @@ export default function Clients() {
                         )}
 
                         <span className="leadPageCount">
-                            Total: {data.length}
+                            Total: {totalRows}
                         </span>
                     </div>
 
@@ -142,11 +167,13 @@ export default function Clients() {
                         onView={handleView}
                         onDelete={handleDelete}
                         permissions={userPermissions}
+                        serverMode={true}
+                        totalRows={totalRows}
                         isLoading={loading}
+                        onServerQueryChange={handleServerQueryChange}
                     />
                 </div>
             </section>
-
             {modalOpen && (
                 <Add_Edit
                     open={modalOpen}

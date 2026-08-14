@@ -58,8 +58,67 @@ let Clients = async (req, res) => {
     const projection = summaryOnly ? { _id: 1, createdAt: 1 } : undefined;
     const allowedCompanies = await getClientAllowedCompanies(req);
     const filter = buildClientAccessMatch(req, allowedCompanies);
-    let Data = await Client.find(filter, projection).sort({ createdAt: -1 }).lean();
-    res.status(200).json(Data);
+
+    const { page: rawPage, limit: rawLimit, sortBy: rawSortBy, sortDir: rawSortDir, search: rawSearch } = req.query;
+    const hasPagination = rawPage !== undefined || rawLimit !== undefined || rawSearch !== undefined;
+
+    if (!hasPagination) {
+        let Data = await Client.find(filter, projection).sort({ createdAt: -1 }).lean();
+        return res.status(200).json(Data);
+    }
+
+    const search = String(rawSearch || '').trim();
+    const containsRegex = search ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null;
+
+    let finalFilter = { ...filter };
+    if (containsRegex) {
+        const searchConditions = [
+            { name: containsRegex },
+            { phone: containsRegex },
+            { alt_phone: containsRegex },
+            { email: containsRegex },
+            { company: containsRegex },
+            { access_company: containsRegex },
+            { agent: containsRegex },
+            { description: containsRegex },
+        ];
+        if (filter.$or) {
+            finalFilter = {
+                $and: [
+                    { $or: filter.$or },
+                    { $or: searchConditions }
+                ]
+            };
+        } else {
+            finalFilter.$or = searchConditions;
+        }
+    }
+
+    const page = Math.max(1, parseInt(rawPage, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(rawLimit, 10) || 10));
+    const skip = (page - 1) * limit;
+
+    const requestedSortBy = String(rawSortBy || '').trim();
+    const sortField = ['name', 'phone', 'email', 'company', 'access_company', 'createdAt', 'updatedAt'].includes(requestedSortBy)
+        ? requestedSortBy
+        : 'createdAt';
+    const sortDir = String(rawSortDir || '').toLowerCase() === 'asc' ? 1 : -1;
+    const sortConfig = { [sortField]: sortDir, _id: sortDir };
+
+    const [rows, total] = await Promise.all([
+        Client.find(finalFilter, projection).sort(sortConfig).skip(skip).limit(limit).lean(),
+        Client.countDocuments(finalFilter)
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    res.status(200).json({
+        rows,
+        total,
+        page,
+        limit,
+        totalPages,
+        search
+    });
 }
 
 

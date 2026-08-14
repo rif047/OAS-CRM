@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import Layout from '../../Layout';
 import Datatable from '../../Components/Datatable/Datatable';
@@ -33,22 +33,61 @@ export default function Users() {
     const [viewData, setViewData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: '', sortBy: '', sortDir: 'desc' });
     const [selectedUserType, setSelectedUserType] = useState('All');
+    const [userTypes, setUserTypes] = useState(['All', 'Admin', 'Agent', 'Surveyor', 'Designer', 'Management']);
 
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`);
-            setData(response.data);
+            const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, {
+                params: {
+                    page: tableQuery.page,
+                    limit: tableQuery.limit,
+                    search: tableQuery.search,
+                    sortBy: tableQuery.sortBy,
+                    sortDir: tableQuery.sortDir,
+                    userType: selectedUserType,
+                }
+            });
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
+            if (payload?.userTypes && Array.isArray(payload.userTypes)) {
+                setUserTypes(['All', ...new Set(payload.userTypes)]);
+            }
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, selectedUserType, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
 
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
     const handleDelete = async (row) => {
         if (window.confirm(`Are you sure you want to delete ${row.name.toUpperCase()}?`)) {
@@ -78,30 +117,14 @@ export default function Users() {
         setViewModalOpen(true);
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const userTypes = useMemo(() => {
-        const uniqueTypes = [...new Set(data.map((item) => item?.userType).filter(Boolean))];
-        return ['All', ...uniqueTypes];
-    }, [data]);
-
-    const filteredData = useMemo(() => {
-        if (selectedUserType === 'All') return data;
-        return data.filter((item) => item?.userType === selectedUserType);
-    }, [data, selectedUserType]);
-
-
-
     const columns = [
-        { key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 70 },
-        { accessorKey: 'name', header: 'Name', },
-        { accessorKey: 'phone', header: 'Phone', enableClickToCopy: true, },
-        { accessorKey: 'email', header: 'Email' },
-        { accessorKey: 'designation', header: 'Designation' },
-        { accessorKey: 'userType', header: 'User Type' },
-        { key: 'assignedCompanies', accessorFn: (row) => (row.assignedCompanies || []).join(', '), header: 'Assigned Companies' },
+        { id: "createdAt", key: "createdAt", accessorFn: (row) => formatLondonDate(row.createdAt, ''), header: 'Date', maxSize: 70 },
+        { id: "name", accessorKey: 'name', header: 'Name', },
+        { id: "phone", accessorKey: 'phone', header: 'Phone', enableClickToCopy: true, },
+        { id: "email", accessorKey: 'email', header: 'Email' },
+        { id: "designation", accessorKey: 'designation', header: 'Designation' },
+        { id: "userType", accessorKey: 'userType', header: 'User Type' },
+        { id: "assignedCompanies", key: 'assignedCompanies', accessorFn: (row) => (row.assignedCompanies || []).join(', '), header: 'Assigned Companies' },
     ];
 
     return (
@@ -126,7 +149,7 @@ export default function Users() {
                         )}
 
                         <span className="leadPageCount">
-                            Total: {filteredData.length}
+                            Total: {totalRows}
                         </span>
                     </div>
 
@@ -134,7 +157,10 @@ export default function Users() {
                         <select
                             className="leadPageFilterSelect"
                             value={selectedUserType}
-                            onChange={(e) => setSelectedUserType(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedUserType(e.target.value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             <option value="All">All User Type</option>
                             {userTypes.filter((type) => type !== 'All').map((type) => (
@@ -150,22 +176,18 @@ export default function Users() {
                 </div>
 
                 <div>
-                    {loading ? (
-                        <div className="flex justify-center py-10">
-                            <svg className="h-20 w-20 animate-spin p-4 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="3" strokeDasharray="50" strokeDashoffset="80" />
-                            </svg>
-                        </div>
-                    ) : (
-                        <Datatable
-                            columns={columns}
-                            data={filteredData}
-                            onEdit={handleEdit}
-                            onView={handleView}
-                            onDelete={handleDelete}
-                            permissions={userPermissions}
-                        />
-                    )}
+                    <Datatable
+                        columns={columns}
+                        data={data}
+                        onEdit={handleEdit}
+                        onView={handleView}
+                        onDelete={handleDelete}
+                        permissions={userPermissions}
+                        serverMode={true}
+                        totalRows={totalRows}
+                        isLoading={loading}
+                        onServerQueryChange={handleServerQueryChange}
+                    />
                 </div>
             </section>
 

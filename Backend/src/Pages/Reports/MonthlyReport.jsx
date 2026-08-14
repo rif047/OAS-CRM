@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import jsPDF from 'jspdf';
@@ -144,7 +144,10 @@ export default function MonthlyReport() {
     []
   );
 
-  const fetchReport = async (overrideFilters = {}) => {
+  const [totalRows, setTotalRows] = useState(0);
+  const [tableQuery, setTableQuery] = useState({ page: 1, limit: 50, search: '', sortBy: '', sortDir: 'desc' });
+
+  const fetchReport = useCallback(async (overrideFilters = {}) => {
     const companyFilter = overrideFilters.company ?? selectedCompany;
     const stageFilter = overrideFilters.stage ?? selectedStage;
 
@@ -165,10 +168,15 @@ export default function MonthlyReport() {
           to: toDate,
           company: companyFilter,
           stage: stageFilter,
+          page: tableQuery.page,
+          limit: tableQuery.limit,
+          search: tableQuery.search,
         },
       });
 
-      setRows(Array.isArray(data?.rows) ? data.rows : []);
+      const fetchedRows = Array.isArray(data?.rows) ? data.rows : [];
+      setRows(fetchedRows);
+      setTotalRows(Number(data?.total || fetchedRows.length));
       setCounts(data?.counts || {});
       setCompanies(Array.isArray(data?.companies) ? data.companies : []);
       setIsCompanyEnabled(true);
@@ -180,7 +188,26 @@ export default function MonthlyReport() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fromDate, toDate, selectedCompany, selectedStage, tableQuery.page, tableQuery.limit, tableQuery.search]);
+
+  const handleServerQueryChange = useCallback((nextQuery) => {
+    setTableQuery((prev) => {
+      const next = {
+        ...prev,
+        ...nextQuery,
+        page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+        limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 50)),
+      };
+      if (
+        prev.page === next.page &&
+        prev.limit === next.limit &&
+        prev.search === next.search &&
+        prev.sortBy === next.sortBy &&
+        prev.sortDir === next.sortDir
+      ) return prev;
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     // Keep initial page clean: no validation toast until user generates report.
@@ -201,75 +228,105 @@ export default function MonthlyReport() {
     });
   }, []);
 
+  useEffect(() => {
+    if (canDownloadReport && fromDate && toDate) {
+      fetchReport();
+    }
+  }, [tableQuery]);
+
   const handleView = (row) => {
     setViewData(row);
     setViewOpen(true);
   };
 
-  const downloadReportPdf = () => {
-    if (!rows.length) {
+  const downloadReportPdf = async () => {
+    if (!canDownloadReport || !fromDate || !toDate) {
       toast.info('No data to download. Generate a report first.');
       return;
     }
 
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const generatedAt = formatLondonDateTime(new Date());
-    const stageLabel = STAGE_OPTIONS.find((item) => item.value === selectedStage)?.label || selectedStage;
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/leads/monthly/report`, {
+        params: {
+          from: fromDate,
+          to: toDate,
+          company: selectedCompany,
+          stage: selectedStage,
+          search: tableQuery.search,
+        },
+      });
 
-    doc.setFontSize(16);
-    doc.text('Monthly Report', 14, 16);
-    doc.setFontSize(9.5);
-    doc.text(`From: ${fromDate || 'N/A'}    To: ${toDate || 'N/A'}`, 14, 23);
-    doc.text(`Company: ${selectedCompany || 'All'}    Stage: ${stageLabel || 'All'}`, 14, 28);
-    doc.text(`Generated: ${generatedAt}`, 14, 33);
+      const exportRows = Array.isArray(data?.rows) ? data.rows : [];
+      if (!exportRows.length) {
+        toast.info('No data to download.');
+        return;
+      }
 
-    autoTable(doc, {
-      startY: 38,
-      head: [['Total', 'Pending', 'In Quote', 'In Survey', 'In Design', 'In Review', 'Closed', 'Lost Lead']],
-      body: [[
-        counts.all || 0,
-        counts.pending || 0,
-        counts.in_quote || 0,
-        counts.in_survey || 0,
-        counts.in_design || 0,
-        counts.in_review || 0,
-        counts.closed || 0,
-        counts.lost_lead || 0,
-      ]],
-      theme: 'grid',
-      styles: { fontSize: 8.5, cellPadding: 2 },
-      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
-    });
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const generatedAt = formatLondonDateTime(new Date());
+      const stageLabel = STAGE_OPTIONS.find((item) => item.value === selectedStage)?.label || selectedStage;
 
-    autoTable(doc, {
-      startY: (doc.lastAutoTable?.finalY || 38) + 6,
-      head: [['Date', 'Code', 'Company', 'Client (Company)', 'Project Type', 'Current Status']],
-      body: rows.map((row) => {
-        const clientName = row?.client?.name || 'N/A';
-        const clientCompany = row?.client?.company ? ` (${row.client.company})` : '';
-        return [
-          row.report_date || '',
-          row.leadCode || '',
-          row.company || '',
-          `${clientName}${clientCompany}`,
-          row.project_type || '',
-          STATUS_LABEL[row.status] || row.status || 'N/A',
-        ];
-      }),
-      theme: 'striped',
-      styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak' },
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 22 },
-        2: { cellWidth: 26 },
-        3: { cellWidth: 52 },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 27 },
-      },
-    });
+      doc.setFontSize(16);
+      doc.text('Monthly Report', 14, 16);
+      doc.setFontSize(9.5);
+      doc.text(`From: ${fromDate || 'N/A'}    To: ${toDate || 'N/A'}`, 14, 23);
+      doc.text(`Company: ${selectedCompany || 'All'}    Stage: ${stageLabel || 'All'}`, 14, 28);
+      doc.text(`Generated: ${generatedAt}`, 14, 33);
 
-    doc.save(`monthly-report-${fromDate || 'from'}-to-${toDate || 'to'}.pdf`);
+      autoTable(doc, {
+        startY: 38,
+        head: [['Total', 'Pending', 'In Quote', 'In Survey', 'In Design', 'In Review', 'Closed', 'Lost Lead']],
+        body: [[
+          counts.all || 0,
+          counts.pending || 0,
+          counts.in_quote || 0,
+          counts.in_survey || 0,
+          counts.in_design || 0,
+          counts.in_review || 0,
+          counts.closed || 0,
+          counts.lost_lead || 0,
+        ]],
+        theme: 'grid',
+        styles: { fontSize: 8.5, cellPadding: 2 },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+      });
+
+      autoTable(doc, {
+        startY: (doc.lastAutoTable?.finalY || 38) + 6,
+        head: [['Date', 'Code', 'Company', 'Client (Company)', 'Project Type', 'Current Status']],
+        body: exportRows.map((row) => {
+          const clientName = row?.client?.name || 'N/A';
+          const clientCompany = row?.client?.company ? ` (${row.client.company})` : '';
+          return [
+            row.report_date || '',
+            row.leadCode || '',
+            row.company || '',
+            `${clientName}${clientCompany}`,
+            row.project_type || '',
+            STATUS_LABEL[row.status] || row.status || 'N/A',
+          ];
+        }),
+        theme: 'striped',
+        styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak' },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 26 },
+          3: { cellWidth: 52 },
+          4: { cellWidth: 35 },
+          5: { cellWidth: 27 },
+        },
+      });
+
+      doc.save(`monthly-report-${fromDate || 'from'}-to-${toDate || 'to'}.pdf`);
+    } catch (error) {
+      toast.error('Failed to download PDF report.');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const summaryCards = [
@@ -410,6 +467,10 @@ export default function MonthlyReport() {
               permissions={{ canView: true, canEdit: false, canDelete: false }}
               defaultPageSize={50}
               forceDefaultPageSize
+              serverMode={true}
+              totalRows={totalRows}
+              isLoading={loading}
+              onServerQueryChange={handleServerQueryChange}
             />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -32,23 +32,35 @@ export default function Professionals() {
     const [notesData, setNotesData] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
+    const [tableQuery, setTableQuery] = useState({ page: 1, limit: 10, search: '', sortBy: '', sortDir: 'desc' });
     const [convertingId, setConvertingId] = useState('');
     const [sectorFilter, setSectorFilter] = useState('All');
     const [sectorOptions, setSectorOptions] = useState(PROFESSIONAL_SECTORS);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const params = sectorFilter && sectorFilter !== 'All' ? { sector: sectorFilter } : {};
+            const params = {
+                page: tableQuery.page,
+                limit: tableQuery.limit,
+                search: tableQuery.search,
+                sortBy: tableQuery.sortBy,
+                sortDir: tableQuery.sortDir,
+                ...(sectorFilter && sectorFilter !== 'All' ? { sector: sectorFilter } : {}),
+            };
             const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/${EndPoint}`, { params });
-            setData(Array.isArray(response.data) ? response.data : []);
+            const payload = response.data;
+            const rows = Array.isArray(payload) ? payload : (payload?.rows || []);
+            setData(rows);
+            setTotalRows(Array.isArray(payload) ? rows.length : Number(payload?.total || 0));
         } catch (error) {
             toast.error('Failed to fetch data. Please try again.');
             console.error('Error fetching professionals:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [EndPoint, sectorFilter, tableQuery.limit, tableQuery.page, tableQuery.search, tableQuery.sortBy, tableQuery.sortDir]);
 
     const fetchMeta = async () => {
         try {
@@ -66,7 +78,26 @@ export default function Professionals() {
 
     useEffect(() => {
         fetchData();
-    }, [sectorFilter]);
+    }, [fetchData]);
+
+    const handleServerQueryChange = useCallback((nextQuery) => {
+        setTableQuery((prev) => {
+            const next = {
+                ...prev,
+                ...nextQuery,
+                page: Math.max(1, Number(nextQuery?.page || prev.page || 1)),
+                limit: Math.max(1, Number(nextQuery?.limit || prev.limit || 10)),
+            };
+            if (
+                prev.page === next.page &&
+                prev.limit === next.limit &&
+                prev.search === next.search &&
+                prev.sortBy === next.sortBy &&
+                prev.sortDir === next.sortDir
+            ) return prev;
+            return next;
+        });
+    }, []);
 
     const filterOptions = useMemo(() => {
         const sectorsFromData = data.map((item) => item.sector).filter(Boolean);
@@ -248,14 +279,17 @@ export default function Professionals() {
                             </button>
                         )}
 
-                        <span className="leadPageCount">Total: {data.length}</span>
+                        <span className="leadPageCount">Total: {totalRows}</span>
                     </div>
 
                     <div className="leadPageHeaderActions">
                         <select
                             value={sectorFilter}
                             className="leadPageFilterSelect"
-                            onChange={(event) => setSectorFilter(event.target.value)}
+                            onChange={(event) => {
+                                setSectorFilter(event.target.value);
+                                setTableQuery((prev) => ({ ...prev, page: 1 }));
+                            }}
                         >
                             {filterOptions.map((sector) => (
                                 <option key={sector} value={sector}>{sector}</option>
@@ -276,6 +310,9 @@ export default function Professionals() {
                         data={data}
                         permissions={{ canView: false, canEdit: false, canDelete: false }}
                         isLoading={loading}
+                        serverMode={true}
+                        totalRows={totalRows}
+                        onServerQueryChange={handleServerQueryChange}
                     />
                 </div>
             </section>

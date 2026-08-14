@@ -12,8 +12,62 @@ const USER_OPTION_FIELDS = 'name username userType assignedCompanies';
 let Users = async (req, res) => {
     const summaryOnly = String(req.query.summary || '').trim() === '1';
     const selectFields = summaryOnly ? 'userType createdAt' : PUBLIC_USER_FIELDS;
-    let Data = await User.find().select(selectFields).sort({ createdAt: -1 }).lean();
-    res.status(200).json(Data);
+    
+    const userTypeFilter = String(req.query.userType || '').trim();
+    const filter = {};
+    if (userTypeFilter && userTypeFilter.toLowerCase() !== 'all') {
+        filter.userType = userTypeFilter;
+    }
+
+    const { page: rawPage, limit: rawLimit, sortBy: rawSortBy, sortDir: rawSortDir, search: rawSearch } = req.query;
+    const hasPagination = rawPage !== undefined || rawLimit !== undefined || rawSearch !== undefined;
+
+    if (!hasPagination) {
+        let Data = await User.find(filter).select(selectFields).sort({ createdAt: -1 }).lean();
+        return res.status(200).json(Data);
+    }
+
+    const search = String(rawSearch || '').trim();
+    if (search) {
+        const containsRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        filter.$or = [
+            { name: containsRegex },
+            { username: containsRegex },
+            { phone: containsRegex },
+            { email: containsRegex },
+            { designation: containsRegex },
+            { userType: containsRegex },
+            { assignedCompanies: containsRegex },
+        ];
+    }
+
+    const page = Math.max(1, parseInt(rawPage, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(rawLimit, 10) || 10));
+    const skip = (page - 1) * limit;
+
+    const requestedSortBy = String(rawSortBy || '').trim();
+    const sortField = ['name', 'username', 'phone', 'email', 'userType', 'designation', 'createdAt', 'updatedAt'].includes(requestedSortBy)
+        ? requestedSortBy
+        : 'createdAt';
+    const sortDir = String(rawSortDir || '').toLowerCase() === 'asc' ? 1 : -1;
+    const sortConfig = { [sortField]: sortDir, _id: sortDir };
+
+    const [rows, total, allTypes] = await Promise.all([
+        User.find(filter).select(selectFields).sort(sortConfig).skip(skip).limit(limit).lean(),
+        User.countDocuments(filter),
+        User.distinct('userType')
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    res.status(200).json({
+        rows,
+        total,
+        page,
+        limit,
+        totalPages,
+        userTypes: allTypes.filter(Boolean),
+        search
+    });
 }
 
 let UserOptions = async (req, res) => {
